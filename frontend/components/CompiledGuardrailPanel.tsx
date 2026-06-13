@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   fetchCompiledGuardrails,
   type CompiledGuardrailsView,
@@ -28,14 +28,22 @@ export interface CompiledGuardrailPanelProps {
 
 export function CompiledGuardrailPanel({
   personaId,
-  load = (id) => fetchCompiledGuardrails(id),
+  load,
 }: CompiledGuardrailPanelProps): React.ReactElement {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+
+  // Keep the (optional, possibly inline/unstable) loader in a ref so the effect
+  // depends ONLY on personaId. Mirrors useRunStream's factoryRef pattern.
+  // Without this, the default loader is a new function reference every render →
+  // the effect re-runs → setState → re-render → an INFINITE /compiled fetch loop.
+  const loadRef = useRef(load);
+  loadRef.current = load;
 
   useEffect(() => {
     let active = true;
     setState({ kind: "loading" });
-    load(personaId)
+    const run = loadRef.current ?? ((id: string) => fetchCompiledGuardrails(id));
+    run(personaId)
       .then((view) => {
         if (active) setState({ kind: "ready", view });
       })
@@ -49,7 +57,7 @@ export function CompiledGuardrailPanel({
     return () => {
       active = false;
     };
-  }, [personaId, load]);
+  }, [personaId]);
 
   return (
     <section className="compiled-guardrails" aria-labelledby="compiled-h">

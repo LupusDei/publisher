@@ -40,6 +40,38 @@ describe("CompiledGuardrailPanel", () => {
     expect(screen.getByText(/Compiling guardrails/)).toBeInTheDocument();
   });
 
+  it("should fetch once and NOT refire when re-rendered with a fresh loader (infinite-loop regression)", async () => {
+    // Production passes no `load`, so the default loader is a NEW inline
+    // function every render. When that identity was an effect dependency, each
+    // render refired the effect → setState → re-render → an infinite /compiled
+    // fetch loop. Simulate the unstable loader and assert the fetch fires ONCE
+    // per personaId across re-renders.
+    const spy = vi.fn(async () => view);
+    const { rerender } = render(
+      <CompiledGuardrailPanel personaId="p_1" load={(id) => spy(id)} />,
+    );
+    await screen.findByText(/You are The Essayist/);
+    for (let i = 0; i < 5; i += 1) {
+      rerender(
+        <CompiledGuardrailPanel personaId="p_1" load={(id) => spy(id)} />,
+      );
+    }
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("should refetch when personaId actually changes (state change)", async () => {
+    const spy = vi.fn(async (id: string) => ({ ...view, systemPrompt: id }));
+    const { rerender } = render(
+      <CompiledGuardrailPanel personaId="p_1" load={spy} />,
+    );
+    await screen.findByText("p_1");
+    rerender(<CompiledGuardrailPanel personaId="p_2" load={spy} />);
+    await screen.findByText("p_2");
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenNthCalledWith(1, "p_1");
+    expect(spy).toHaveBeenNthCalledWith(2, "p_2");
+  });
+
   it("should surface a load error (error handling)", async () => {
     render(
       <CompiledGuardrailPanel
