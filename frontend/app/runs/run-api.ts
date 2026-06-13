@@ -16,7 +16,7 @@ import type {
 } from "@publisher/shared";
 // authFetch attaches the persisted JWT as `Authorization: Bearer <token>` so
 // every authenticated run call carries the session (85q.5).
-import { authFetch } from "../auth/auth-api";
+import { authFetch, readToken } from "../auth/auth-api";
 
 export const RUN_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
@@ -205,15 +205,25 @@ export function publishedUrl(
   return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
-/** The SSE stream URL, with an optional reconnect cursor (D5). */
+/**
+ * The SSE stream URL, with an optional reconnect cursor (D5) and — when the
+ * router is auth-gated — the session JWT as a `?token=` query param. Browser
+ * EventSource can't set an Authorization header (publisher-2aa), so the token
+ * rides in the query string; the backend verifies it the same way requireAuth
+ * verifies the header. No stored token → no `token` param, preserving the
+ * opt-in / public-stream behavior.
+ */
 export function streamUrl(
   runId: string,
   sinceSeq?: number,
   base: string = RUN_API_BASE,
 ): string {
-  const qs =
-    typeof sinceSeq === "number" && sinceSeq >= 0
-      ? `?sinceSeq=${sinceSeq}`
-      : "";
-  return `${base}/runs/${runId}/stream${qs}`;
+  const params = new URLSearchParams();
+  if (typeof sinceSeq === "number" && sinceSeq >= 0) {
+    params.set("sinceSeq", String(sinceSeq));
+  }
+  const token = readToken();
+  if (token) params.set("token", token);
+  const qs = params.toString();
+  return `${base}/runs/${runId}/stream${qs ? `?${qs}` : ""}`;
 }

@@ -13,9 +13,20 @@ import type { Run, Persona } from "@publisher/shared";
 import { fetchRun } from "../run-api";
 import { LiveRunPanel } from "@/components/LiveRunPanel";
 import { CompiledGuardrailPanel } from "@/components/CompiledGuardrailPanel";
+import { RequireAuth } from "../../auth/RequireAuth";
 import "@/components/runs-ui.css";
 
+/** Protected route: a run is owner-scoped, so gate the live view behind a
+ * valid session. The no-backend demo at /runs/demo stays public. */
 export default function RunDetailPage(): React.ReactElement {
+  return (
+    <RequireAuth>
+      <RunDetailView />
+    </RequireAuth>
+  );
+}
+
+function RunDetailView(): React.ReactElement {
   const params = useParams<{ id: string }>();
   const search = useSearchParams();
   const runId = params.id;

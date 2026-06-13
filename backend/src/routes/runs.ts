@@ -9,7 +9,10 @@ import {
   type RunServiceDeps,
 } from "../services/run.service.js";
 import type { createFileSink } from "../material/sink.js";
-import { requireAuth } from "../auth/middleware.js";
+import {
+  requireAuth,
+  requireAuthAllowingQueryToken,
+} from "../auth/middleware.js";
 import type { AuthClaims } from "../auth/jwt.js";
 
 /** The slice of the run store the route needs to scope reads by owner (85q.4).
@@ -101,7 +104,17 @@ export function runsRouterFrom(
   const owner = options?.owner;
 
   if (jwtSecret) {
-    router.use(requireAuth(jwtSecret));
+    // The SSE stream route carries its own header-or-query-token gate (browser
+    // EventSource can't set an Authorization header), so the blanket Bearer
+    // gate skips it; every other route still requires a header token.
+    const headerGate = requireAuth(jwtSecret);
+    router.use((req, res, next) => {
+      if (req.method === "GET" && /\/stream\/?$/.test(req.path)) {
+        next();
+        return;
+      }
+      headerGate(req, res, next);
+    });
   }
 
   /** Guard a per-run route by ownership; returns true if the caller may
@@ -179,7 +192,13 @@ export function runsRouterFrom(
     res.json({ events });
   });
 
-  router.get("/:id/stream", (req, res) => {
+  // Stream auth: when gated, verify the JWT from the Authorization header OR a
+  // `?token=` query param (EventSource can't set headers). When the router is
+  // composed without a jwtSecret the stream stays public (existing SSE tests).
+  const streamGate = jwtSecret
+    ? requireAuthAllowingQueryToken(jwtSecret)
+    : (_req: Request, _res: Response, next: () => void) => next();
+  router.get("/:id/stream", streamGate, (req, res) => {
     if (!guardScope(req, res)) return;
     streamRun(service, req, res);
   });

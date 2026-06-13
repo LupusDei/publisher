@@ -19,6 +19,13 @@ vi.mock("@/app/runs/run-api", async () => {
   return { ...actual, fetchRuns: vi.fn() };
 });
 
+// The page is gated by RequireAuth (covered by require-auth.test.tsx and
+// auth-gated-routes.test.tsx); stub it as a pass-through so this test exercises
+// the gallery's own loading / ready / empty states.
+vi.mock("@/app/auth/RequireAuth", () => ({
+  RequireAuth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 import { fetchRuns } from "@/app/runs/run-api";
 import GalleryPage from "@/app/runs/gallery/page";
 

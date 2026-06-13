@@ -30,6 +30,13 @@ vi.mock("@/components/CompiledGuardrailPanel", () => ({
   ),
 }));
 
+// The page is gated by RequireAuth (covered by require-auth.test.tsx and
+// auth-gated-routes.test.tsx); stub it as a pass-through so this test exercises
+// the page's own data-loading + wiring.
+vi.mock("@/app/auth/RequireAuth", () => ({
+  RequireAuth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock("@/app/runs/run-api", async () => {
   const actual =
     await vi.importActual<typeof import("@/app/runs/run-api")>(
@@ -64,10 +71,16 @@ describe("RunDetailPage", () => {
   it("should fall back to the query-param persona/worker hints when the header fails (error path)", async () => {
     mockFetchRun.mockRejectedValue(new Error("no header"));
     render(<RunDetailPage />);
+    // The error banner is set asynchronously after fetchRun rejects, so wait
+    // for it explicitly. The compiled panel renders immediately from the
+    // query-string hint, so a synchronous getByText for the banner can race
+    // ahead of the rejection microtask under full-suite concurrency.
+    expect(
+      await screen.findByText(/Could not load run header/),
+    ).toBeInTheDocument();
     // Compiled panel uses the persona hint from the query string.
-    expect(await screen.findByTestId("compiled-panel")).toHaveTextContent(
+    expect(screen.getByTestId("compiled-panel")).toHaveTextContent(
       "compiled:p_1",
     );
-    expect(screen.getByText(/Could not load run header/)).toBeInTheDocument();
   });
 });
