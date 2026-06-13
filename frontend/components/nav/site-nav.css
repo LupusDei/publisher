@@ -1,0 +1,272 @@
+/*
+ * Site navigation — the editorial masthead, skip link, and mobile disclosure
+ * menu (publisher-nav.2.2 / nav.3.1). Atelier tokens ONLY: no hard-coded hex,
+ * px size, duration, or easing. Consumes the system defined in globals.css.
+ * All motion routes through token durations/easings and collapses under the
+ * prefers-reduced-motion guard at the bottom of this file.
+ */
+
+/* ── Skip link (publisher-nav.1.3) ─────────────────────────────────────────
+ * Visually hidden at rest, snaps into view when focused so keyboard users can
+ * jump past the masthead to #main. A visible token focus ring is mandatory.
+ */
+.nav-skip-link {
+  position: absolute;
+  left: var(--space-3);
+  top: calc(-1 * var(--space-10));
+  z-index: 20;
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  transition: top var(--dur-2) var(--ease-out);
+}
+.nav-skip-link:focus {
+  top: var(--space-3);
+}
+.nav-skip-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ── Masthead bar (publisher-nav.2.1) ──────────────────────────────────────
+ * Sticky so wayfinding stays in reach as a journal page scrolls. A hairline
+ * divider seats it against the paper; a translucent paper fill keeps content
+ * legible as it slides under.
+ */
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: saturate(1.2) blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-nav-inner {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+/* ── Wordmark (home) ──────────────────────────────────────────────────── */
+.site-nav-wordmark {
+  flex: 0 0 auto;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-1) var(--ease-out);
+}
+.site-nav-wordmark:hover {
+  color: var(--accent-strong);
+}
+.site-nav-wordmark:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ── Primary section row (desktop) ────────────────────────────────────── */
+.site-nav-links {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-nav-item {
+  flex: 0 0 auto;
+}
+
+.site-nav-link {
+  position: relative;
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--step-0);
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-1) var(--ease-out);
+}
+.site-nav-link:hover {
+  color: var(--ink);
+}
+.site-nav-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Secondary items (e.g. Demo) read quieter than the primary sections. */
+.site-nav-link[data-secondary="true"] {
+  font-style: italic;
+}
+
+/* Active section: ink text + a short vermillion underline rule (the single
+ * accent does the pointing). aria-current carries the semantics for AT. */
+.site-nav-link[data-active="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.site-nav-link[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: calc(-1 * var(--space-1));
+  height: 2px;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+}
+
+/* ── Auth cluster ─────────────────────────────────────────────────────── */
+.site-nav-auth {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+.site-nav-user {
+  font-size: var(--step--1);
+  color: var(--muted);
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.site-nav-login {
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--accent-strong);
+  text-decoration: none;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--r-sm);
+  transition: color var(--dur-1) var(--ease-out);
+}
+.site-nav-login:hover {
+  color: var(--accent);
+}
+.site-nav-login:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ── Mobile disclosure menu (publisher-nav.3.1) ────────────────────────────
+ * The toggle and the panel are hidden on wide viewports and revealed under the
+ * breakpoint, where the desktop section row is hidden in turn.
+ */
+.mobile-menu {
+  position: relative;
+  display: none; /* shown only under the breakpoint */
+  flex: 0 0 auto;
+}
+
+.mobile-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.mobile-menu-toggle:hover {
+  border-color: var(--accent);
+}
+.mobile-menu-toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.mobile-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  min-width: 12rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-3);
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out);
+}
+.mobile-menu-item {
+  flex: 0 0 auto;
+}
+.mobile-menu-link {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--step-0);
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-1) var(--ease-out);
+}
+.mobile-menu-link:hover {
+  color: var(--ink);
+}
+.mobile-menu-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.mobile-menu-link[data-active="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ── Breakpoint: swap desktop row for the disclosure menu ─────────────────── */
+@media (max-width: 48rem) {
+  .site-nav-inner {
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+  }
+  .site-nav-links {
+    display: none;
+  }
+  .site-nav-user {
+    display: none;
+  }
+  .mobile-menu {
+    display: inline-flex;
+    margin-left: auto;
+  }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────
+ * Neutralise all transitions declared above. Never re-enable motion past this.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .nav-skip-link,
+  .site-nav-wordmark,
+  .site-nav-link,
+  .site-nav-login,
+  .mobile-menu-toggle,
+  .mobile-menu-panel,
+  .mobile-menu-link {
+    transition: none;
+  }
+}
