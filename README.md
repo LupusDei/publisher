@@ -46,3 +46,20 @@ specs/      the MVP plan, decisions, and per-track specs
 
 ## Swappable worker (R8/R11)
 Three workers behind one `Agent` seam: **MockAgent** (deterministic, default), **Vercel AI SDK** (`@ai-sdk/anthropic`), and **native Anthropic + real `web_search`** (`@anthropic-ai/sdk`). Swapping is selecting a `workerId` — the harness is untouched.
+
+## Real vs. mock agent
+
+By default the harness runs a deterministic, token-free **MockAgent** — no API key needed, zero network calls, instant results. This is the correct mode for local development, CI, and demos.
+
+To run real Anthropic-backed jobs, set two variables in `backend/.env`:
+
+```env
+USE_REAL_AGENT=true
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+The backend fails fast at boot if `USE_REAL_AGENT=true` and the key is missing.
+
+For a run that actually researches the web and can pass the research-sufficiency checkpoint (which requires ≥ 3 distinct source URLs), select the **`anthropic-research`** worker in the UI. The `opus` and `sonnet` workers use the Vercel AI SDK without web tools and will always fail research-sufficiency.
+
+Full setup details, the worker table, and the real voice-judge behavior are in **[HARNESS.md — Section 9: Running real agents](./HARNESS.md#9-running-real-agents)**. All environment variables are documented in **[`backend/.env.example`](./backend/.env.example)**.
