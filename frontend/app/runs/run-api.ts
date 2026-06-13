@@ -13,7 +13,12 @@ import type {
   Receipt,
   EscalationOption,
   Persona,
+  ShareLink,
 } from "@publisher/shared";
+// ShareLinkSchema validates the mint/read payload at the network boundary
+// (Constitution §2 — runtime validation at boundaries) so a malformed 200 can
+// never masquerade as a valid { slug, url }.
+import { ShareLinkSchema } from "@publisher/shared";
 // authFetch attaches the persisted JWT as `Authorization: Bearer <token>` so
 // every authenticated run call carries the session (85q.5).
 import { authFetch, readToken } from "../auth/auth-api";
@@ -250,4 +255,76 @@ export function streamUrl(
   if (token) params.set("token", token);
   const qs = params.toString();
   return `${base}/runs/${runId}/stream${qs ? `?${qs}` : ""}`;
+}
+
+/**
+ * POST /runs/:id/share → { slug, url } (publisher-share US2 / share.3.1). Mints a
+ * public preview link for an owned, `published` run; the backend mint is
+ * idempotent so a second call on a run with an active share returns the same
+ * link. The 200 body is validated through `ShareLinkSchema` so a malformed
+ * payload is rejected at the boundary rather than surfaced as a bad URL. 403
+ * (non-owner) / 409 (non-published) / 401 surface as descriptive errors.
+ */
+export async function createShare(
+  runId: string,
+  base: string = RUN_API_BASE,
+): Promise<ShareLink> {
+  const res = await authFetch(`${base}/runs/${runId}/share`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error(
+      await readError(res, `Failed to create share link (HTTP ${res.status})`),
+    );
+  }
+  return ShareLinkSchema.parse(await res.json());
+}
+
+/**
+ * GET /runs/:id/share → the active share `{ slug, url }` or `null`
+ * (publisher-share US2 / share.3.1). Lets the UI render the existing link
+ * idempotently on load. The backend may not yet expose this read endpoint
+ * (only POST + DELETE + public GET /p/:slug exist today), so this call is
+ * deliberately TOLERANT: any non-2xx (incl. 404) OR an unparseable body
+ * resolves to `null` (UI then shows "Get share link"). It NEVER mints and never
+ * throws — reading share state must not crash the page or have side effects.
+ */
+export async function fetchShare(
+  runId: string,
+  base: string = RUN_API_BASE,
+): Promise<ShareLink | null> {
+  let res: Response;
+  try {
+    res = await authFetch(`${base}/runs/${runId}/share`);
+  } catch {
+    return null;
+  }
+  if (!res.ok) return null;
+  try {
+    const parsed = ShareLinkSchema.safeParse(await res.json());
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * DELETE /runs/:id/share → 204 (publisher-share US3 / share.4.3). Revokes the
+ * run's active share so `GET /p/:slug` then 404s. A 404 is treated as a no-op
+ * success (nothing to revoke — idempotent, mirrors the backend's 204 no-op
+ * semantics) so the toggle stays robust if state drifted. Other non-2xx
+ * responses (403 non-owner, 401) surface as descriptive errors.
+ */
+export async function revokeShare(
+  runId: string,
+  base: string = RUN_API_BASE,
+): Promise<void> {
+  const res = await authFetch(`${base}/runs/${runId}/share`, {
+    method: "DELETE",
+  });
+  if (res.ok || res.status === 404) return;
+  throw new Error(
+    await readError(res, `Failed to revoke share link (HTTP ${res.status})`),
+  );
 }

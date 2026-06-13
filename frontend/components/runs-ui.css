@@ -946,3 +946,55 @@ section h3 {
   line-height: 1.4;
   color: var(--color-text-muted, #6b6b6b);
 }
+/* ── Share link (publisher-share US2/US3) ────────────────────────────── */
+.share-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.share-link-active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.share-link-url {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--accent);
+  word-break: break-all;
+  text-decoration: none;
+}
+.share-link-url:hover {
+  text-decoration: underline;
+}
+.share-link-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.share-link-open {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.share-link-open:hover {
+  border-color: var(--accent);
+}
+.share-link-copied {
+  font-size: 13px;
+  color: var(--muted);
+}
+.share-link-error {
+  margin: 0;
+}
+.run-detail-share-h {
+  font-size: 15px;
+  margin: 0 0 8px;
+  color: var(--ink);
+}

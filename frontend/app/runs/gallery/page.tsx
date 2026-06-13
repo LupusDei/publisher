@@ -11,6 +11,7 @@ import Link from "next/link";
 import type { Run } from "@publisher/shared";
 import { fetchRuns, publishedUrl } from "../run-api";
 import { RequireAuth } from "../../auth/RequireAuth";
+import { ShareLink } from "@/components/ShareLink";
 import "@/components/runs-ui.css";
 
 type LoadState =
@@ -92,6 +93,10 @@ function Gallery(): React.ReactElement {
                 <p style={{ margin: "4px 0 0", color: "var(--muted)" }}>
                   worker: {r.workerId}
                 </p>
+                {/* Published cards get a public-share affordance (US2). */}
+                <div style={{ marginTop: 10 }}>
+                  <ShareLink runId={r.id} />
+                </div>
               </div>
             </article>
           ))}
