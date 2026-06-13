@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publisher — Design & Plan</title>
+<style>
+  :root{
+    --bg:#f6f4ef; --panel:#fffdfa; --ink:#1f1d1a; --muted:#6b6358;
+    --line:#e4ded3; --accent:#b5512f; --accent-soft:#f0e3dc;
+    --good:#3f7d52; --warn:#b07d29; --crit:#b23b3b;
+    --code:#2b2825; --codebg:#f3efe7;
+    --maxw:980px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+  header.hero{
+    background:linear-gradient(180deg,#fffdfa, #f6f4ef);
+    border-bottom:1px solid var(--line); padding:54px 0 30px;
+  }
+  .eyebrow{letter-spacing:.16em; text-transform:uppercase; font-size:12px; color:var(--accent); font-weight:700; margin:0 0 10px}
+  h1{font-family:Georgia,"Times New Roman",serif; font-weight:700; font-size:46px; line-height:1.05; margin:0 0 12px}
+  h1 .sub{display:block; font-size:20px; color:var(--muted); font-style:italic; font-weight:400; margin-top:10px}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; margin-top:20px}
+  .chip{background:var(--accent-soft); color:var(--accent); border:1px solid #e7d3c8; padding:4px 11px; border-radius:999px; font-size:12.5px; font-weight:600}
+  .chip.neutral{background:#efeae1; color:var(--muted); border-color:var(--line)}
+  nav.toc{
+    position:sticky; top:0; z-index:5; background:rgba(246,244,239,.92);
+    backdrop-filter:blur(6px); border-bottom:1px solid var(--line); padding:10px 0;
+  }
+  nav.toc .wrap{display:flex; flex-wrap:wrap; gap:6px 14px}
+  nav.toc a{color:var(--muted); text-decoration:none; font-size:13px; font-weight:600}
+  nav.toc a:hover{color:var(--accent)}
+  main{padding:10px 0 70px}
+  section{padding:34px 0 6px; border-top:1px solid var(--line)}
+  section:first-of-type{border-top:none}
+  h2{font-family:Georgia,serif; font-size:28px; margin:8px 0 4px; scroll-margin-top:60px}
+  h2 .n{color:var(--accent); font-size:18px; font-weight:700; margin-right:10px; font-family:-apple-system,sans-serif}
+  h3{font-size:18px; margin:26px 0 6px}
+  p{margin:10px 0}
+  .lead{font-size:18px; color:#3a352e}
+  strong{color:#171512}
+  em{color:#473f36}
+  a{color:var(--accent)}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin:16px 0; box-shadow:0 1px 0 rgba(0,0,0,.02)}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media(max-width:740px){.grid2{grid-template-columns:1fr}}
+  ul,ol{margin:10px 0; padding-left:22px}
+  li{margin:5px 0}
+  table{width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px}
+  th,td{text-align:left; vertical-align:top; padding:9px 11px; border-bottom:1px solid var(--line)}
+  th{background:#efeae1; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
+  tr:last-child td{border-bottom:none}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:var(--codebg); color:var(--code); padding:1.5px 5px; border-radius:5px; font-size:13px}
+  pre{background:var(--code); color:#e9e3d6; padding:16px 18px; border-radius:10px; overflow:auto; font-size:12.5px; line-height:1.5}
+  pre.diagram{background:#221f1b; color:#d8d0c2}
+  .pill{display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; letter-spacing:.03em}
+  .pill.guard{background:#e7eef0;color:#2c5a66}
+  .pill.check{background:#e9f0e8;color:#2f6440}
+  .pill.mat{background:#f3ece0;color:#7a5a2a}
+  .pill.alarm{background:#f5e6e3;color:#9a3b34}
+  .sev-good{color:var(--good);font-weight:700}
+  .sev-warn{color:var(--warn);font-weight:700}
+  .sev-crit{color:var(--crit);font-weight:700}
+  .callout{border-left:4px solid var(--accent); background:#fbf3ef; padding:12px 16px; border-radius:0 10px 10px 0; margin:16px 0}
+  .callout.good{border-color:var(--good); background:#f0f6f1}
+  .callout.warn{border-color:var(--warn); background:#fbf4e6}
+  .kv{display:grid; grid-template-columns:170px 1fr; gap:6px 16px; font-size:14.5px}
+  .kv dt{font-weight:700; color:#2a2620}
+  .kv dd{margin:0; color:#473f36}
+  footer{border-top:1px solid var(--line); padding:24px 0 50px; color:var(--muted); font-size:13px}
+  .tag{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  @media print{nav.toc{display:none} body{background:#fff} .panel{box-shadow:none}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Gauntlet AI · 24-Hour Build Challenge</p>
+    <h1>Publisher
+      <span class="sub">A harness that turns a research concept into a unique, persona-voiced single-page webpage.</span>
+    </h1>
+    <div class="meta">
+      <span class="chip">Harness · 4 pillars</span>
+      <span class="chip neutral">TypeScript · Node · SQLite</span>
+      <span class="chip neutral">Vercel AI SDK · Claude</span>
+      <span class="chip neutral">Frontend → Vercel</span>
+      <span class="chip neutral">Status: design / pre-build</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#challenge">Challenge</a>
+    <a href="#vision">Vision</a>
+    <a href="#pillars">Four Pillars</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#flow">Control Loop</a>
+    <a href="#agent">Agent</a>
+    <a href="#decisions">Decisions</a>
+    <a href="#tradeoffs">Tradeoffs</a>
+    <a href="#failures">Failure Modes</a>
+    <a href="#plan">Plan &amp; Scope</a>
+    <a href="#qa">Defense Q&amp;A</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- CHALLENGE -->
+<section id="challenge">
+  <h2><span class="n">01</span>The Challenge</h2>
+  <p class="lead">Build a <strong>harness</strong> — the framework an AI agent lives inside. The harness, not the agent, is what's evaluated: <em>guardrails</em> that constrain behavior, <em>checkpoints</em> that evaluate outputs, clean <em>material handling</em> in and out, and <em>alarms</em> that fire when something goes wrong.</p>
+  <div class="grid2">
+    <div class="panel">
+      <h3>Must</h3>
+      <ul>
+        <li>All four pillars implemented and <strong>demonstrably separate</strong> from the worker.</li>
+        <li>Agent behavior <strong>changes meaningfully</strong> from guardrail/checkpoint feedback.</li>
+        <li>Guardrails are <strong>declared</strong>, not implicit. Checkpoints have explicit pass/fail.</li>
+        <li>Alarms produce <strong>structured output</strong> — named type, context, severity, recommended action.</li>
+        <li>Runs on a <strong>real input from your own work</strong> at demo time.</li>
+        <li>An <strong>HARNESS.md</strong> covering architecture and design.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Should &amp; Bonus</h3>
+      <ul>
+        <li><strong>Swappable agent</strong> — drop in a different agent with no harness changes.</li>
+        <li><strong>Persisted checkpoints</strong> — replay a run from any checkpoint forward.</li>
+        <li><strong>Human-in-the-loop</strong> escalation — the harness knows when to stop and ask.</li>
+        <li><span class="tag">Bonus</span> A second worker swapped in during the demo to prove portability.</li>
+      </ul>
+      <p class="tag" style="margin-top:14px">Deliverables: 1-page planning doc (Fri 11:30 PM) · repo + deployed URL + HARNESS.md + 5-min demo (Sat 4:30 PM)</p>
+    </div>
+  </div>
+</section>
+
+<!-- VISION -->
+<section id="vision">
+  <h2><span class="n">02</span>Product Vision</h2>
+  <p class="lead">Publisher lets anyone turn a research concept, idea, or thought experiment into a <strong>unique, elegantly-designed single-page webpage — written in the authentic voice of <em>their</em> persona.</strong> The agent researches and writes; four separate pillars guarantee the output captures the persona's voice and design, is backed by sufficient research, and meets a quality bar — or it refuses to publish and says exactly why.</p>
+  <div class="callout">
+    <strong>The persona is the heart.</strong> In a brief onboarding, a user defines a persona — its <strong>voice</strong>, <strong>key style points</strong>, <strong>key learnings</strong>, and <strong>design elements</strong>. It's saved and reused: it is simultaneously the <em>declared guardrail</em> and the <em>context handed to the agent</em>. One user can keep several personas and publish in each.
+  </div>
+  <p>This maps cleanly to the challenge thesis — <em>"Agents focus on tasks. Harnesses focus on constraints. A well-designed harness makes constraint-handling invisible to the agent."</em> The agent just writes; the cage makes it sound like you, look like you, and be worth reading.</p>
+</section>
+
+<!-- PILLARS -->
+<section id="pillars">
+  <h2><span class="n">03</span>The Four Pillars, Mapped</h2>
+  <table>
+    <tr><th>Pillar</th><th>In Publisher</th><th>Example signal</th></tr>
+    <tr>
+      <td><span class="pill mat">MATERIAL</span></td>
+      <td><strong>In:</strong> concept/idea + selected persona. <strong>Out:</strong> a self-contained single-page webpage (static, hosts anywhere). Typed contract: <code>{title, html, css, summary, sourcesUsed}</code>.</td>
+      <td>Source &amp; sink adapters; clean in/out interface.</td>
+    </tr>
+    <tr>
+      <td><span class="pill guard">GUARDRAILS</span></td>
+      <td>The <strong>persona</strong> is the declared guardrail — voice rules, style points, design tokens. Compiled <em>preventively</em> into the system prompt and <em>detectively</em> into validators. Declared once, enforced twice.</td>
+      <td>Output sounds &amp; looks like that persona.</td>
+    </tr>
+    <tr>
+      <td><span class="pill check">CHECKPOINTS</span></td>
+      <td>Ordered pass/fail gates: <strong>research-sufficiency · voice-fidelity · design-conformance · quality</strong>. Persisted to a journal → replay from any checkpoint.</td>
+      <td>A failed gate is a real outcome: "couldn't publish — insufficient research."</td>
+    </tr>
+    <tr>
+      <td><span class="pill alarm">OBSERVABILITY &amp; ALARMS</span></td>
+      <td>Meters <strong>token cost per phase, latency, error rate</strong>; emits structured alarms on budget breach or gate failure — each with type, severity, context, recommended action.</td>
+      <td><code>TOKEN_BUDGET_EXCEEDED</code>, <code>VOICE_DRIFT</code>, <code>INSUFFICIENT_RESEARCH</code>, <code>WEBPAGE_GENERATION_FAILED</code>.</td>
+    </tr>
+  </table>
+  <p class="tag">Observability is the metric layer; alarms are the structured pillar output that fires when a metric breaches a declared budget or a gate fails.</p>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="architecture">
+  <h2><span class="n">04</span>Architecture</h2>
+  <p>Eight components. The four graded pillars are highlighted. The agent is deliberately dumb about all of them — it researches and writes; the persona and the pillars do the constraining.</p>
+  <div class="kv panel">
+    <dt>Orchestrator</dt><dd>Thin run-loop and the only thing the agent talks to. Owns lifecycle, retry loop, checkpoint persistence, replay. No domain logic.</dd>
+    <dt><span class="pill mat">Material Handling</span></dt><dd>Source brings a concept + persona in; Sink emits a static single-page webpage out.</dd>
+    <dt><span class="pill guard">Guardrails (Persona)</span></dt><dd>Declared <code>persona</code> compiled into a preventive prompt fragment + detective validators.</dd>
+    <dt><span class="pill check">Checkpoints</span></dt><dd>Ordered pass/fail gates with thresholds, persisted to the run journal.</dd>
+    <dt><span class="pill alarm">Observability &amp; Alarms</span></dt><dd>Telemetry → structured, named, severity-tagged alarms.</dd>
+    <dt>Persona Store</dt><dd>Per-user personas (voice, style, learnings, design) in SQLite, created in onboarding.</dd>
+    <dt>Escalation / HITL</dt><dd>Critical alarm or non-correctable failure → pause and ask the operator in the UI.</dd>
+    <dt>Agent (swappable)</dt><dd>In-process module behind one seam — Vercel AI SDK over <code>@ai-sdk/anthropic</code>. Research → build → refine.</dd>
+  </div>
+
+  <h3>Deployment topology</h3>
+  <p>The agent is driven by an in-process code API (the Vercel AI SDK), so the transport is a normal awaitable request/response — no separate process, no async correlation. Two planes:</p>
+<pre class="diagram">
+  CONTROL PLANE  (Vercel-deployable)
+  ┌──────────────────────────────────────────────────┐
+  │  Web Frontend (Next.js / React)                    │
+  │   • onboarding: create a persona                    │
+  │   • watch a run stream through the pillars          │
+  │   • approve / reject at escalation points (HITL)    │
+  └───────────────────────┬────────────────────────────┘
+                          │ HTTPS / WebSocket
+                          ▼
+  HARNESS PLANE  (Node/TS backend — local now, cloud-deployable later)
+  ┌──────────────────────────────────────────────────┐
+  │  Backend API  ───────────────────►  SQLite DB      │
+  │      │       (personas, runs, checkpoints, alarms, │
+  │      │        metrics, escalations, webpages)       │
+  │  ┌───┴──────────────  ORCHESTRATOR  ─────────────┐  │
+  │  │  GUARDRAILS(persona)   CHECKPOINTS            │  │
+  │  │  MATERIAL              OBSERVABILITY & ALARMS │  │
+  │  └──────────────────┬───────────────────────────┘  │
+  │   await Agent call  │  (in-process)                  │
+  │  ┌──────────────────▼───────────────────────────┐  │
+  │  │  Agent  (Vercel AI SDK, SWAPPABLE provider)   │  │
+  │  │  research (web_search/web_fetch) → build →    │  │
+  │  │  refine                                       │  │
+  │  └──────────────────┬───────────────────────────┘  │
+  └─────────────────────┼───────────────────────────────┘
+                        │ HTTPS
+                        ▼
+         Anthropic API  (or any AI-SDK provider)
+</pre>
+  <p class="tag">Because the agent is just an outbound API call, the backend isn't pinned to the machine — local for the demo, deployable later (SQLite → Turso/libSQL in the cloud). The output webpage is static and hosts anywhere.</p>
+</section>
+
+<!-- FLOW -->
+<section id="flow">
+  <h2><span class="n">05</span>The Control Loop <span class="tag">— where the agent's behavior changes</span></h2>
+<pre>
+1. persona   = PersonaStore.load(personaId)        // declared voice + style + design
+2. material  = Material.load(concept, persona)
+3. guardrails = compile(persona)                   // prompt fragment + validators
+
+   ── RESEARCH ──
+4. research = await agent.research(persona, concept)        // web_search / web_fetch
+5. if research-sufficiency FAILS:
+       INSUFFICIENT_RESEARCH → append "go deeper on X" → research again   ◀ BEHAVIOR CHANGES
+
+   ── BUILD ──
+6. webpage = await agent.build(persona, research)          // typed {title, html, css, …}
+7. for cp in [voice-fidelity, design-conformance, quality]:
+       result = cp.evaluate(webpage, persona, material)
+       journal.persist(result)                              // ◀ replay point
+       if result.FAILED:
+           if autoCorrectable AND attempts < MAX:
+               append feedback(result) → build again        ◀ BEHAVIOR CHANGES (refine)
+           else:
+               raise alarm; if CRITICAL → escalate()        // stop and ask the user
+
+8. receipt = Sink.publish(webpage)   // only persona-faithful, researched, quality pages ship
+</pre>
+  <div class="callout good">
+    <strong>The meaningful behavior change:</strong> a failed <code>VOICE_DRIFT</code> checkpoint ("too formal, 0.42 &lt; 0.75") produces structured feedback fed back into the next build prompt ("match this voice sample"). The redraft scores 0.81 and passes. Guardrails (the persona) shape the <em>first</em> attempt; checkpoint feedback corrects the <em>later</em> ones. That closed loop is the harness.
+  </div>
+</section>
+
+<!-- AGENT -->
+<section id="agent">
+  <h2><span class="n">06</span>Agent Integration</h2>
+  <p>The wrapper is the <strong>Vercel AI SDK</strong> (<code>ai</code> + <code>@ai-sdk/anthropic</code>). Swapping the worker — a different Claude model, or a different provider — is a one-line <code>model</code> change, which is the portability bonus.</p>
+  <table>
+    <tr><th>Need</th><th>AI SDK</th></tr>
+    <tr><td>System prompt</td><td><code>system:</code> (the persona); cache via <code>providerOptions.anthropic.cacheControl</code></td></tr>
+    <tr><td>Multi-turn context</td><td>We hold the <code>ModelMessage[]</code> → maps to the SQLite journal &amp; replay</td></tr>
+    <tr><td>Tools + loop</td><td><code>tool({inputSchema, execute})</code> with <code>stopWhen: stepCountIs(n)</code></td></tr>
+    <tr><td>Research</td><td><code>anthropic.tools.webSearch_20250305()</code> + <code>webFetch_20250910()</code> (provider-executed)</td></tr>
+    <tr><td>Material-out</td><td><code>generateObject({ schema })</code> → typed <code>{title, html, css, summary, sourcesUsed}</code></td></tr>
+    <tr><td>Streaming</td><td><code>streamText()</code> → UI over WebSocket</td></tr>
+    <tr><td>Telemetry</td><td><code>result.usage</code> + <code>providerMetadata.anthropic</code> (cache tokens) → Observability</td></tr>
+  </table>
+  <div class="callout warn">
+    <strong>Honest portability tradeoff:</strong> the AI SDK makes the <em>core</em> loop provider-portable, but the two pieces that buy the most — server-side <strong>web search</strong> and <strong>prompt caching</strong> — are Anthropic-specific (reached via <code>providerOptions</code>/provider tools). So research depth won't carry to OpenAI/Google as-is; the build/refine loop will. The precise answer to "how portable?" is <em>"core loop portable; research tools provider-scoped"</em> — not "fully portable."
+  </div>
+  <p class="tag">Models: <code>claude-opus-4-8</code> for research/build; <code>claude-haiku-4-5</code>/<code>claude-sonnet-4-6</code> for the cheaper LLM-judge checkpoints.</p>
+</section>
+
+<!-- DECISIONS -->
+<section id="decisions">
+  <h2><span class="n">07</span>Key Decisions &amp; Why</h2>
+  <table>
+    <tr><th>Decision</th><th>Why, over the alternative</th></tr>
+    <tr><td>The persona is a <strong>declared guardrail</strong>, not a hidden prompt</td><td>Voice/style/design are inspectable, reusable data authored in onboarding; burying them in a prompt makes them implicit and unenforceable. The rubric demands declared guardrails.</td></tr>
+    <tr><td>Agent never talks to the pillars; the <strong>orchestrator mediates</strong></td><td>This is the thesis — constraint-handling stays invisible to the worker. Letting the agent call pillars itself leaks the cage and breaks swappability.</td></tr>
+    <tr><td>Guardrails enforced <strong>twice</strong> (prompt + validator)</td><td>Prompt-only is unreliable; validator-only wastes a full generation before catching drift. Defense-in-depth.</td></tr>
+    <tr><td>Checkpoints <strong>separate</strong> from guardrails</td><td>Persona = declared rule; checkpoint = measured gate. Checkpoints also cover quality gates that aren't behavioral rules (research-sufficiency, coherence).</td></tr>
+    <tr><td><strong>Observability feeds Alarms</strong>; alarms are structured, not thrown</td><td>Alarms need severity + recommended action + context, and warnings must not halt. Exceptions lose that and the per-phase cost story.</td></tr>
+    <tr><td>Deterministic gates hard-block; <strong>LLM-judged gates escalate</strong></td><td>Secret/research-count/budget are deterministic hard blocks; voice/design/quality use a judge with a threshold and prefer escalation over silent block.</td></tr>
+    <tr><td><strong>Vercel AI SDK</strong> over the raw Anthropic SDK</td><td>Provider abstraction → one-line worker swap = the portability bonus. Tradeoff stated: web tools + caching are Anthropic-specific.</td></tr>
+    <tr><td><strong>Harness owns the loop</strong> (no autonomous framework)</td><td>The harness must own the loop so a checkpoint runs after every round. Agent-SDK/Managed-Agents self-drive, which we don't want.</td></tr>
+    <tr><td><strong>SQLite</strong> for critical records</td><td>Run state (personas↔runs↔checkpoints↔alarms↔metrics) is relational and queried live by the API. Published webpages stay static files.</td></tr>
+  </table>
+</section>
+
+<!-- TRADEOFFS -->
+<section id="tradeoffs">
+  <h2><span class="n">08</span>Known Tradeoffs &amp; Uncertainties</h2>
+  <p class="tag">Stated out loud — the architecture review rewards honesty about gaps.</p>
+  <ol>
+    <li><strong>Fuzzy checkpoints rely on LLM-as-judge</strong> (voice, quality) — non-deterministic, can mis-score. Deterministic gates hard-block; fuzzy gates threshold + escalate. Calibration is genuinely uncertain.</li>
+    <li><strong>Defining a persona's voice well enough to measure</strong> is hard; a thin persona is a weak guardrail. Repeated <code>VOICE_DRIFT</code> → escalate to enrich it.</li>
+    <li><strong>Research-sufficiency is a judgment call</strong> — a declared, per-persona-tunable threshold, not a hard constant.</li>
+    <li><strong>The retry loop can oscillate</strong> — bounded by <code>MAX_ATTEMPTS</code>; on exhaustion → <code>WEBPAGE_GENERATION_FAILED</code> + escalate.</li>
+    <li><strong>Third-party model dependency</strong> — refusal/rate-limit/outage stalls a run. Structured alarms + retry/escalate; swappable seam = second provider is an adapter.</li>
+    <li><strong>Cost &amp; latency on the critical path</strong> — prompt-cache the persona+research prefix; meter per-call usage; alarm before spend runs away.</li>
+    <li><strong>Portability is partial</strong> — core loop portable; research tools + caching provider-scoped (see §06).</li>
+    <li><strong>Scope risk for 24h</strong> — protect the demo spine; everything else is additive.</li>
+  </ol>
+</section>
+
+<!-- FAILURES -->
+<section id="failures">
+  <h2><span class="n">09</span>Failure Modes</h2>
+  <table>
+    <tr><th>Failure</th><th>Detection</th><th>Harness response</th></tr>
+    <tr><td>Concept too thin / empty</td><td>Source adapter</td><td><code>INPUT_EMPTY</code> <span class="sev-warn">warn</span> — halt, never run on nothing</td></tr>
+    <tr><td>Not enough research</td><td>research-sufficiency gate</td><td><code>INSUFFICIENT_RESEARCH</code> → feedback loop, then escalate</td></tr>
+    <tr><td>Off the persona's voice</td><td>voice-fidelity (judge)</td><td><code>VOICE_DRIFT</code> <span class="sev-warn">warn</span> → refine; persistent → escalate</td></tr>
+    <tr><td>Ignores persona design</td><td>design-conformance</td><td><code>DESIGN_DRIFT</code> <span class="sev-warn">warn</span> → refine</td></tr>
+    <tr><td>Incoherent / low quality</td><td>quality gate</td><td><code>INSUFFICIENT_QUALITY</code> → refine, then <code>WEBPAGE_GENERATION_FAILED</code> + escalate</td></tr>
+    <tr><td>Excess token spend</td><td>observability vs budget</td><td><code>TOKEN_BUDGET_EXCEEDED</code> → narrow scope / escalate</td></tr>
+    <tr><td>Model refuses</td><td><code>finishReason</code></td><td><code>REFUSAL</code> <span class="sev-crit">crit</span> → escalate; never treat empty as a draft</td></tr>
+    <tr><td>Rate-limited / overloaded</td><td>SDK throws (429/529)</td><td><code>RATE_LIMITED</code> → backoff + retry; persistent → escalate</td></tr>
+    <tr><td>Judge LLM errors</td><td>checkpoint engine</td><td><code>CHECKPOINT_ERROR</code> → <strong>fail-closed</strong> (treat as fail + escalate), never fail-open</td></tr>
+    <tr><td>Gates pass but page still weak</td><td>—</td><td>High-stakes runs keep a human final-approval escalation; gates aren't claimed infallible</td></tr>
+  </table>
+</section>
+
+<!-- PLAN -->
+<section id="plan">
+  <h2><span class="n">10</span>Plan, Scope &amp; Deliverables</h2>
+  <div class="grid2">
+    <div class="panel">
+      <h3>Demo-critical spine (protect ruthlessly)</h3>
+      <ol>
+        <li>One <strong>persona</strong> (onboarding → SQLite)</li>
+        <li>One <strong>concept</strong> as real input</li>
+        <li><strong>Research → build → refine</strong> via the AI SDK</li>
+        <li>The <strong>four pillars</strong> wrapping the loop</li>
+        <li>One <strong>published webpage</strong> (preview + static file)</li>
+      </ol>
+      <p class="tag">Everything else is additive: multi-persona, real publish destinations, replay UI, second-provider swap.</p>
+    </div>
+    <div class="panel">
+      <h3>Build order</h3>
+      <ol>
+        <li>Persona model + store + onboarding stub</li>
+        <li><code>Agent</code> seam (AI SDK) — research + build</li>
+        <li>Orchestrator loop + checkpoint journal (SQLite)</li>
+        <li>Guardrail compile (persona → prompt + validators)</li>
+        <li>Checkpoints: research → voice → design → quality</li>
+        <li>Observability meters → structured alarms</li>
+        <li>Escalation path + minimal web UI (stream a run)</li>
+        <li>HARNESS.md + demo input + record</li>
+      </ol>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Deliverables &amp; checklist</h3>
+    <div class="kv">
+      <dt>Fri 11:30 PM</dt><dd>1-page Harness Planning Document</dd>
+      <dt>Sat 4:30 PM</dt><dd>Repo URL · Deployed harness URL · <code>HARNESS.md</code> · 5-minute demo video</dd>
+      <dt>Should ✓</dt><dd>Swappable agent · persisted/replayable checkpoints · human-in-the-loop escalation</dd>
+      <dt>Bonus</dt><dd>Swap a second worker (model or provider) mid-demo to prove portability</dd>
+    </div>
+  </div>
+  <div class="callout">
+    <strong>Immediate next milestone:</strong> the architecture defense (5-min present + 5-min Q&amp;A). Strategy — state the tradeoffs before they're asked; keep the persona-vs-prompt and "how portable, really?" answers reflexive.
+  </div>
+</section>
+
+<!-- QA -->
+<section id="qa">
+  <h2><span class="n">11</span>Defense Q&amp;A — the sharpest shots</h2>
+  <div class="panel">
+    <p><strong>Q · Isn't "the persona" just a fancy system prompt?</strong><br>
+    No — it's declared, inspectable, reusable data authored in onboarding, compiled into both a preventive prompt fragment <em>and</em> detective validators, and measured against by the voice/design checkpoints. A system prompt is implicit and unenforced.</p>
+
+    <p><strong>Q · Your 4th pillar is "observability," but the rubric says "alarms"?</strong><br>
+    Observability is the metric layer (token cost/phase, latency, error rate); alarms are the structured pillar output — named type + severity + context + recommended action — that fires when a metric breaches a budget or a gate fails.</p>
+
+    <p><strong>Q · How does the agent's behavior actually change?</strong><br>
+    A failed checkpoint produces structured feedback injected into the next build. <code>VOICE_DRIFT 0.42 → "match this sample"</code> → the refined page scores 0.81 and passes. Live in the demo.</p>
+
+    <p><strong>Q · How portable is the swap, really?</strong><br>
+    The Vercel AI SDK makes the core build/refine loop provider-portable (one-line <code>model</code> change). Server-side web search and prompt caching are Anthropic-specific — research depth is provider-scoped. Honest, and stronger than claiming "fully portable."</p>
+
+    <p><strong>Q · How do you measure "voice fidelity"? That's subjective.</strong><br>
+    An LLM judge scores the page against the persona's voice profile + sample against a declared threshold — genuinely uncertain, so it's advisory-with-escalation while deterministic gates (research count, token budget) are the hard blocks.</p>
+
+    <p><strong>Q · What if the model refuses, rate-limits, or the provider is down?</strong><br>
+    Check <code>finishReason</code> and catch SDK errors: <code>REFUSAL</code>/<code>PROVIDER_ERROR</code> escalate; <code>RATE_LIMITED</code> backs off and retries. Every run resumes from its last checkpoint.</p>
+
+    <p><strong>Q · Isn't this just a generic agent orchestrator?</strong><br>
+    No — the product is the four constraint pillars for persona-faithful publishing. A generic orchestrator routes tasks; Publisher governs a research-and-build worker and refuses to ship anything off-voice, under-researched, or low-quality.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Publisher — design &amp; plan, consolidated for review. Source: <code>docs/architecture-defense.md</code> · <code>docs/agent-integration.md</code>.
+    Single self-contained file — open in any browser, print to PDF if needed.
+  </div>
+</footer>
+
+</body>
+</html>

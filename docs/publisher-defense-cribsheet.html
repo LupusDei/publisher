@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publisher — Proposed Architecture</title>
+<style>
+  @page{ size:landscape; margin:8mm; }
+  :root{
+    --bg:#f6f4ef; --sheet:#fffdfa; --ink:#1f1d1a; --muted:#6f675b; --line:#ded7cb; --accent:#b5512f;
+    --guard:#2c5a66; --check:#2f6440; --mat:#7a5a2a; --alarm:#9a3b34;
+    --q:#5a4632;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font:11px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; display:flex; justify-content:center; padding:16px;}
+  .sheet{width:1080px; max-width:100%; background:var(--sheet); border:1px solid var(--line);
+    border-radius:10px; padding:16px 20px 14px; box-shadow:0 3px 18px rgba(0,0,0,.06);}
+  .serif{font-family:Georgia,"Times New Roman",serif}
+
+  .head{display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid var(--ink); padding-bottom:7px; margin-bottom:10px}
+  .head h1{font-family:Georgia,serif; font-size:21px; margin:0; line-height:1}
+  .eyebrow{letter-spacing:.15em; text-transform:uppercase; font-size:9.5px; color:var(--accent); font-weight:800; margin:0 0 3px}
+  .head .note{font-size:10px; color:var(--muted); font-style:italic; max-width:330px; text-align:right}
+
+  .sectlabel{display:flex; align-items:center; gap:8px; margin:12px 0 6px}
+  .sectlabel .b{background:var(--ink); color:#fff; font-size:9.5px; font-weight:800; letter-spacing:.12em; padding:2px 8px; border-radius:5px}
+  .sectlabel .q{font-size:9.5px; color:var(--muted); font-style:italic}
+
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:9px}
+  .grid5{display:grid; grid-template-columns:repeat(5,1fr); gap:9px}
+  .card{background:#fffefb; border:1px solid var(--line); border-radius:9px; padding:8px 10px}
+  .card h4{margin:0 0 5px; font-size:11px; font-weight:800; display:flex; align-items:center; gap:5px}
+  .card h4 .dot{width:8px; height:8px; border-radius:50%; display:inline-block}
+  .card ul{margin:0; padding-left:13px}
+  .card li{margin:3px 0; font-size:10px}
+  .card li b{color:#171512}
+  .accent{color:var(--accent); font-weight:700}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:9px; background:#f1ece3; color:#3a342c; padding:1px 4px; border-radius:4px}
+
+  .qa h4{color:var(--q)}
+  .qa .qq{font-weight:800; color:var(--q); font-size:10px; margin-top:5px}
+  .qa .aa{font-size:10px; margin:1px 0 0; color:#33302a}
+  .qa li{list-style:none; margin:0 0 4px}
+  .qa ul{padding-left:0}
+
+  .pill-row{display:flex; gap:5px; flex-wrap:wrap; margin-top:3px}
+  .pill{font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px}
+  .pg{background:#e7eef0;color:var(--guard)} .pc{background:#e9f0e8;color:var(--check)}
+  .pm{background:#f3ece0;color:var(--mat)} .pa{background:#f6e6e3;color:var(--alarm)}
+
+  footer{display:flex; justify-content:space-between; margin-top:11px; color:var(--muted); font-size:9px; border-top:1px solid var(--line); padding-top:7px}
+  @media print{ body{background:#fff; padding:0} .sheet{box-shadow:none; border:none; width:auto} }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="head">
+    <div>
+      <p class="eyebrow">Gauntlet AI · 24-Hour Build Challenge · Architecture Review</p>
+      <h1 class="serif">Publisher — Proposed Architecture</h1>
+      <div class="pill-row">
+        <span class="pill pm">① Material</span><span class="pill pg">② Guardrails / Persona</span>
+        <span class="pill pc">③ Checkpoints</span><span class="pill pa">④ Observability &amp; Alarms</span>
+      </div>
+    </div>
+    <div class="note">A research concept → a unique, persona-voiced single-page webpage. The agent writes; four separate pillars make constraint-handling invisible to it.</div>
+  </div>
+
+  <!-- PRESENT -->
+  <div class="sectlabel"><span class="b">ARCHITECTURE</span><span class="q">core problem · components &amp; how they connect · key decisions &amp; rationale · known tradeoffs</span></div>
+  <div class="grid4">
+    <div class="card">
+      <h4><span class="dot" style="background:var(--accent)"></span>Core problem</h4>
+      <ul>
+        <li>Publishing your work is <b>two hard jobs</b>: sound like you + look good and be well-researched.</li>
+        <li>Generic AI is voiceless; an unconstrained agent <b>can't be trusted to publish</b>.</li>
+        <li>Publisher is the <b>cage</b> that makes a creative agent safe to ship a persona-voiced webpage from a concept.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4><span class="dot" style="background:#777"></span>Components &amp; how they connect</h4>
+      <ul>
+        <li><b>Orchestrator</b> (thin loop) — only thing the agent talks to; sequences the 4 pillars.</li>
+        <li><b>Persona store</b> feeds Guardrails + agent context.</li>
+        <li>Material in → <b>research→build→refine</b> → checkpoints → publish; alarms meter throughout; escalate on critical.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4><span class="dot" style="background:var(--guard)"></span>Key decisions &amp; why</h4>
+      <ul>
+        <li><b>Persona = declared guardrail</b>, not a hidden prompt (inspectable, enforced twice).</li>
+        <li><b>Orchestrator mediates</b> — agent never calls pillars (keeps constraints invisible, swap stays clean).</li>
+        <li><b>Vercel AI SDK</b> → one-line worker swap = the portability bonus.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4><span class="dot" style="background:var(--alarm)"></span>Known tradeoffs</h4>
+      <ul>
+        <li><b>LLM-as-judge</b> for voice/quality — non-deterministic; threshold + escalate, not silent block.</li>
+        <li><b>Partial portability</b> — core loop portable; web-search + caching are Anthropic-specific.</li>
+        <li><b>24h scope</b> — protect the spine; 3rd-party API + cost/latency on the critical path.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- DESIGN RATIONALE -->
+  <div class="sectlabel"><span class="b">DESIGN RATIONALE</span><span class="q">edge-case handling · key choices · resilience to change · failure modes · alternatives considered</span></div>
+  <div class="grid5 qa">
+
+    <div class="card qa">
+      <h4>Edge-case handling</h4>
+      <ul>
+        <li><div class="qq">Concept is empty/thin?</div><div class="aa"><code>INPUT_EMPTY</code> → halt; never run the agent on nothing.</div></li>
+        <li><div class="qq">Not enough research?</div><div class="aa"><code>INSUFFICIENT_RESEARCH</code> → loop back to research, then escalate.</div></li>
+        <li><div class="qq">All gates pass but page is weak?</div><div class="aa">High-stakes runs keep a human final-approval; gates aren't claimed infallible.</div></li>
+      </ul>
+    </div>
+
+    <div class="card qa">
+      <h4>Key choices · X over Y</h4>
+      <ul>
+        <li><div class="qq">Persona vs a system prompt?</div><div class="aa">Declared, inspectable, reusable — enforced twice &amp; measured by checkpoints.</div></li>
+        <li><div class="qq">AI SDK vs raw Anthropic SDK?</div><div class="aa">One-line provider swap; cost: web tools + caching are provider-specific.</div></li>
+        <li><div class="qq">Own loop vs an agent framework?</div><div class="aa">Harness must own the loop → a checkpoint after every round.</div></li>
+      </ul>
+    </div>
+
+    <div class="card qa">
+      <h4>Resilience to change</h4>
+      <ul>
+        <li><div class="qq">New brand / design system?</div><div class="aa">Add design tokens to the persona — no engine change.</div></li>
+        <li><div class="qq">New channel, 280-char cap?</div><div class="aa">Add a guardrail + a different Sink adapter; engine untouched.</div></li>
+        <li><div class="qq">Tighter latency SLA?</div><div class="aa">Add a latency budget → breach fires <code>HIGH_LATENCY</code>.</div></li>
+      </ul>
+    </div>
+
+    <div class="card qa">
+      <h4>Failure modes</h4>
+      <ul>
+        <li><div class="qq">Judge LLM is down?</div><div class="aa"><b>Fail-closed</b> — treat as fail + escalate; never fail-open.</div></li>
+        <li><div class="qq">Refine loop oscillates?</div><div class="aa"><code>MAX_ATTEMPTS</code> → <code>WEBPAGE_GENERATION_FAILED</code> + escalate.</div></li>
+        <li><div class="qq">Provider outage / refusal?</div><div class="aa"><code>RATE_LIMITED</code> backoff; <code>REFUSAL</code>/<code>PROVIDER_ERROR</code> escalate; resume from last checkpoint.</div></li>
+      </ul>
+    </div>
+
+    <div class="card qa">
+      <h4>Alternatives considered</h4>
+      <ul>
+        <li><div class="qq">One LLM call + long prompt?</div><div class="aa">Fails the rubric (pillars not separable, no replay/alarms/swap) and drifts undetected.</div></li>
+        <li><div class="qq">Agent calls the pillars itself?</div><div class="aa">Leaks the cage into the worker; breaks swappability.</div></li>
+        <li><div class="qq">Managed Agents / Agent SDK?</div><div class="aa">They self-drive their own loop — we need to own it.</div></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <footer>
+    <span><b>One-liner:</b> The agent just writes; four separate pillars make constraint-handling invisible to it — only persona-faithful, researched, quality pages ship.</span>
+    <span>TS · Node · SQLite · Vercel AI SDK + Claude</span>
+  </footer>
+
+</div>
+</body>
+</html>

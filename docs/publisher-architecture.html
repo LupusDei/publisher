@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publisher — Architecture (Defense One-Pager)</title>
+<style>
+  @page{ size:landscape; margin:10mm; }
+  :root{
+    --bg:#f6f4ef; --sheet:#fffdfa; --ink:#1f1d1a; --muted:#6f675b; --line:#ded7cb;
+    --accent:#b5512f;
+    --guard:#2c5a66; --guardbg:#e7eef0;
+    --check:#2f6440; --checkbg:#e9f0e8;
+    --mat:#7a5a2a;   --matbg:#f3ece0;
+    --alarm:#9a3b34; --alarmbg:#f6e6e3;
+    --agent:#2a2620; --agentbg:#efeae1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; display:flex; justify-content:center; padding:18px;}
+  .sheet{ width:1060px; max-width:100%; background:var(--sheet); border:1px solid var(--line);
+    border-radius:10px; padding:18px 22px 16px; box-shadow:0 3px 18px rgba(0,0,0,.06); }
+  .serif{font-family:Georgia,"Times New Roman",serif}
+
+  /* header */
+  .head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; border-bottom:2px solid var(--ink); padding-bottom:9px; margin-bottom:12px}
+  .head h1{font-family:Georgia,serif; font-size:24px; margin:0; line-height:1}
+  .head .thesis{color:var(--muted); font-size:12.5px; font-style:italic; margin:5px 0 0; max-width:560px}
+  .eyebrow{letter-spacing:.16em; text-transform:uppercase; font-size:10px; color:var(--accent); font-weight:800; margin:0 0 4px}
+  .chips{display:flex; flex-wrap:wrap; gap:5px; justify-content:flex-end; max-width:320px}
+  .chip{font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:999px; background:#efeae1; color:var(--muted); border:1px solid var(--line); white-space:nowrap}
+
+  /* material flow band */
+  .flow{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin:2px 0 10px}
+  .matbox{background:var(--matbg); border:1px solid #e2d2bd; border-radius:9px; padding:8px 12px; text-align:center}
+  .matbox .lab{font-size:9.5px; font-weight:800; letter-spacing:.05em; color:var(--mat); text-transform:uppercase}
+  .matbox .val{font-size:13px; font-weight:600; margin-top:1px}
+  .matbox .sub{font-size:10.5px; color:var(--muted)}
+  .arrow{font-size:22px; color:var(--accent); font-weight:700; text-align:center; line-height:1}
+  .arrow small{display:block; font-size:9px; color:var(--muted); font-weight:700; letter-spacing:.04em; text-transform:uppercase}
+
+  /* harness frame */
+  .harness{border:2px solid var(--ink); border-radius:12px; padding:10px 14px 12px; position:relative; background:#fffefb}
+  .harness > .htag{position:absolute; top:-10px; left:16px; background:var(--ink); color:#fff; font-size:9.5px; font-weight:800; letter-spacing:.14em; padding:2px 9px; border-radius:5px}
+  .harness > .orch{position:absolute; top:-10px; right:16px; background:#fff; border:1px solid var(--line); color:var(--muted); font-size:9.5px; font-weight:700; letter-spacing:.06em; padding:2px 9px; border-radius:5px}
+
+  .row{display:grid; grid-template-columns:1fr 26px 1.25fr 26px 1fr; align-items:stretch; gap:0; margin-top:4px}
+  .pillar{border-radius:10px; padding:9px 11px; border:1px solid}
+  .pillar .ttl{font-weight:800; font-size:12.5px; display:flex; align-items:center; gap:6px}
+  .pillar .tag{font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; opacity:.8}
+  .pillar ul{margin:6px 0 0; padding-left:15px}
+  .pillar li{margin:2px 0; font-size:11px}
+  .num{display:inline-flex; width:16px; height:16px; border-radius:50%; color:#fff; font-size:10px; font-weight:800; align-items:center; justify-content:center}
+
+  .p-guard{background:var(--guardbg); border-color:#cfe0e4} .p-guard .ttl,.p-guard .num{color:var(--guard)} .p-guard .num{background:var(--guard);color:#fff}
+  .p-check{background:var(--checkbg); border-color:#d3e2d2} .p-check .ttl,.p-check .num{color:var(--check)} .p-check .num{background:var(--check);color:#fff}
+  .p-alarm{background:var(--alarmbg); border-color:#eccfca} .p-alarm .ttl{color:var(--alarm)} .p-alarm .num{background:var(--alarm);color:#fff}
+  .p-mat .num{background:var(--mat);color:#fff}
+
+  .agentwrap{background:var(--agentbg); border:1px dashed #c7bca8; border-radius:10px; padding:8px 9px 9px; text-align:center; display:flex; flex-direction:column; justify-content:center}
+  .agentwrap .ttl{font-weight:800; font-size:12.5px; color:var(--agent)}
+  .agentwrap .role{font-size:9.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-top:1px}
+  .pipe{display:flex; align-items:center; justify-content:center; gap:5px; margin-top:7px; flex-wrap:wrap}
+  .stage{background:#fff; border:1px solid var(--line); border-radius:7px; padding:3px 8px; font-size:11px; font-weight:700}
+  .pipe .g{color:var(--accent); font-weight:800}
+  .swap{margin-top:7px; font-size:10px; color:var(--muted)}
+  .swap b{color:var(--agent)}
+
+  .conn{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px}
+  .conn .ar{font-size:18px; color:#b9ad99; line-height:1}
+  .conn small{font-size:8px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.03em; text-align:center}
+
+  /* alarms + feedback strip */
+  .underbar{display:grid; grid-template-columns:1.25fr auto; gap:10px; align-items:stretch; margin-top:9px}
+  .feedback{background:#fbf3ef; border:1px dashed #e3c6b8; border-radius:9px; padding:7px 10px; font-size:10.5px; color:#6a4a3c; display:flex; align-items:center}
+  .feedback b{color:var(--accent)}
+  .hitl{background:#fff; border:1px solid var(--line); border-radius:9px; padding:7px 10px; font-size:10.5px; color:var(--muted); display:flex; align-items:center; gap:7px}
+  .hitl .badge{font-size:9px; font-weight:800; color:var(--alarm); background:var(--alarmbg); border:1px solid #eccfca; border-radius:5px; padding:2px 6px}
+
+  /* control loop */
+  .loop{margin-top:13px; border-top:1px solid var(--line); padding-top:9px}
+  .loop h3{margin:0 0 6px; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:800}
+  .pipeline{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+  .node{border-radius:8px; padding:4px 10px; font-size:11px; font-weight:700; border:1px solid}
+  .node.phase{background:#fff; border-color:var(--line)}
+  .node.gate{background:var(--checkbg); border-color:#d3e2d2; color:var(--check)}
+  .node.pub{background:var(--matbg); border-color:#e2d2bd; color:var(--mat)}
+  .sep{color:#bcae98; font-weight:800}
+  .ret{font-size:10px; color:var(--accent); font-weight:700; margin-left:2px}
+
+  footer{display:flex; justify-content:space-between; margin-top:11px; color:var(--muted); font-size:9.5px}
+  @media print{ body{background:#fff; padding:0} .sheet{box-shadow:none; border:none; width:auto} }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="head">
+    <div>
+      <p class="eyebrow">Gauntlet AI · 24-Hour Build Challenge · Architecture Defense</p>
+      <h1 class="serif">Publisher — Harness Architecture</h1>
+      <p class="thesis">A research concept → a unique, persona-voiced single-page webpage. The agent just writes; <strong>four separate pillars</strong> make constraint-handling invisible to it.</p>
+    </div>
+    <div class="chips">
+      <span class="chip">4 pillars · separate</span>
+      <span class="chip">Agent swappable</span>
+      <span class="chip">Checkpoints replayable</span>
+      <span class="chip">Human-in-the-loop</span>
+    </div>
+  </div>
+
+  <!-- MATERIAL flow (pillar 1) -->
+  <div class="flow">
+    <div class="matbox">
+      <div class="lab"><span class="num" style="background:var(--mat);color:#fff;width:14px;height:14px;font-size:9px;vertical-align:middle">1</span> Material · in</div>
+      <div class="val">Concept + Persona</div>
+      <div class="sub">idea / thought-experiment · selected persona</div>
+    </div>
+    <div class="arrow">►<small>load</small></div>
+    <div class="matbox">
+      <div class="lab"><span class="num" style="background:var(--mat);color:#fff;width:14px;height:14px;font-size:9px;vertical-align:middle">1</span> Material · out</div>
+      <div class="val">Single-page webpage</div>
+      <div class="sub">static HTML/CSS · hosts anywhere</div>
+    </div>
+  </div>
+
+  <!-- HARNESS frame -->
+  <div class="harness">
+    <span class="htag">THE HARNESS</span>
+    <span class="orch">orchestrator mediates · agent never touches the pillars</span>
+
+    <div class="row">
+      <!-- GUARDRAILS (pillar 2) -->
+      <div class="pillar p-guard">
+        <div class="ttl"><span class="num">2</span> Guardrails — the Persona <span class="tag">declared</span></div>
+        <ul>
+          <li>voice · style points · design tokens</li>
+          <li>→ <b>preventive</b> system prompt</li>
+          <li>→ <b>detective</b> validators</li>
+        </ul>
+      </div>
+
+      <div class="conn"><div class="ar">►</div><small>compile<br>+inject</small></div>
+
+      <!-- AGENT (the worker) -->
+      <div class="agentwrap">
+        <div class="ttl">AGENT · the worker</div>
+        <div class="role">dumb · constrained · swappable</div>
+        <div class="pipe">
+          <span class="stage">Research</span><span class="g">→</span>
+          <span class="stage">Build</span><span class="g">→</span>
+          <span class="stage">Refine</span>
+        </div>
+        <div class="swap">Vercel AI SDK · <b>swap model/provider in one line</b><br>research via web_search / web_fetch</div>
+      </div>
+
+      <div class="conn"><div class="ar">►</div><small>draft</small></div>
+
+      <!-- CHECKPOINTS (pillar 3) -->
+      <div class="pillar p-check">
+        <div class="ttl"><span class="num">3</span> Checkpoints <span class="tag">pass / fail · persisted</span></div>
+        <ul>
+          <li>research-sufficiency</li>
+          <li>voice-fidelity · design-conformance</li>
+          <li>quality · replay from any gate</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- under bar: feedback loop + alarms -->
+    <div class="underbar">
+      <div class="feedback">
+        <span>↺ &nbsp;<b>Behavior change:</b> a failed gate → structured feedback re-prompts the agent (<code>VOICE_DRIFT 0.42 → "match this sample"</code> → redraft passes 0.81).</span>
+      </div>
+      <div class="hitl"><span class="badge">⚠ escalate</span> Human-in-the-loop: critical alarm / exhausted retries → pause &amp; ask the operator</div>
+    </div>
+
+    <!-- OBSERVABILITY & ALARMS (pillar 4) -->
+    <div class="pillar p-alarm" style="margin-top:9px">
+      <div class="ttl"><span class="num">4</span> Observability &amp; Alarms <span class="tag">structured: type · severity · context · action</span></div>
+      <ul style="columns:2; column-gap:24px">
+        <li>meters token-cost / phase · latency · error rate</li>
+        <li><code>TOKEN_BUDGET_EXCEEDED</code> · <code>HIGH_LATENCY</code></li>
+        <li><code>INSUFFICIENT_RESEARCH</code> · <code>VOICE_DRIFT</code></li>
+        <li><code>WEBPAGE_GENERATION_FAILED</code> → escalate</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CONTROL LOOP -->
+  <div class="loop">
+    <h3>Run loop — where the agent's behavior changes</h3>
+    <div class="pipeline">
+      <span class="node phase">Concept + Persona</span><span class="sep">►</span>
+      <span class="node phase">Research</span><span class="sep">►</span>
+      <span class="node gate">◇ sufficient?</span><span class="sep">►</span>
+      <span class="node phase">Build</span><span class="sep">►</span>
+      <span class="node gate">◇ voice · design · quality</span>
+      <span class="ret">↺ fail → feedback → re-build</span>
+      <span class="sep">►</span>
+      <span class="node pub">Publish webpage</span>
+    </div>
+  </div>
+
+  <footer>
+    <span>Stack: TypeScript · Node · SQLite (run state) · Vercel AI SDK + Claude · frontend → Vercel</span>
+    <span>Persona = declared guardrail &amp; agent context · only persona-faithful, researched, quality pages ship</span>
+  </footer>
+
+</div>
+</body>
+</html>

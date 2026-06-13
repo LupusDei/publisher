@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publisher — System Architecture (v2)</title>
+<style>
+  @page{ size:landscape; margin:7mm; }
+  :root{
+    --bg:#f6f4ef; --sheet:#fffdfa; --ink:#1f1d1a; --muted:#6f675b; --line:#ded7cb; --accent:#b5512f;
+    --guard:#2c5a66; --guardbg:#e7eef0;
+    --check:#2f6440; --checkbg:#e9f0e8;
+    --mat:#7a5a2a;   --matbg:#f3ece0;
+    --alarm:#9a3b34; --alarmbg:#f6e6e3;
+    --agent:#3a2f5a; --agentbg:#eee9f5;
+    --fe:#1f6f5c;    --febg:#e4f0ec;
+    --be:#83591c;    --bebg:#f3ecdd;
+    --db:#5a4632;    --dbbg:#efe9e0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font:11px/1.38 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; display:flex; justify-content:center; padding:16px;}
+  .sheet{width:1120px; max-width:100%; background:var(--sheet); border:1px solid var(--line);
+    border-radius:10px; padding:15px 20px 13px; box-shadow:0 3px 18px rgba(0,0,0,.06);}
+  .serif{font-family:Georgia,"Times New Roman",serif}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:9.5px; background:#f1ece3; color:#39332b; padding:1px 4px; border-radius:4px}
+
+  .head{display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid var(--ink); padding-bottom:7px; margin-bottom:8px}
+  .head h1{font-family:Georgia,serif; font-size:21px; margin:0; line-height:1}
+  .eyebrow{letter-spacing:.15em; text-transform:uppercase; font-size:9px; color:var(--accent); font-weight:800; margin:0 0 3px}
+  .pill-row{display:flex; gap:5px; flex-wrap:wrap; margin-top:5px}
+  .pill{font-size:9px; font-weight:700; padding:2px 8px; border-radius:999px}
+  .pg{background:var(--guardbg);color:var(--guard)} .pc{background:var(--checkbg);color:var(--check)}
+  .pm{background:var(--matbg);color:var(--mat)} .pa{background:var(--alarmbg);color:var(--alarm)}
+  .head .matcap{font-size:10px; color:var(--muted); text-align:right; max-width:380px}
+  .head .matcap b{color:var(--mat)}
+
+  /* boundary band */
+  .band{position:relative; border:1.5px solid; border-radius:10px; padding:7px 11px 7px 92px; margin:0; background:#fffefb}
+  .band > .btag{position:absolute; left:7px; top:7px; bottom:7px; width:74px; border-radius:7px;
+     display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:3px; color:#fff}
+  .band > .btag b{font-size:10.5px; font-weight:800; line-height:1.05}
+  .band > .btag span{font-size:8px; opacity:.85; margin-top:2px; font-weight:600}
+  .band .libs{font-size:9.5px; color:var(--muted); margin-top:2px}
+  .band .libs b{color:#2a2620}
+  .lead{font-weight:800; font-size:11px}
+
+  .fe{border-color:#bfe0d6} .fe .btag{background:var(--fe)} .fe{background:var(--febg)}
+  .be{border-color:#e4d4ad} .be .btag{background:var(--be)} .be{background:var(--bebg)}
+  .hn{border-color:var(--ink)} .hn .btag{background:var(--ink)}
+  .ag{border-color:#cdc2e2} .ag .btag{background:var(--agent)} .ag{background:var(--agentbg)}
+  .dbb{border-color:#d8cdbd} .dbb .btag{background:var(--db)} .dbb{background:var(--dbbg)}
+
+  .flowline{text-align:center; color:#b9ad99; font-size:12px; line-height:1; margin:3px 0; letter-spacing:.3em}
+  .flowline small{font-size:8px; color:var(--muted); font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-left:6px}
+
+  /* harness internals */
+  .orch{background:#fff; border:1px solid #cfc8ba; color:var(--ink); border-radius:7px; padding:4px 9px; font-size:10px; font-weight:800; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center}
+  .orch span{font-weight:500; color:var(--accent); font-size:9px}
+  .pillars{display:grid; grid-template-columns:repeat(4,1fr) .85fr; gap:6px}
+  .pmod{border-radius:7px; padding:5px 7px; border:1px solid; background:#fff}
+  .pmod .mt{font-weight:800; font-size:10px; display:flex; align-items:center; gap:4px}
+  .pmod .ms{font-size:8.7px; color:var(--muted); margin-top:1px; line-height:1.3}
+  .num{display:inline-flex; width:14px; height:14px; border-radius:50%; color:#fff; font-size:8.5px; font-weight:800; align-items:center; justify-content:center}
+  .b-mat{border-color:#e2d2bd} .b-mat .num{background:var(--mat)} .b-mat .mt{color:var(--mat)}
+  .b-guard{border-color:#cfe0e4} .b-guard .num{background:var(--guard)} .b-guard .mt{color:var(--guard)}
+  .b-check{border-color:#d3e2d2} .b-check .num{background:var(--check)} .b-check .mt{color:var(--check)}
+  .b-alarm{border-color:#eccfca} .b-alarm .num{background:var(--alarm)} .b-alarm .mt{color:var(--alarm)}
+  .b-esc{border-color:var(--line)} .b-esc .mt{color:var(--muted)}
+
+  /* agent + database split */
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+  .agentcode{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:8.6px; line-height:1.45; color:#2c2825; background:#f6f3fb; border-radius:6px; padding:5px 8px; margin-top:4px; white-space:pre; overflow:auto}
+  .dbtags{font-size:9px; color:var(--db); margin-top:3px}
+  .dbtags code{background:#e8e0d4; color:var(--db); font-size:9px}
+
+  /* control loop */
+  .loop{margin-top:9px; border-top:1px solid var(--line); padding-top:7px}
+  .loop h3{margin:0 0 5px; font-size:9px; letter-spacing:.11em; text-transform:uppercase; color:var(--muted); font-weight:800}
+  .pipeline{display:flex; align-items:center; gap:5px; flex-wrap:wrap}
+  .node{border-radius:7px; padding:3px 8px; font-size:9.5px; font-weight:700; border:1px solid}
+  .node.phase{background:#fff; border-color:var(--line)}
+  .node.gate{background:var(--checkbg); border-color:#d3e2d2; color:var(--check)}
+  .node.pub{background:var(--matbg); border-color:#e2d2bd; color:var(--mat)}
+  .sep{color:#bcae98; font-weight:800}
+  .ret{font-size:9px; color:var(--accent); font-weight:700}
+
+  footer{display:flex; justify-content:space-between; margin-top:8px; color:var(--muted); font-size:8.6px; border-top:1px solid var(--line); padding-top:6px}
+  @media print{ body{background:#fff; padding:0} .sheet{box-shadow:none; border:none; width:auto} }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="head">
+    <div>
+      <p class="eyebrow">Gauntlet AI · 24-Hour Build Challenge · System Architecture v2</p>
+      <h1 class="serif">Publisher — System Architecture</h1>
+      <div class="pill-row">
+        <span class="pill pm">① Material</span><span class="pill pg">② Guardrails / Persona</span>
+        <span class="pill pc">③ Checkpoints</span><span class="pill pa">④ Observability &amp; Alarms</span>
+      </div>
+    </div>
+    <div class="matcap"><b>① Material in:</b> concept + persona &nbsp;►&nbsp; <b>out:</b> static single-page webpage (hosts anywhere). The agent just writes; four separate pillar services constrain it.</div>
+  </div>
+
+  <!-- FRONT-END -->
+  <div class="band fe">
+    <div class="btag"><b>Front&#8209;end</b><span>Vercel</span></div>
+    <div class="lead">Web app — onboarding (persona) · live run viewer · human-in-the-loop approve/reject</div>
+    <div class="libs"><b>Next.js</b> · React · <b>Tailwind</b> · WebSocket client · AI SDK UI helpers</div>
+  </div>
+  <div class="flowline">▲ ▼<small>HTTPS / WebSocket</small></div>
+
+  <!-- BACKEND API -->
+  <div class="band be">
+    <div class="btag"><b>Back&#8209;end</b><span>API · handlers</span></div>
+    <div class="lead">Thin route handlers — no business logic &nbsp; <code>/personas</code> <code>/runs</code> <code>/runs/:id/stream</code> <code>/escalations/:id</code></div>
+    <div class="libs"><b>Node + TypeScript</b> (strict) · <b>Fastify</b> · <b>ws</b> · <b>Zod</b> runtime validation at every boundary</div>
+  </div>
+  <div class="flowline">▼</div>
+
+  <!-- HARNESS -->
+  <div class="band hn">
+    <div class="btag"><b>Harness</b><span>services</span></div>
+    <div class="orch">ORCHESTRATOR — run loop · retry · checkpoint persistence · replay <span>↺ failed gate → feedback re-prompts the agent</span></div>
+    <div class="pillars">
+      <div class="pmod b-mat"><div class="mt"><span class="num">1</span> MaterialHandler</div><div class="ms">Source / Sink adapters — concept+persona in, webpage out</div></div>
+      <div class="pmod b-guard"><div class="mt"><span class="num">2</span> GuardrailEngine</div><div class="ms">persona → system prompt (preventive) + validators (detective)</div></div>
+      <div class="pmod b-check"><div class="mt"><span class="num">3</span> CheckpointEngine</div><div class="ms">research · voice · design · quality gates → journal</div></div>
+      <div class="pmod b-alarm"><div class="mt"><span class="num">4</span> Observability + Alarms</div><div class="ms">pino meters cost/latency/errors → structured alarms</div></div>
+      <div class="pmod b-esc"><div class="mt">Escalation</div><div class="ms">critical → pause &amp; ask</div></div>
+    </div>
+  </div>
+  <div class="flowline">▼<small>orchestrator calls (in-process) · reads/writes</small></div>
+
+  <!-- AGENT + DATABASE -->
+  <div class="split">
+    <div class="band ag" style="padding-left:84px">
+      <div class="btag"><b>Agent</b><span>worker · swappable</span></div>
+      <div class="lead">research → build → refine &nbsp; <span style="font-weight:600;color:var(--muted)">(the agent never touches the pillars)</span></div>
+      <div class="libs"><b>Vercel AI SDK</b> (<code>ai</code>) · <b>@ai-sdk/anthropic</b> → Claude <code>opus-4-8</code> / <code>haiku-4-5</code> · server tools <code>web_search</code> · <code>web_fetch</code></div>
+      <div class="agentcode">generateText({ model: anthropic('claude-opus-4-8'), tools:{web_search,web_fetch} })
+generateObject({ schema: WebpageSchema /*Zod*/ })  · swap model → one line</div>
+    </div>
+    <div class="band dbb" style="padding-left:84px">
+      <div class="btag"><b>Database</b><span>store · data access</span></div>
+      <div class="lead">Run state — relational, transactional, queried live by the API</div>
+      <div class="libs"><b>SQLite</b> · <b>better-sqlite3</b> · <b>Drizzle ORM</b> (typed schema + migrations) → cloud: <b>libSQL / Turso</b></div>
+      <div class="dbtags"><code>personas</code> <code>runs</code> <code>checkpoints</code> <code>alarms</code> <code>metrics</code> <code>escalations</code> <code>webpages</code> · artifacts → static files</div>
+    </div>
+  </div>
+
+  <!-- CONTROL LOOP -->
+  <div class="loop">
+    <h3>Run loop — where the agent's behavior changes</h3>
+    <div class="pipeline">
+      <span class="node phase">Concept + Persona</span><span class="sep">►</span>
+      <span class="node phase">Research</span><span class="sep">►</span>
+      <span class="node gate">◇ sufficient?</span><span class="sep">►</span>
+      <span class="node phase">Build</span><span class="sep">►</span>
+      <span class="node gate">◇ voice · design · quality</span>
+      <span class="ret">↺ fail → feedback → re-build</span>
+      <span class="sep">►</span>
+      <span class="node pub">Publish webpage</span>
+    </div>
+  </div>
+
+  <footer>
+    <span>Layered boundaries: front-end (Vercel) → back-end API (Fastify) → harness services (orchestrator + 4 pillars) → agent (AI SDK) &amp; database (Drizzle/SQLite).</span>
+    <span>Quality gate: Vitest · ESLint · tsc strict · CI. Only persona-faithful, researched, quality pages ship.</span>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publisher — System Architecture (v4)</title>
+<style>
+  @page{ size:landscape; margin:9mm; }
+  :root{
+    --bg:#f6f4ef; --sheet:#fffdfa; --ink:#1f1d1a; --muted:#6f675b; --line:#ded7cb; --accent:#b5512f;
+    --guard:#2c5a66; --guardbg:#e7eef0;
+    --check:#2f6440; --checkbg:#e9f0e8;
+    --mat:#7a5a2a;   --matbg:#f3ece0;
+    --alarm:#9a3b34; --alarmbg:#f6e6e3;
+    --agent:#3a2f5a; --agentbg:#eee9f5;
+    --fe:#1f6f5c;    --febg:#e8f1ed;
+    --be:#2a2620;
+    --db:#5a4632;    --dbbg:#efe9e0;
+    --model:#7a3030; --modelbg:#f5ebe9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font:12.5px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; display:flex; justify-content:center; padding:20px;}
+  .sheet{width:1080px; max-width:100%; background:var(--sheet); border:1px solid var(--line);
+    border-radius:12px; padding:24px 30px 20px; box-shadow:0 3px 20px rgba(0,0,0,.06);}
+  .serif{font-family:Georgia,"Times New Roman",serif}
+
+  .eyebrow{letter-spacing:.16em; text-transform:uppercase; font-size:10px; color:var(--accent); font-weight:800; margin:0 0 6px}
+  h1{font-family:Georgia,serif; font-size:30px; margin:0 0 8px; line-height:1.05}
+  .intent{font-size:13.5px; color:#3a352e; max-width:760px; margin:0 0 4px}
+  .intent b{color:#171512}
+  .rule{height:2px; background:var(--ink); margin:14px 0 16px; opacity:.9}
+
+  /* pillar legend */
+  .pillars{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px}
+  .pcard{border-radius:10px; padding:9px 12px; border:1px solid}
+  .pcard .t{font-weight:800; font-size:12.5px; display:flex; align-items:center; gap:7px}
+  .pcard .s{font-size:11px; color:var(--muted); margin-top:2px}
+  .num{display:inline-flex; width:18px; height:18px; border-radius:50%; color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center}
+  .p1{background:var(--matbg); border-color:#e2d2bd} .p1 .t,.p1 .num{color:var(--mat)} .p1 .num{background:var(--mat);color:#fff}
+  .p2{background:var(--guardbg); border-color:#cfe0e4} .p2 .t,.p2 .num{color:var(--guard)} .p2 .num{background:var(--guard);color:#fff}
+  .p3{background:var(--checkbg); border-color:#d3e2d2} .p3 .t,.p3 .num{color:var(--check)} .p3 .num{background:var(--check);color:#fff}
+  .p4{background:var(--alarmbg); border-color:#eccfca} .p4 .t,.p4 .num{color:var(--alarm)} .p4 .num{background:var(--alarm);color:#fff}
+
+  /* zones */
+  .zone{position:relative; border:1.5px solid; border-radius:11px; padding:12px 16px 12px 104px; background:#fffefb}
+  .zone > .tag{position:absolute; left:9px; top:9px; bottom:9px; width:84px; border-radius:8px;
+     display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:#fff; padding:4px}
+  .zone > .tag b{font-size:12px; font-weight:800; line-height:1.1}
+  .zone > .tag span{font-size:9px; opacity:.85; margin-top:3px; font-weight:600}
+  .zone .role{font-weight:700; font-size:12.5px}
+  .zone .tech{font-size:11px; color:var(--muted); margin-top:2px}
+  .fe{border-color:#bfe0d6; background:var(--febg)} .fe .tag{background:var(--fe)}
+  .model{border-color:#e2c9c5; background:var(--modelbg)} .model .tag{background:var(--model)}
+
+  .cross{display:flex; align-items:center; justify-content:center; gap:10px; margin:7px 0; color:var(--accent); font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase}
+  .cross .ln{height:0; border-top:1px dashed #d3a78f; flex:0 0 90px}
+
+  /* backend boundary */
+  .backend{position:relative; border:2.5px solid var(--be); border-radius:14px; background:#fbf9f4; padding:20px 16px 15px; margin:2px 0}
+  .backend > .betag{position:absolute; top:-12px; left:18px; background:var(--be); color:#fff;
+     font-size:11px; font-weight:800; letter-spacing:.09em; padding:3px 13px; border-radius:7px}
+
+  .sub{position:relative; border:1px solid var(--line); border-radius:9px; padding:9px 14px 9px 92px; background:#fff}
+  .sub > .stag{position:absolute; left:7px; top:7px; bottom:7px; width:74px; border-radius:7px;
+     display:flex; align-items:center; justify-content:center; text-align:center; color:#fff; font-size:11px; font-weight:800; padding:3px}
+  .sub .role{font-weight:700; font-size:12px}
+  .sub .tech{font-size:10.5px; color:var(--muted); margin-top:1px}
+  .s-api .stag{background:#83591c}
+  .s-harness{border:1.5px solid var(--ink)} .s-harness .stag{background:var(--accent)}
+
+  .harnessbody{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .orchchip{background:#fff7f2; border:1px solid #e6c9b8; border-radius:7px; padding:4px 10px; font-size:11px; font-weight:800}
+  .pchips{display:flex; gap:6px; flex-wrap:wrap}
+  .pchip{font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; display:flex; align-items:center; gap:5px}
+  .pchip .n{width:15px;height:15px;border-radius:50%;color:#fff;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+  .c1{background:var(--matbg);color:var(--mat)} .c1 .n{background:var(--mat)}
+  .c2{background:var(--guardbg);color:var(--guard)} .c2 .n{background:var(--guard)}
+  .c3{background:var(--checkbg);color:var(--check)} .c3 .n{background:var(--check)}
+  .c4{background:var(--alarmbg);color:var(--alarm)} .c4 .n{background:var(--alarm)}
+
+  .vflow{text-align:center; color:#b9ad99; font-size:13px; line-height:1; margin:7px 0; letter-spacing:.3em}
+
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:7px}
+  .agentbox .stag{background:var(--agent)} .agentbox{border-color:#cdc2e2; background:#fbfaff}
+  .dbbox .stag{background:var(--db)} .dbbox{border-color:#d8cdbd; background:#fdfbf7}
+
+  footer{margin-top:14px; color:var(--muted); font-size:10px; border-top:1px solid var(--line); padding-top:9px; text-align:center}
+  footer b{color:#2a2620}
+  @media print{ body{background:#fff; padding:0} .sheet{box-shadow:none; border:none; width:auto} }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <p class="eyebrow">Gauntlet AI · 24-Hour Build Challenge · System Architecture</p>
+  <h1 class="serif">Publisher</h1>
+  <p class="intent"><b>Turn a research concept into a unique, persona-voiced single-page webpage.</b> A harness wraps a writing agent with <b>four separate pillars</b> that guarantee the output captures the persona's voice and design, is well-researched, and meets a quality bar — otherwise it stops and asks. <b>The agent just writes; constraint-handling is invisible to it.</b></p>
+
+  <div class="rule"></div>
+
+  <!-- FRONT-END -->
+  <div class="zone fe">
+    <div class="tag"><b>Front-end</b><span>Vercel</span></div>
+    <div class="role">Create a persona · watch a run · approve or reject</div>
+    <div class="tech">Next.js · React</div>
+  </div>
+
+  <div class="cross"><span class="ln"></span>▲▼ &nbsp; client ⟷ backend &nbsp;<span class="ln"></span></div>
+
+  <!-- BACKEND boundary -->
+  <div class="backend">
+    <span class="betag">BACKEND · one process (Node + TypeScript)</span>
+
+    <div class="sub s-api">
+      <div class="stag">API</div>
+      <div class="role">Thin request handlers — no business logic</div>
+      <div class="tech">Fastify · Zod</div>
+    </div>
+
+    <div class="vflow">▼</div>
+
+    <div class="sub s-harness">
+      <div class="stag">Harness</div>
+      <div class="orchchip" style="display:inline-block; margin-bottom:9px">Orchestrator — runs the loop · ↺ feedback</div>
+      <div class="pillars" style="margin:0; gap:8px">
+        <div class="pcard p1"><div class="t"><span class="num">1</span> Material</div><div class="s">concept + persona in → webpage out</div></div>
+        <div class="pcard p2"><div class="t"><span class="num">2</span> Guardrails</div><div class="s">the persona — voice &amp; design, declared</div></div>
+        <div class="pcard p3"><div class="t"><span class="num">3</span> Checkpoints</div><div class="s">pass/fail gates, persisted &amp; replayable</div></div>
+        <div class="pcard p4"><div class="t"><span class="num">4</span> Observability &amp; Alarms</div><div class="s">cost · quality · failures, structured</div></div>
+      </div>
+    </div>
+
+    <div class="vflow">▼ &nbsp; drives the agent · reads/writes the store &nbsp; ▼</div>
+
+    <div class="split">
+      <div class="sub agentbox">
+        <div class="stag">Agent</div>
+        <div class="role">research → build → refine · swappable</div>
+        <div class="tech">Vercel AI SDK · @ai-sdk/anthropic</div>
+      </div>
+      <div class="sub dbbox">
+        <div class="stag">Database</div>
+        <div class="role">Personas &amp; run state (embedded)</div>
+        <div class="tech">SQLite · Drizzle</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cross"><span class="ln"></span>▼ &nbsp; agent's only outbound call &nbsp;<span class="ln"></span></div>
+
+  <!-- MODEL -->
+  <div class="zone model">
+    <div class="tag"><b>Model</b><span>external</span></div>
+    <div class="role">Anthropic · Claude — research tools + writing</div>
+    <div class="tech">swap provider in one line — the harness is untouched</div>
+  </div>
+
+  <footer>
+    <b>Front-end</b> (Vercel) ⟷ <b>Backend</b> = API + harness + agent + database, one process ⟷ <b>Model</b> (Anthropic). &nbsp; The harness lives in the backend; only persona-faithful, researched, quality pages ship.
+  </footer>
+
+</div>
+</body>
+</html>
