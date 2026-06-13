@@ -589,6 +589,9 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     const ctx: RunContext = {
       runId,
       workerId: run.workerId,
+      // Rebuild the per-run agent from the persisted worker (rrt.2) so a
+      // rehydrated run's retry/enrich re-research uses the right model.
+      agent: agentForWorker(run.workerId),
       persona,
       material: { concept: run.concept, persona },
       system: compiled.systemPrompt,

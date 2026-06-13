@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Publisher — Gates, Guardrails & Checkpoints, in reality</title>
+<style>
+  :root{
+    --bg:#f7f4ee; --paper:#fffdf9; --ink:#1f1d1a; --muted:#6b6358; --line:#e4ded3;
+    --accent:#b5512f; --accent-strong:#8f3d22; --good:#3f7d50; --good-bg:#eef5ef;
+    --warn:#b5803a; --warn-bg:#f8f1e6; --crit:#b23b3b; --crit-bg:#f8ecec;
+    --det:#3a6ea5; --det-bg:#ecf1f7; --judge:#7b4ea5; --judge-bg:#f2ecf8;
+    --code:#2b2722; --code-bg:#f3efe7;
+    --radius:14px; --hair:1px solid var(--line);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:0 22px}
+  h1,h2,h3,h4{font-family:Georgia,"Times New Roman",serif;line-height:1.18;letter-spacing:-.01em}
+  h1{font-size:clamp(34px,6vw,54px);margin:0 0 .25em}
+  h2{font-size:clamp(24px,4vw,32px);margin:2.4em 0 .5em;padding-top:.4em}
+  h3{font-size:21px;margin:1.6em 0 .4em}
+  h4{font-size:16px;margin:1.1em 0 .3em;font-family:inherit;font-weight:700}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,kbd,.mono{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.86em}
+  code{background:var(--code-bg);padding:.08em .38em;border-radius:5px;color:var(--code)}
+  pre{background:var(--code-bg);color:var(--code);padding:14px 16px;border-radius:10px;overflow:auto;
+    border:var(--hair);font-size:13px;line-height:1.55}
+  pre code{background:none;padding:0}
+  p{margin:.7em 0}
+  hr{border:none;border-top:var(--hair);margin:2.4em 0}
+
+  /* hero */
+  header.hero{background:
+      radial-gradient(1200px 380px at 75% -10%, #fbe9df 0%, transparent 60%),
+      linear-gradient(180deg,#fffdf9, #f7f4ee);
+    border-bottom:var(--hair);padding:54px 0 40px}
+  .eyebrow{color:var(--accent);font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-size:12px;margin:0 0 14px}
+  .lede{font-size:19px;color:#37322c;max-width:64ch}
+  .rule{width:64px;height:3px;background:var(--accent);border-radius:3px;margin:18px 0 8px}
+
+  /* sticky nav */
+  nav.toc{position:sticky;top:0;z-index:20;background:rgba(247,244,238,.86);backdrop-filter:saturate(1.3) blur(8px);
+    border-bottom:var(--hair);font-size:13.5px}
+  nav.toc .wrap{display:flex;gap:6px 18px;flex-wrap:wrap;padding-top:11px;padding-bottom:11px}
+  nav.toc a{color:var(--muted);font-weight:600}
+  nav.toc a:hover{color:var(--accent)}
+
+  /* cards & layout */
+  .card{background:var(--paper);border:var(--hair);border-radius:var(--radius);padding:20px 22px;margin:16px 0;
+    box-shadow:0 1px 0 rgba(31,29,26,.02)}
+  .grid{display:grid;gap:14px}
+  @media(min-width:680px){.grid.two{grid-template-columns:1fr 1fr}}
+  .muted{color:var(--muted)}
+  .small{font-size:13.5px}
+  .src{font-size:12.5px;color:var(--muted)}
+  .src code{background:none;color:var(--accent-strong);padding:0}
+
+  /* badges */
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.03em;padding:3px 9px;border-radius:999px;
+    border:1px solid transparent;vertical-align:middle}
+  .b-det{background:var(--det-bg);color:var(--det);border-color:#cfe0f0}
+  .b-judge{background:var(--judge-bg);color:var(--judge);border-color:#e0d2f0}
+  .b-good{background:var(--good-bg);color:var(--good);border-color:#cfe4d5}
+  .b-warn{background:var(--warn-bg);color:var(--warn);border-color:#ecdcc2}
+  .b-crit{background:var(--crit-bg);color:var(--crit);border-color:#eccccc}
+  .b-thresh{background:#fff;color:var(--ink);border-color:var(--line)}
+  .b-hard{background:#efe9e6;color:var(--accent-strong);border-color:#e2d4cd}
+  .b-soft{background:#eef3ef;color:var(--good);border-color:#d6e6da}
+
+  /* flow diagram */
+  .flow{counter-reset:step;margin:10px 0}
+  .step{position:relative;display:grid;grid-template-columns:42px 1fr;gap:14px;padding:8px 0}
+  .step .dot{width:42px;height:42px;border-radius:50%;background:var(--paper);border:2px solid var(--accent);
+    color:var(--accent-strong);font-weight:800;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif}
+  .step:not(:last-child)::before{content:"";position:absolute;left:20px;top:46px;bottom:-8px;width:2px;background:var(--line)}
+  .step .body{padding-top:6px}
+  .step .title{font-weight:700}
+  .branch{margin:6px 0 2px;padding:10px 12px;border-left:3px solid var(--line);background:#fbf9f5;border-radius:0 8px 8px 0}
+  .branch.fail{border-left-color:var(--warn)}
+  .branch.hard{border-left-color:var(--crit)}
+  .branch.pass{border-left-color:var(--good)}
+  .arrow{color:var(--muted)}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  th,td{text-align:left;padding:9px 11px;border-bottom:var(--hair);vertical-align:top}
+  th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  tr:last-child td{border-bottom:none}
+  .formula{background:var(--code-bg);border:var(--hair);border-radius:8px;padding:10px 13px;margin:8px 0;font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:13px;color:var(--code)}
+  .kvs{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}
+  .kvs li{display:grid;grid-template-columns:140px 1fr;gap:10px;font-size:14px;border-bottom:1px dotted var(--line);padding-bottom:6px}
+  .kvs li b{color:var(--muted);font-weight:600}
+  .pill-row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+  .note{background:#fbf6ef;border:1px solid #ecdcc2;border-radius:10px;padding:12px 14px;font-size:14px;margin:12px 0}
+  .note b{color:var(--warn)}
+  footer{color:var(--muted);font-size:13px;border-top:var(--hair);margin-top:48px;padding:26px 0 60px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 18px;font-size:13px;margin:6px 0 0}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:13px;height:13px;border-radius:4px;display:inline-block}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Publisher · How it actually works</p>
+    <h1>Gates, Guardrails&nbsp;&amp; Checkpoints</h1>
+    <div class="rule"></div>
+    <p class="lede">A faithful walkthrough of the run pipeline as implemented in the code: how a persona becomes a system prompt, how a draft is gated four ways, when the loop refines vs. escalates to a human, and how the final output is turned into a self-contained web page. Every threshold and rule below is pulled straight from the source.</p>
+    <p class="legend">
+      <span><i class="swatch" style="background:var(--det)"></i> Deterministic gate (no LLM)</span>
+      <span><i class="swatch" style="background:var(--judge)"></i> Judge gate (scored, LLM-swappable)</span>
+      <span><i class="swatch" style="background:var(--good)"></i> Pass</span>
+      <span><i class="swatch" style="background:var(--warn)"></i> Soft fail → refine</span>
+      <span><i class="swatch" style="background:var(--crit)"></i> Hard fail → escalate</span>
+    </p>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#overview">Overview</a>
+    <a href="#pillars">Two halves of a guardrail</a>
+    <a href="#compile">Preventive compile</a>
+    <a href="#flow">The run loop</a>
+    <a href="#g1">1 · Research sufficiency</a>
+    <a href="#g2">2 · Voice fidelity</a>
+    <a href="#g3">3 · Design conformance</a>
+    <a href="#g4">4 · Quality</a>
+    <a href="#judges">The judges</a>
+    <a href="#escalation">Escalation &amp; approval</a>
+    <a href="#output">Output → web page</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <section id="overview">
+    <h2>The shape of a run</h2>
+    <p>A run drives one <b>concept</b> (your topic) through one <b>persona</b> toward a published page. Work happens in two phases — <b>research</b>, then a <b>build → check → refine</b> loop — guarded by <b>four ordered gates</b>. Three more things sit around the gates:</p>
+    <div class="grid two">
+      <div class="card">
+        <h4>Guardrails (Pillar 2)</h4>
+        <p class="small">Shape and police a draft against the persona. Two halves: a <b>preventive</b> compile (persona → system prompt) and <b>detective</b> validators (cheap deterministic checks on the built page).</p>
+      </div>
+      <div class="card">
+        <h4>Checkpoints / Gates (Pillar 3)</h4>
+        <p class="small">Four ordered pass/fail gates with explicit <b>scores</b> and <b>thresholds</b>: research‑sufficiency, voice‑fidelity, design‑conformance, quality. Each returns <code>autoCorrectable</code>, which decides loop vs. escalate.</p>
+      </div>
+    </div>
+    <p>The agent (Anthropic, via the Vercel AI SDK) only ever sees a compiled <code>system</code> string and a <code>prompt</code>. Everything below is the machinery that builds that string, judges the result, and turns the winning draft into a hostable file.</p>
+    <p class="src">Source: <code>backend/src/orchestrator/run-engine.ts</code> · <code>backend/src/checkpoints/*</code> · <code>backend/src/guardrails/*</code> · <code>backend/src/material/sink.ts</code></p>
+  </section>
+
+  <section id="pillars">
+    <h2>A guardrail has two halves</h2>
+    <p>The Guardrails pillar is split so the same persona both <i>shapes</i> the first attempt and <i>polices</i> the result — without an LLM in the policing path.</p>
+    <div class="grid two">
+      <div class="card">
+        <h3 style="margin-top:0">Preventive <span class="badge b-det">deterministic</span></h3>
+        <p class="small"><code>compilePersonaSystem(persona)</code> flattens the persona into the Anthropic <b>system prompt</b> — voice, exemplar, style, learnings, design tokens. Same persona → byte‑identical output; never throws.</p>
+        <p class="src"><code>backend/src/guardrails/compile.ts</code></p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Detective <span class="badge b-det">deterministic</span></h3>
+        <p class="small"><code>buildValidators(persona)</code> returns pure <code>(page, persona) → findings</code> functions — design‑token presence, banned‑phrase scan, structure. These power the <b>design‑conformance</b> gate. No network, no model.</p>
+        <p class="src"><code>backend/src/guardrails/validators.ts</code></p>
+      </div>
+    </div>
+    <p><code>guardrailEngine.compile(persona)</code> returns <code>{ systemPrompt, validators }</code> — the preventive string and the detective set, together.</p>
+  </section>
+
+  <section id="compile">
+    <h2>Preventive compile: persona → system prompt</h2>
+    <p>The system prompt is assembled from these persona fields, in this fixed order. Empty sections are omitted (not emitted blank), which is what makes <b>recompile‑on‑enrich</b> safe to re‑run mid‑flight.</p>
+    <table>
+      <thead><tr><th>Persona field</th><th>Becomes (section)</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code>, <code>voice</code></td><td><code>You write in the authentic voice of "&lt;name&gt;". Voice: &lt;voice&gt;</code></td></tr>
+        <tr><td><code>voiceSample</code></td><td><code>## VOICE EXEMPLAR — imitate the rhythm and diction…</code> (+ legacy <code>Voice sample to match:</code> line the judge keys on)</td></tr>
+        <tr><td><code>stylePoints[]</code></td><td><code>## Style points:</code> (joined + bulleted)</td></tr>
+        <tr><td><code>keyLearnings[]</code></td><td><code>## Key learnings to draw on:</code></td></tr>
+        <tr><td><code>designElements</code> <span class="muted small">(the “theme”)</span></td><td><code>## Design system:</code> rendered as <code>- key=value</code> over the fixed vocabulary <code>palette · typography · layout · tone</code></td></tr>
+      </tbody>
+    </table>
+    <p class="src"><code>compilePersonaSystem()</code> in <code>backend/src/guardrails/compile.ts</code> · vocabulary in <code>guardrails/vocabulary.ts</code></p>
+  </section>
+
+  <section id="flow">
+    <h2>The run loop, step by step</h2>
+    <p>This is the exact control flow in <code>run-engine.ts</code>. Caps: <span class="badge b-thresh">MAX_RESEARCH_ATTEMPTS = 2</span> <span class="badge b-thresh">MAX_ATTEMPTS = 2</span> (initial + one retry each).</p>
+
+    <div class="flow">
+      <div class="step">
+        <div class="dot">1</div>
+        <div class="body">
+          <div class="title">Compile the persona</div>
+          <p class="small muted">Build <code>system</code> + detective <code>validators</code> from the persona. Seed the run context (concept, attempt = 1).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="dot">2</div>
+        <div class="body">
+          <div class="title">Research</div>
+          <p class="small muted"><code>agent.research({ system, concept })</code> → research text + sources.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="dot">G1</div>
+        <div class="body">
+          <div class="title">Gate · Research sufficiency <span class="badge b-det">deterministic</span></div>
+          <div class="branch pass"><b class="arrow">pass</b> (≥ 3 sources) → proceed to build.</div>
+          <div class="branch fail"><b class="arrow">fail</b> → re‑research <b>once</b> with the gate’s guidance; still failing → <b>escalate</b> (“topic is research‑light”).</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="dot">3</div>
+        <div class="body">
+          <div class="title">Build (or refine)</div>
+          <p class="small muted"><code>agent.build({ system, research, feedback? })</code> → a <code>Webpage</code> object. Attempt 1 is a <i>build</i>; later attempts are <i>refine</i> and carry the composed feedback.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="dot">G2–4</div>
+        <div class="body">
+          <div class="title">Gates · voice → design → quality, in order</div>
+          <p class="small muted">Each emits a <code>draft</code> event with its score so the live UI shows the verdict per attempt.</p>
+          <div class="branch pass"><b class="arrow">all pass</b> → pause at the <b>human approval</b> gate (does <i>not</i> auto‑publish).</div>
+          <div class="branch hard"><b class="arrow">hard fail</b> (any gate with <code>autoCorrectable:false</code>) → <b>escalate immediately</b>.</div>
+          <div class="branch fail"><b class="arrow">soft fail</b> → if attempts remain, compose feedback &amp; <b>refine</b> (back to step 3); else <b>escalate</b> (“exhausted attempts”).</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="dot">4</div>
+        <div class="body">
+          <div class="title">Human approval → Publish</div>
+          <p class="small muted">On <code>approve_anyway</code>, the last draft is published: rendered to a self‑contained HTML file + a receipt. See <a href="#output">Output → web page</a>.</p>
+        </div>
+      </div>
+    </div>
+    <p class="src"><code>buildAndCheck()</code> &amp; <code>start()</code> in <code>backend/src/orchestrator/run-engine.ts</code>. Gate order: <code>const BUILD_GATES = ["voice-fidelity","design-conformance","quality"]</code>.</p>
+  </section>
+
+  <h2 style="margin-bottom:.2em">The four gates in detail</h2>
+  <p class="muted small" style="margin-top:0">Every gate returns the same shape: <code>{ passed, score, threshold, details, autoCorrectable, feedback?, alarms[] }</code>. <code>autoCorrectable</code> is the load‑bearing flag — <b>true</b> ⇒ the loop may refine; <b>false</b> ⇒ escalate to a human.</p>
+
+  <section id="g1">
+    <div class="card">
+      <h3 style="margin-top:0">Gate 1 · Research sufficiency <span class="badge b-det">deterministic</span></h3>
+      <div class="pill-row">
+        <span class="badge b-thresh">threshold: ≥ 3 distinct sources</span>
+        <span class="badge b-hard">autoCorrectable: false</span>
+        <span class="badge b-warn">alarm: INSUFFICIENT_RESEARCH</span>
+      </div>
+      <p>Runs <b>before</b> any build. Counts <b>distinct, non‑empty</b> entries in <code>research.sources</code> (trimmed + de‑duped). No LLM — the demo can rely on identical pass/fail every time.</p>
+      <div class="formula">score = distinctSources.length &nbsp;·&nbsp; pass = score &gt;= RESEARCH_MIN_SOURCES (3)</div>
+      <p class="small">You can’t “refine” your way to more sources, so failure is <b>not</b> auto‑correctable: the engine re‑researches once with the gate’s feedback; if it still can’t clear the bar it escalates with <i>“Topic appears research‑light: only N source(s)… need ≥ 3.”</i></p>
+      <div class="note"><b>Reality check:</b> the default AI‑SDK <code>AnthropicAgent.research()</code> has no server‑side web search yet, so it returns <code>sources: []</code> → this gate fails → re‑research → escalation. Only the <code>anthropic-research</code> worker (raw SDK + real <code>web_search</code>) populates sources.</p>
+      <p class="src"><code>backend/src/checkpoints/research-sufficiency.ts</code></p>
+    </div>
+  </section>
+
+  <section id="g2">
+    <div class="card">
+      <h3 style="margin-top:0">Gate 2 · Voice fidelity <span class="badge b-judge">judge</span></h3>
+      <div class="pill-row">
+        <span class="badge b-thresh">threshold: VOICE_THRESHOLD = 0.75</span>
+        <span class="badge b-soft">autoCorrectable: true</span>
+        <span class="badge b-warn">alarm: VOICE_DRIFT</span>
+        <span class="badge b-crit">on judge error: CHECKPOINT_ERROR</span>
+      </div>
+      <p>Scores the built page against the persona’s <code>voiceSample</code> + style. The judge is <b>injectable</b>: a deterministic offline judge by default, swappable for a real LLM judge via deps. Pass iff <code>score ≥ 0.75</code>.</p>
+      <div class="formula">passed = judgeScore &gt;= 0.75 &nbsp; → &nbsp; on fail, feedback quotes the voiceSample + stylePoints to redraft against</div>
+      <p class="small"><b>Fail‑closed:</b> if the judge throws, the gate returns <code>score 0</code>, <code>autoCorrectable:false</code>, and a <b>critical</b> <code>CHECKPOINT_ERROR</code> — a broken judge can never pass a page (never fail‑open).</p>
+      <p class="src"><code>backend/src/checkpoints/voice-fidelity.ts</code></p>
+    </div>
+  </section>
+
+  <section id="g3">
+    <div class="card">
+      <h3 style="margin-top:0">Gate 3 · Design conformance <span class="badge b-det">deterministic</span></h3>
+      <div class="pill-row">
+        <span class="badge b-thresh">threshold: 1.0 — ALL findings must pass</span>
+        <span class="badge b-soft">autoCorrectable: true (on failures)</span>
+        <span class="badge b-warn">alarm: DESIGN_DRIFT</span>
+      </div>
+      <p>Runs the persona’s <b>detective validators</b> over the built page and folds their findings into a score. Pass <b>iff every finding passes</b>.</p>
+      <div class="formula">score = (total − failed) / total &nbsp;·&nbsp; pass = (failed.length === 0)</div>
+      <p class="small muted">If there’s no page yet or no validators wired, it passes <i>vacuously</i> (score 1, <code>autoCorrectable:false</code>). Three validator families run:</p>
+      <table>
+        <thead><tr><th>Validator</th><th>Checks</th><th>Rule id</th></tr></thead>
+        <tbody>
+          <tr><td><b>designToken</b></td><td>Declared <code>typography / layout / palette</code> values appear as marker fragments in the page’s CSS+HTML. <code>tone</code> is a soft signal (not hard‑gated). Uses <code>antiMarkers</code> so e.g. <code>serif</code> doesn’t match inside <code>sans-serif</code>.</td><td><code>design-token:&lt;key&gt;</code></td></tr>
+          <tr><td><b>bannedPhrase</b></td><td>Page text must not contain character‑leak phrasings (see floor below); persona may extend via a <code>bannedPhrases</code> token. One finding per hit.</td><td><code>banned-phrase</code></td></tr>
+          <tr><td><b>structure</b></td><td>Non‑empty <code>title</code>; at least one <code>&lt;h1&gt;</code>; body text ≥ <b>200 chars</b>.</td><td><code>structure:title</code> · <code>:heading</code> · <code>:length</code></td></tr>
+        </tbody>
+      </table>
+      <h4>Marker vocabulary (examples)</h4>
+      <pre><code>typography  serif → [serif, georgia, times, garamond]   (anti: sans-serif)
+            sans  → [sans-serif, helvetica, arial, inter, system-ui]
+            mono  → [monospace, mono, courier, menlo]
+layout      grid  → [display:grid, grid-template, grid-template-columns]
+            single-column → [max-width, margin:0 auto, flex-direction:column]
+palette     warm  → [#f, #e, rgb(, hsl(, beige, cream, tan, brown, amber]
+            mono  → [#000, #fff, black, white, #111, #eee, #f5f5f5]</code></pre>
+      <h4>Banned‑phrase floor</h4>
+      <pre><code>"as an ai"  ·  "as a language model"  ·  "i cannot"  ·  "i'm sorry, but"
+"system prompt"  ·  "as requested by the persona"  ·  "lorem ipsum"</code></pre>
+      <p class="src"><code>backend/src/checkpoints/design-conformance.ts</code> · <code>guardrails/validators.ts</code> · <code>guardrails/vocabulary.ts</code></p>
+    </div>
+  </section>
+
+  <section id="g4">
+    <div class="card">
+      <h3 style="margin-top:0">Gate 4 · Quality <span class="badge b-judge">judge</span></h3>
+      <div class="pill-row">
+        <span class="badge b-thresh">threshold: QUALITY_THRESHOLD = 0.75</span>
+        <span class="badge b-soft">autoCorrectable: true</span>
+        <span class="badge b-warn">alarm: INSUFFICIENT_QUALITY</span>
+        <span class="badge b-crit">on judge error: CHECKPOINT_ERROR</span>
+      </div>
+      <p>The final gate: is the page good enough to publish? Same injectable‑judge + fail‑closed contract as voice fidelity. Pass iff <code>score ≥ 0.75</code>; on fail it asks for more depth and a complete summary.</p>
+      <p class="src"><code>backend/src/checkpoints/quality.ts</code></p>
+    </div>
+  </section>
+
+  <section id="judges">
+    <h2>The judges (default = deterministic, LLM‑swappable)</h2>
+    <p>Both judge gates take an injectable <code>Judge: (input) → score in [0,1]</code>. The defaults are token‑free heuristics so the whole harness develops and tests offline; passing a different <code>Judge</code> swaps in a real model behind the same signature. <code>runJudge()</code> wraps every judge <b>fail‑closed</b> — a throw becomes <code>{ ok:false, score:0 }</code>.</p>
+    <div class="grid two">
+      <div class="card">
+        <h4>Deterministic voice judge</h4>
+        <p class="small">How much of the persona’s <code>voiceSample</code> vocabulary the page echoes (Jaccard‑style), plus a small style bonus, minus a penalty for hype words the personas avoid.</p>
+        <div class="formula">coverage = sampleCoverage·0.85 + styleBonus·0.15
+penalty  = min(0.6, hypeHits · 0.15)
+score    = clamp01(coverage − penalty)</div>
+        <p class="small muted">Hype markers: synergy, leverage, disruptive, paradigm, stakeholder, roi, verticals, maximize.</p>
+      </div>
+      <div class="card">
+        <h4>Deterministic quality judge</h4>
+        <p class="small">Two cheap proxies for “did the worker produce something real”: body length and a non‑trivial summary.</p>
+        <div class="formula">contentScore = clamp01(bodyWords / 60)
+summaryScore = clamp01(summaryWords / 8)
+score = clamp01(contentScore·0.7 + summaryScore·0.3)</div>
+      </div>
+    </div>
+    <p class="src"><code>backend/src/checkpoints/judge.ts</code> — <code>deterministicVoiceJudge</code>, <code>deterministicQualityJudge</code>, <code>runJudge</code>.</p>
+  </section>
+
+  <section id="escalation">
+    <h2>Refine, escalate &amp; the human approval gate</h2>
+    <p>What the loop does after a round of gates is decided entirely by the gate results:</p>
+    <ul class="kvs">
+      <li><b>all pass</b><span>Pause at the <b>human approval</b> gate (HITL). Status → <code>awaiting_approval</code>. The page is <i>not</i> auto‑published.</span></li>
+      <li><b>hard fail</b><span>Any gate with <code>autoCorrectable:false</code> (e.g. a judge error, or research‑light) → escalate immediately.</span></li>
+      <li><b>soft fail</b><span>If <code>attempt &lt; MAX_ATTEMPTS</code> → compose feedback &amp; refine. Otherwise escalate (“exhausted N attempts”).</span></li>
+    </ul>
+    <h4>Refine feedback is composed by the checkpoints, not the engine</h4>
+    <p><code>nextBuildFeedback(results)</code> concatenates every failed gate’s <code>feedback</code>, each tagged with its gate name, into the <code>feedback</code> string the next build receives:</p>
+    <pre><code>- [voice-fidelity] The draft reads off-voice for &lt;persona&gt; (scored 0.61, need 0.75)…
+- [design-conformance] Fix these design rules: design-token:typography (…)</code></pre>
+    <h4>Escalation options the human is offered</h4>
+    <div class="pill-row">
+      <span class="badge b-thresh">enrich_persona</span>
+      <span class="badge b-thresh">approve_anyway</span>
+      <span class="badge b-thresh">retry</span>
+      <span class="badge b-thresh">abort</span>
+    </div>
+    <p class="small"><b>enrich_persona</b> reloads the edited persona and <b>recompiles</b> <code>system</code> + <code>validators</code>, then re‑enters from a fresh attempt — so a tweak to voice or design takes effect immediately. <b>approve_anyway</b> publishes the last draft as‑is.</p>
+    <p class="src"><code>escalate()</code>, <code>awaitApproval()</code>, <code>resume()</code> in <code>run-engine.ts</code> · <code>checkpoints/next-build-feedback.ts</code></p>
+  </section>
+
+  <section id="output">
+    <h2>Turning the output into a web page</h2>
+    <p>The build phase doesn’t emit raw text — it returns a <b>typed object</b> via the AI SDK’s <code>generateObject</code>, validated against a Zod schema. That object is what gets rendered and hosted.</p>
+
+    <h3>1 · The typed output contract</h3>
+    <pre><code>WebpageSchema = z.object({
+  title:       z.string().min(1),   // required
+  html:        z.string().min(1),   // required — the body markup
+  css:         z.string(),          // inlined into &lt;style&gt;
+  summary:     z.string(),          // metadata (judged, not rendered)
+  sourcesUsed: z.array(z.string()), // metadata / provenance
+})</code></pre>
+    <p class="small muted">The agent is forced to produce exactly this shape (<code>generateObject({ schema: WebpageSchema, system, prompt })</code>), so the worker can never return prose the sink can’t publish.</p>
+
+    <h3>2 · Render to a single self‑contained file</h3>
+    <p><code>renderHtml(page)</code> assembles one document — the <code>title</code> is HTML‑escaped, the <code>css</code> is inlined into a <code>&lt;style&gt;</code> tag, and the <code>html</code> body is placed verbatim. <code>summary</code> and <code>sourcesUsed</code> stay as metadata and are <i>not</i> written into the file.</p>
+    <pre><code>&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8" /&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1" /&gt;
+  &lt;title&gt;{escaped title}&lt;/title&gt;
+  &lt;style&gt;{css}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  {html}
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+    <h3>3 · The “truly standalone” property</h3>
+    <p><code>isSelfContained(html)</code> is the Pillar‑1 guarantee — the file must render with <b>zero network</b>. Inline <code>&lt;style&gt;</code>/<code>&lt;script&gt;</code> are fine; it rejects any of:</p>
+    <pre><code>&lt;link rel="stylesheet"&gt;   ·   &lt;script src="…"&gt;   ·   @import</code></pre>
+
+    <h3>4 · Publish &amp; receipt</h3>
+    <p>On approval, <code>createFileSink.publish()</code> writes <code>&lt;runId&gt;.html</code> to the published directory and returns a <b>receipt</b>; the engine stores the final webpage, emits a <code>published</code> event over the live stream, and flips the run to <code>published</code>.</p>
+    <pre><code>Receipt = {
+  id,                                  // runId
+  url:        `${baseUrl}/published/${runId}`,
+  bytes,                               // byte length of the file
+  publishedAt,                         // ISO timestamp
+  workerId,                            // which worker produced it
+}</code></pre>
+    <p class="small">The file is then served at <code>GET /published/:id</code>, and the <code>published</code> SSE event is what surfaces the finished page in the live run view and the Gallery.</p>
+    <p class="src"><code>shared/src/contracts/webpage.ts</code> · <code>backend/src/material/sink.ts</code> · <code>publish()</code> in <code>run-engine.ts</code> · <code>publishedRouter</code> in <code>routes/runs.ts</code></p>
+  </section>
+
+  <hr>
+
+  <section>
+    <h2>One‑screen summary</h2>
+    <table>
+      <thead><tr><th>Gate</th><th>Type</th><th>Pass rule</th><th>On fail</th></tr></thead>
+      <tbody>
+        <tr><td>Research sufficiency</td><td><span class="badge b-det">det</span></td><td>≥ 3 distinct sources</td><td><span class="badge b-hard">hard</span> re‑research ×1 → escalate</td></tr>
+        <tr><td>Voice fidelity</td><td><span class="badge b-judge">judge</span></td><td>score ≥ 0.75</td><td><span class="badge b-soft">soft</span> refine (judge error ⇒ hard)</td></tr>
+        <tr><td>Design conformance</td><td><span class="badge b-det">det</span></td><td>all validator findings pass (1.0)</td><td><span class="badge b-soft">soft</span> refine with rule list</td></tr>
+        <tr><td>Quality</td><td><span class="badge b-judge">judge</span></td><td>score ≥ 0.75</td><td><span class="badge b-soft">soft</span> refine (judge error ⇒ hard)</td></tr>
+        <tr><td>Human approval</td><td>HITL</td><td>user approves</td><td>enrich / retry / abort</td></tr>
+      </tbody>
+    </table>
+    <p class="small muted">Loop bounds: 2 research attempts, 2 build attempts. All gates clear ⇒ wait for human ⇒ publish a self‑contained HTML file + receipt.</p>
+  </section>
+
+  <footer>
+    Generated from the Publisher codebase — values reflect the source at the time of writing.
+    Key files: <code>orchestrator/run-engine.ts</code>, <code>checkpoints/{research-sufficiency,voice-fidelity,design-conformance,quality,judge,next-build-feedback}.ts</code>, <code>guardrails/{compile,validators,vocabulary}.ts</code>, <code>material/sink.ts</code>, <code>shared/contracts/webpage.ts</code>.
+  </footer>
+
+</main>
+</body>
+</html>
