@@ -75,6 +75,42 @@ component.** If you need a value that isn't a token, add the token here first.
   a press micro-interaction and token focus ring. **Use this — do not hand-roll
   buttons or use inline styles.**
 
+## Navigation (`components/nav/`)
+
+The global chrome is the editorial **masthead** — a quiet serif wordmark, the
+primary section row, and an auth cluster. It is the only persistent chrome in an
+otherwise typeset product. `AppShell` mounts it once in `app/layout.tsx`, so
+every route inherits the same wayfinding; do not add a second nav.
+
+- **Source of truth — `nav-items.ts`.** `NAV_ITEMS` is the single ordered list of
+  the product's information architecture. Every surface (desktop row + mobile
+  menu) renders from this one list, so the IA can never drift between viewports.
+  Each item carries optional flags: `adminOnly`, `requiresAuth`, `secondary`
+  (de-emphasised, e.g. Demo). **Add or reorder nav items only here.**
+- **Active state — `NavLink` / `isActivePath`.** Active section is derived from
+  `usePathname` and exposed to assistive tech via `aria-current="page"` and to CSS
+  via `data-active`. Home (`/`) matches exactly; every other href matches an exact
+  hit OR a nested route (`/runs` stays active on `/runs/123`), but a mere prefix
+  sibling (`/runs-archive`) is not treated as nested.
+- **Auth cluster — driven by `useAuth`.** Signed out → "Log in" + the single
+  primary CTA "Author your persona". Signed in → user label + shared
+  `LogoutButton`. Loading → nothing, so the bar never flickers a wrong state on
+  rehydrate.
+- **Admin gating.** `adminOnly` items (e.g. "Admin · Telemetry") render only when
+  `user.role === "admin"`; absent for plain users and anonymous visitors. Filtered
+  once via `visibleNavItems(isAdmin)` and the same filtered list feeds both the
+  desktop row and the mobile menu.
+- **Skip link — `SkipLink`.** The first focusable element on the page: visually
+  hidden at rest, snaps into view on focus, and jumps past the masthead to the
+  `#main` landmark (`tabIndex={-1}` in `AppShell`). Part of the accessibility
+  contract — keep it first.
+- **Mobile disclosure — `MobileMenu`.** A single toggle (`aria-expanded` /
+  `aria-controls`) reveals a panel listing the same IA. Closes on a second click
+  or Escape, so keyboard users are never trapped. Desktop row vs. mobile panel are
+  swapped at the CSS breakpoint in `site-nav.css`.
+- **Styling — `site-nav.css`, token-only.** The masthead uses the shared
+  `.anim-fade` entrance and respects the global reduced-motion guard.
+
 ## Hard rules for contributors
 
 - No inline `style={}` color/spacing/type/motion values. Tokens or class names only.
