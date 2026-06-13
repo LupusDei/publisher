@@ -1,6 +1,6 @@
 # Beads Import — OpenTelemetry (maps to EXISTING beads)
 
-> Created in beads; do not re-create. Owner: Kerrigan.
+> Created in beads; do not re-create. Owner: Valerian.
 
 | Bead ID | Title | T-IDs | Type | Pri |
 |---|---|---|---|---|

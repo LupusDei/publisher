@@ -1,6 +1,6 @@
 # Spec — OpenTelemetry & System Telemetry (Epic `publisher-gu0`)
 
-> **Owner:** Kerrigan · **Companion:** `BRIEF.md` (architecture + the 6 metrics, definitive) · **Do FIRST** (gates the admin observability page).
+> **Owner:** Valerian · **Companion:** `BRIEF.md` (architecture + the 6 metrics, definitive) · **Do FIRST** (gates the admin observability page).
 
 ## Problem
 The harness meters domain data (token cost per run) into SQLite, but we have no view into the **system's inner workings** — request latency, run/phase traces, exceptions, error rates by type. The admin observability page needs **error tracking** and system-level metrics that SQLite doesn't capture. OpenTelemetry provides traces + exception capture + a curated metric set, exposed for the admin page.

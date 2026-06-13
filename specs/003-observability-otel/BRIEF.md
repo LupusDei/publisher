@@ -1,6 +1,6 @@
 # Brief — OpenTelemetry & System Telemetry (Epic 1)
 
-> **Owner:** Kerrigan · **Author:** Tassadar · **Status:** handoff brief
+> **Owner:** Valerian · **Author:** Tassadar · **Status:** handoff brief
 > **Do this one FIRST** — the admin observability page (Epic 3) consumes the error tracking + system metrics defined here.
 
 ## Goal
