@@ -43,6 +43,17 @@ export const AVAILABLE_WORKERS: readonly WorkerOption[] = [
   },
 ] as const;
 
+/**
+ * The BUILD models the run-form picker offers (rrt.6). Research always runs on
+ * the fixed web-research worker server-side, so the picker only chooses who
+ * BUILDS the page — the non-building `anthropic-research` worker is excluded.
+ * `AVAILABLE_WORKERS` stays complete for labelling historical runs.
+ */
+export const BUILDER_WORKERS: readonly WorkerOption[] = AVAILABLE_WORKERS.filter(
+  (w) => w.id !== "anthropic-research",
+);
+
+/** Default BUILD model (Opus is the most capable). */
 export const DEFAULT_WORKER_ID = "opus";
 
 /** POST /runs input. `workerId` is optional (R11); backend defaults it. */

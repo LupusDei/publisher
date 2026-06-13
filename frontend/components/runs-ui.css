@@ -938,3 +938,11 @@ section h3 {
   flex-wrap: wrap;
   margin: 0 0 20px;
 }
+
+/* rrt.6 — small helper note under the builder-model picker */
+.start-run-form .field-hint {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text-muted, #6b6b6b);
+}

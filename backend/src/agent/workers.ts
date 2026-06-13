@@ -55,8 +55,21 @@ export const AVAILABLE_WORKERS: readonly WorkerDescriptor[] = [
   },
 ] as const;
 
-/** The default real worker id when none is specified. */
+/** The default BUILD worker id when none is specified (rrt.6: the picker
+ * chooses the builder; Opus is the most capable default). */
 export const DEFAULT_WORKER_ID = "opus";
+
+/**
+ * The fixed RESEARCH worker (rrt.6). Research ALWAYS runs through this worker
+ * (real `web_search`/`web_fetch`) regardless of the build model the user picks,
+ * so every run gathers real sources while the picker only selects who builds.
+ */
+export const RESEARCH_WORKER_ID = "anthropic-research";
+
+/** The selectable BUILD models the run-form picker offers (rrt.6) — the
+ * web-research worker is implicit and not a build choice. */
+export const BUILDER_WORKERS: readonly WorkerDescriptor[] =
+  AVAILABLE_WORKERS.filter((w) => w.impl === "vercel-ai-sdk");
 
 /**
  * Resolve a (possibly undefined or unknown) workerId to a descriptor, falling

@@ -39,6 +39,7 @@ import { persistAlarms } from "../observability/persist.js";
 import { nextBuildFeedback } from "../checkpoints/next-build-feedback.js";
 import { RESEARCH_MIN_SOURCES } from "../checkpoints/research-sufficiency.js";
 import { errorToAlarm } from "../agent/alarm-mapping.js";
+import { RESEARCH_WORKER_ID } from "../agent/workers.js";
 import {
   createNoopTelemetry,
   type Telemetry,
@@ -138,12 +139,19 @@ interface RunContext {
   runId: string;
   workerId: string;
   /**
-   * The agent built FOR THIS RUN's worker (rrt.2.1). Resolved once in `start()`
-   * (from the per-run factory, or the legacy single injected agent) and reused
-   * across the build/refine loop and resume so every agent call in a run goes
-   * to the same worker the run is labelled with.
+   * The BUILD agent — the model the user picked to compile the final page
+   * (rrt.2.1/rrt.6). Resolved once from the per-run factory (or the legacy
+   * single injected agent) and reused across the build/refine loop and resume.
+   * The run is labelled with this worker.
    */
   agent: Agent;
+  /**
+   * The RESEARCH agent (rrt.6) — ALWAYS the web-research worker, independent of
+   * the picked build model, so every run researches with real sources while the
+   * user only chooses who builds. In mock/legacy single-agent setups this is the
+   * same agent as `agent`.
+   */
+  researchAgent: Agent;
   persona: Persona;
   material: Material;
   system: string;
@@ -512,7 +520,7 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
       emit(ctx, { t: "phase", phase: "research" });
       try {
         ctx.research = await metered(ctx, "research", () =>
-          ctx.agent.research({
+          ctx.researchAgent.research({
             system: ctx.system,
             concept: researchGuidance
               ? `${ctx.material.concept}\n\n[Research guidance — go broader/deeper]: ${researchGuidance}`
@@ -589,9 +597,11 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     const ctx: RunContext = {
       runId,
       workerId: run.workerId,
-      // Rebuild the per-run agent from the persisted worker (rrt.2) so a
-      // rehydrated run's retry/enrich re-research uses the right model.
+      // Rebuild the per-run agents from the persisted worker (rrt.2/rrt.6) so a
+      // rehydrated run's retry/enrich uses the right build model and still
+      // researches via the fixed research worker.
       agent: agentForWorker(run.workerId),
+      researchAgent: agentForWorker(RESEARCH_WORKER_ID),
       persona,
       material: { concept: run.concept, persona },
       system: compiled.systemPrompt,
@@ -630,8 +640,11 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
       const ctx: RunContext = {
         runId,
         workerId,
-        // Build the agent for THIS run's worker once, up front (rrt.2.1).
+        // Build the agent for THIS run's worker once, up front (rrt.2.1). The
+        // research agent is the fixed web-research worker (rrt.6) — the picked
+        // model only builds; research always gathers real sources.
         agent: agentForWorker(workerId),
+        researchAgent: agentForWorker(RESEARCH_WORKER_ID),
         persona: material.persona,
         material,
         system: compiled.systemPrompt,

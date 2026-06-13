@@ -10,7 +10,9 @@ export { AnthropicAgent } from "./anthropic-agent.js";
 export { AnthropicResearchAgent } from "./anthropic-research-agent.js";
 export {
   AVAILABLE_WORKERS,
+  BUILDER_WORKERS,
   DEFAULT_WORKER_ID,
+  RESEARCH_WORKER_ID,
   resolveWorker,
   type WorkerDescriptor,
   type WorkerImpl,

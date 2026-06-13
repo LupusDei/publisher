@@ -7,7 +7,7 @@
 "use client";
 
 import { useState } from "react";
-import { AVAILABLE_WORKERS, DEFAULT_WORKER_ID } from "@/app/runs/run-api";
+import { BUILDER_WORKERS, DEFAULT_WORKER_ID } from "@/app/runs/run-api";
 
 /** Minimal persona shape the picker needs (id + name). */
 export interface PersonaOption {
@@ -105,18 +105,22 @@ export function StartRunForm({
         onChange={(e) => setConcept(e.target.value)}
       />
 
-      <label htmlFor="worker-select">Worker (R11 swap)</label>
+      <label htmlFor="worker-select">Builder model</label>
       <select
         id="worker-select"
         value={workerId}
         onChange={(e) => setWorkerId(e.target.value)}
       >
-        {AVAILABLE_WORKERS.map((w) => (
+        {BUILDER_WORKERS.map((w) => (
           <option key={w.id} value={w.id}>
             {w.label}
           </option>
         ))}
       </select>
+      <p className="field-hint">
+        Research always uses real web search to gather sources; this model builds
+        the final page.
+      </p>
 
       {error && (
         <p role="alert" className="form-error">

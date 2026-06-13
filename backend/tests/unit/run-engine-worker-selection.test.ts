@@ -169,6 +169,58 @@ describe("RunEngine — per-run worker selection (rrt.2.1)", () => {
     expect(requested).toContain("sonnet");
   });
 
+  it("rrt.6: researches via the research worker, builds via the picked model", async () => {
+    const researchBy: string[] = [];
+    const buildBy: string[] = [];
+    const factory = (workerId: string | undefined): Agent => {
+      const id = workerId ?? "?";
+      return {
+        async research(): Promise<AgentResult<ResearchResult>> {
+          researchBy.push(id);
+          return {
+            value: {
+              text: `research by ${id}`,
+              sources: [
+                "https://a.example",
+                "https://b.example",
+                "https://c.example",
+              ],
+            },
+            usage: usage(),
+            finishReason: "stop",
+          };
+        },
+        async build(input): Promise<AgentResult<Webpage>> {
+          buildBy.push(id);
+          const onVoice = input.feedback !== undefined;
+          return {
+            value: {
+              title: "Here's the idea, plainly",
+              html: onVoice
+                ? "<main><h1>Here's the idea, plainly</h1><p>You already feel this. In plain terms, no jargon, no hedging — here's what it means for you.</p></main>"
+                : "<main><h1>Furthermore</h1><p>The aforementioned treatise warrants exhaustive scholarly elaboration herein.</p></main>",
+              css: "",
+              summary: `Built by ${id} over 3 sources.`,
+              sourcesUsed: ["a", "b", "c"],
+            },
+            usage: usage(),
+            finishReason: "stop",
+          };
+        },
+      };
+    };
+    const engine = makeEngineWithFactory(db, factory);
+
+    await engine.start({ runId: "run_split", material, workerId: "sonnet" });
+
+    // Research ALWAYS runs on the fixed research worker; the picked model only
+    // builds. The two phases use genuinely different agents (rrt.6).
+    expect(researchBy).toContain("anthropic-research");
+    expect(researchBy).not.toContain("sonnet");
+    expect(buildBy).toContain("sonnet");
+    expect(buildBy).not.toContain("anthropic-research");
+  });
+
   it("should run end-to-end on the factory-built agent (no single injected agent)", async () => {
     // Use the MockAgent (scripted drift→pass) so the run actually clears the
     // voice gate; the point of this test is that the engine runs entirely off a

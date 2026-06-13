@@ -25,7 +25,7 @@ describe("StartRunForm", () => {
     render(<StartRunForm personas={personas} onStart={onStart} />);
     await user.selectOptions(screen.getByLabelText("Persona"), "p_2");
     await user.type(screen.getByLabelText("Concept"), "On Emergence");
-    await user.selectOptions(screen.getByLabelText(/Worker/), "sonnet");
+    await user.selectOptions(screen.getByLabelText("Builder model"), "sonnet");
     await user.click(screen.getByRole("button", { name: "Start run" }));
     await waitFor(() =>
       expect(onStart).toHaveBeenCalledWith({
@@ -34,6 +34,22 @@ describe("StartRunForm", () => {
         workerId: "sonnet",
       }),
     );
+  });
+
+  it("should offer only build models — not the research worker (rrt.6)", async () => {
+    render(
+      <StartRunForm
+        personas={personas}
+        onStart={vi.fn(async () => ({ runId: "r" }))}
+      />,
+    );
+    const builder = screen.getByLabelText("Builder model") as HTMLSelectElement;
+    const optionValues = Array.from(builder.options).map((o) => o.value);
+    expect(optionValues).toContain("opus");
+    expect(optionValues).toContain("sonnet");
+    expect(optionValues).not.toContain("anthropic-research");
+    // Opus is the default build model.
+    expect(builder.value).toBe("opus");
   });
 
   it("should surface a start error inline (error handling)", async () => {

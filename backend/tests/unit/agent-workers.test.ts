@@ -25,7 +25,9 @@ import {
   MockAgent,
   AnthropicAgent,
   AVAILABLE_WORKERS,
+  BUILDER_WORKERS,
   DEFAULT_WORKER_ID,
+  RESEARCH_WORKER_ID,
   resolveWorker,
 } from "../../src/agent/index.js";
 
@@ -50,6 +52,17 @@ describe("worker registry (R8/R11)", () => {
   it("should expose a distinct second worker (e.g. opus vs sonnet)", () => {
     const models = new Set(AVAILABLE_WORKERS.map((w) => w.model));
     expect(models.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it("rrt.6: research worker is the web-research impl, excluded from builders", () => {
+    const research = AVAILABLE_WORKERS.find((w) => w.id === RESEARCH_WORKER_ID);
+    expect(research?.impl).toBe("anthropic-research");
+    // BUILDER_WORKERS are the user-selectable build models — never the research
+    // worker, and all backed by the vercel-ai-sdk build impl.
+    const builderIds = BUILDER_WORKERS.map((w) => w.id);
+    expect(builderIds).not.toContain(RESEARCH_WORKER_ID);
+    expect(builderIds).toContain(DEFAULT_WORKER_ID);
+    expect(BUILDER_WORKERS.every((w) => w.impl === "vercel-ai-sdk")).toBe(true);
   });
 });
 
