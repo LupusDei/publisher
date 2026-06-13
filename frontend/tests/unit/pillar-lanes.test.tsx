@@ -13,13 +13,6 @@ describe("PillarLanes", () => {
     expect(screen.getByText("Observability")).toBeInTheDocument();
   });
 
-  it("should render the sealed-agent box showing system+messages+feedback only (R1)", () => {
-    render(<PillarLanes view={emptyRunView("r")} />);
-    expect(screen.getByLabelText(/Agent .sealed worker/)).toBeInTheDocument();
-    expect(screen.getByText("system")).toBeInTheDocument();
-    expect(screen.getByText("feedback")).toBeInTheDocument();
-  });
-
   it("should bucket folded events into their lanes (happy path)", () => {
     const view = applyEvents(emptyRunView("r"), mockRunEvents("r"));
     render(<PillarLanes view={view} />);
@@ -38,18 +31,5 @@ describe("PillarLanes", () => {
       name: /Run event stream by pillar/,
     });
     expect(region).toHaveAttribute("aria-live", "polite");
-  });
-
-  it("should NOT mark the sealed box as working before a phase is set (motion: idle)", () => {
-    render(<PillarLanes view={emptyRunView("r")} />);
-    const box = screen.getByLabelText(/Agent .sealed worker/);
-    expect(box).not.toHaveClass("sealed-working");
-  });
-
-  it("should mark the sealed box working once a phase is active so the seal breathes (motion)", () => {
-    const view = { ...emptyRunView("r"), phase: "build" as const };
-    render(<PillarLanes view={view} />);
-    const box = screen.getByLabelText(/Agent .sealed worker/);
-    expect(box).toHaveClass("sealed-working");
   });
 });

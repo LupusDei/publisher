@@ -155,6 +155,31 @@ textarea:focus-visible {
 }
 
 /* ── Run header + connection banner ──────────────────────────────────── */
+/* Run-detail title — same idiom as the Recent-runs cards: a status + time-ago
+ * meta row above the concept-as-heading. The raw run UUID is not shown. */
+.run-title {
+  margin: 8px 0 20px;
+}
+.run-title-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.run-title-ago {
+  color: var(--muted);
+  font-size: var(--step--1);
+  white-space: nowrap;
+}
+.run-title-concept {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
 .run-view {
   display: grid;
   gap: 20px;
@@ -167,6 +192,12 @@ textarea:focus-visible {
   gap: 12px;
   border-bottom: 1px solid var(--line);
   padding-bottom: 14px;
+}
+.run-header-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 .run-status {
   text-transform: uppercase;
@@ -199,7 +230,6 @@ textarea:focus-visible {
 .run-worker {
   font-size: 14px;
   color: var(--muted);
-  margin-left: 12px;
 }
 
 .conn-banner {

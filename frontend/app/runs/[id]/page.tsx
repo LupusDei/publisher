@@ -11,6 +11,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Run, Persona } from "@publisher/shared";
 import { fetchRun } from "../run-api";
+import { timeAgo, absoluteTime } from "../time-ago";
 import { LiveRunPanel } from "@/components/LiveRunPanel";
 import { CompiledGuardrailPanel } from "@/components/CompiledGuardrailPanel";
 import { RequireAuth } from "../../auth/RequireAuth";
@@ -62,7 +63,24 @@ function RunDetailView(): React.ReactElement {
         <Link href="/runs/demo">Demo</Link>
         <Link href="/runs/gallery">Gallery</Link>
       </nav>
-      <h1>Run {runId}</h1>
+      {/* Title in the Recent-runs idiom: the concept is the prominent heading
+       * with a time-ago for context; the raw UUID is not surfaced. The live
+       * run status renders just below (RunView header), so it stays accurate as
+       * the run progresses rather than freezing at the load-time value. */}
+      <header className="run-title">
+        {run?.createdAt && (
+          <div className="run-title-meta">
+            <time
+              className="run-title-ago"
+              dateTime={run.createdAt}
+              title={absoluteTime(run.createdAt)}
+            >
+              {timeAgo(run.createdAt)}
+            </time>
+          </div>
+        )}
+        <h1 className="run-title-concept">{run?.concept || "Untitled run"}</h1>
+      </header>
 
       {error && (
         <p role="alert" className="form-error">

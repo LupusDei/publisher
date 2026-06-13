@@ -49,6 +49,23 @@ export function RunView({
 }: RunViewProps): React.ReactElement {
   return (
     <div className="run-view">
+      {/* ACTION ZONE — anything that needs the user surfaces FIRST, so they
+       * never scroll to learn a decision is required. Escalation (R10) +
+       * terminal outcomes live here, above the live lanes. */}
+      {view.escalation && onDecide && (
+        <EscalationPanel
+          escalation={view.escalation}
+          persona={persona}
+          onDecide={onDecide}
+        />
+      )}
+      {view.status === "published" && view.receipt && (
+        <PublishedPreview receipt={view.receipt} base={base} />
+      )}
+      {view.status === "failed" && (
+        <RefusedToPublish reason={view.failureReason ?? "Unknown failure"} />
+      )}
+
       <header className="run-header">
         <div className="run-header-main">
           <span className={`run-status status-${view.status}`}>
@@ -66,7 +83,7 @@ export function RunView({
 
       <ConnectionBanner connection={connection} onReconnect={onReconnect} />
 
-      {/* The HERO: four pillar lanes + the sealed agent box (R1). */}
+      {/* The four live pillar lanes (R1). */}
       <PillarLanes view={view} />
 
       <div className="run-columns">
@@ -88,23 +105,6 @@ export function RunView({
             ))}
           </div>
         </section>
-      )}
-
-      {/* Escalation (R10) — only while a decision is pending. */}
-      {view.escalation && onDecide && (
-        <EscalationPanel
-          escalation={view.escalation}
-          persona={persona}
-          onDecide={onDecide}
-        />
-      )}
-
-      {/* Terminal screens. */}
-      {view.status === "published" && view.receipt && (
-        <PublishedPreview receipt={view.receipt} base={base} />
-      )}
-      {view.status === "failed" && (
-        <RefusedToPublish reason={view.failureReason ?? "Unknown failure"} />
       )}
 
       {/* Empty state before anything streams. */}

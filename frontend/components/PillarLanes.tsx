@@ -75,37 +75,6 @@ function Lane({
   );
 }
 
-/** The agent as a sealed box: it only ever receives system + messages + feedback. */
-function SealedAgentBox({
-  phase,
-}: {
-  phase?: string | undefined;
-}): React.ReactElement {
-  // Motion only: while the worker is mid-run (a phase is set) the seal breathes.
-  const working = Boolean(phase);
-  return (
-    <aside
-      className={`sealed-agent${working ? " sealed-working" : ""}`}
-      aria-label="Agent (sealed worker)"
-    >
-      <div className="sealed-head">
-        <span className="sealed-lock" aria-hidden="true">
-          ▣
-        </span>
-        Agent · sealed worker
-      </div>
-      <p className="sealed-note">
-        Receives only <code>system</code> + <code>messages</code> +{" "}
-        <code>feedback</code>. It cannot see the pillars; the harness governs
-        every constraint around it.
-      </p>
-      <p className="sealed-phase">
-        Current phase: <strong>{phase ?? "idle"}</strong>
-      </p>
-    </aside>
-  );
-}
-
 export interface PillarLanesProps {
   view: RunView;
 }
@@ -118,7 +87,6 @@ export function PillarLanes({ view }: PillarLanesProps): React.ReactElement {
       aria-live="polite"
       aria-label="Run event stream by pillar"
     >
-      <SealedAgentBox phase={view.phase} />
       <div className="lanes">
         {PILLARS.map((p) => (
           <Lane key={p} pillar={p} entries={view.lanes[p]} />
