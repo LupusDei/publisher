@@ -36,6 +36,14 @@ export interface WorkerOption {
 export const AVAILABLE_WORKERS: readonly WorkerOption[] = [
   { id: "opus", label: "Claude Opus 4.8", model: "claude-opus-4-8" },
   { id: "sonnet", label: "Claude Sonnet 4.6", model: "claude-sonnet-4-6" },
+  // Multi-provider build workers via the Vercel AI Gateway (backend `gateway`
+  // impl). Mirror of backend AVAILABLE_WORKERS — keep the two in sync.
+  { id: "gpt5", label: "GPT-5.4 (via AI Gateway)", model: "openai/gpt-5.4" },
+  {
+    id: "gemini",
+    label: "Gemini 2.5 Pro (via AI Gateway)",
+    model: "google/gemini-2.5-pro",
+  },
   {
     id: "anthropic-research",
     label: "Claude Sonnet 4.6 · real web research",

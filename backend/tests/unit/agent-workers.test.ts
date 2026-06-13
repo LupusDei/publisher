@@ -24,6 +24,7 @@ import {
   createAgent,
   MockAgent,
   AnthropicAgent,
+  GatewayAgent,
   AVAILABLE_WORKERS,
   BUILDER_WORKERS,
   DEFAULT_WORKER_ID,
@@ -62,7 +63,20 @@ describe("worker registry (R8/R11)", () => {
     const builderIds = BUILDER_WORKERS.map((w) => w.id);
     expect(builderIds).not.toContain(RESEARCH_WORKER_ID);
     expect(builderIds).toContain(DEFAULT_WORKER_ID);
-    expect(BUILDER_WORKERS.every((w) => w.impl === "vercel-ai-sdk")).toBe(true);
+    // Build workers may be any provider-backed impl — never the research one.
+    expect(BUILDER_WORKERS.every((w) => w.impl !== "anthropic-research")).toBe(
+      true,
+    );
+  });
+
+  it("should expose multi-provider gateway build workers (one key, every provider)", () => {
+    const gateway = AVAILABLE_WORKERS.filter((w) => w.impl === "gateway");
+    // gpt-5.4 + gemini-2.5-pro at minimum, each a `provider/model` slug.
+    expect(gateway.length).toBeGreaterThanOrEqual(2);
+    expect(gateway.every((w) => w.model.includes("/"))).toBe(true);
+    // They are user-selectable build models (not the research worker).
+    const builderIds = BUILDER_WORKERS.map((w) => w.id);
+    expect(builderIds).toEqual(expect.arrayContaining(["gpt5", "gemini"]));
   });
 });
 
@@ -137,5 +151,27 @@ describe("createAgent worker selection", () => {
     });
     expect(agent).toBeInstanceOf(AnthropicAgent);
     expect(agent.workerId).toBe(DEFAULT_WORKER_ID);
+  });
+
+  it("should build a GatewayAgent for a gateway worker using only the gateway key", () => {
+    // No ANTHROPIC_API_KEY — a gateway worker needs ONLY AI_GATEWAY_API_KEY.
+    const agent = createAgent({
+      USE_REAL_AGENT: true,
+      AI_GATEWAY_API_KEY: "vck-x",
+      workerId: "gpt5",
+    });
+    expect(agent).toBeInstanceOf(GatewayAgent);
+    expect(agent.workerId).toBe("gpt5");
+    expect(agent.model).toBe("openai/gpt-5.4");
+  });
+
+  it("should fall back to MockAgent for a gateway worker when the gateway key is absent", () => {
+    // An ANTHROPIC key does NOT satisfy a gateway worker (error path).
+    const agent = createAgent({
+      USE_REAL_AGENT: true,
+      ANTHROPIC_API_KEY: "sk-x",
+      workerId: "gemini",
+    });
+    expect(agent).toBeInstanceOf(MockAgent);
   });
 });

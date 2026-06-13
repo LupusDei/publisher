@@ -13,6 +13,12 @@ const EnvSchema = z
       .default("development"),
     PORT: z.coerce.number().int().positive().default(4000),
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    /**
+     * Vercel AI Gateway key — one key reaches every provider the gateway serves.
+     * Required only to run a `gateway`-impl build worker (e.g. openai/gpt-5.4,
+     * google/gemini-2.5-pro); Anthropic-backed workers use ANTHROPIC_API_KEY.
+     */
+    AI_GATEWAY_API_KEY: z.string().min(1).optional(),
     DATABASE_PATH: z.string().min(1).default("./publisher.db"),
     USE_REAL_AGENT: z
       .enum(["true", "false"])

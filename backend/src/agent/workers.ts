@@ -15,7 +15,10 @@
  *     `@anthropic-ai/sdk` + server-side `web_search`); REAL sources (D13).
  * Two genuinely-different implementations behind ONE seam = the R8/R11 swap.
  */
-export type WorkerImpl = "vercel-ai-sdk" | "anthropic-research";
+export type WorkerImpl =
+  | "vercel-ai-sdk"
+  | "anthropic-research"
+  | "gateway";
 
 export interface WorkerDescriptor {
   /** Stable, URL-safe id used by the API + UI picker. */
@@ -53,6 +56,22 @@ export const AVAILABLE_WORKERS: readonly WorkerDescriptor[] = [
     model: "claude-sonnet-4-6",
     impl: "anthropic-research",
   },
+  // Multi-provider build workers via the Vercel AI Gateway (one
+  // AI_GATEWAY_API_KEY reaches every provider). `model` is a gateway
+  // `provider/model` slug — verify exact ids against the gateway's model
+  // catalog; adding more is a one-line descriptor each.
+  {
+    id: "gpt5",
+    label: "GPT-5.4 (via AI Gateway)",
+    model: "openai/gpt-5.4",
+    impl: "gateway",
+  },
+  {
+    id: "gemini",
+    label: "Gemini 2.5 Pro (via AI Gateway)",
+    model: "google/gemini-2.5-pro",
+    impl: "gateway",
+  },
 ] as const;
 
 /** The default BUILD worker id when none is specified (rrt.6: the picker
@@ -66,10 +85,12 @@ export const DEFAULT_WORKER_ID = "opus";
  */
 export const RESEARCH_WORKER_ID = "anthropic-research";
 
-/** The selectable BUILD models the run-form picker offers (rrt.6) — the
- * web-research worker is implicit and not a build choice. */
+/** The selectable BUILD models the run-form picker offers (rrt.6) — every
+ * worker EXCEPT the fixed web-research worker (which always runs server-side and
+ * is never a build choice). Build workers may be any provider-backed impl
+ * (`vercel-ai-sdk` direct-Anthropic, or `gateway` multi-provider). */
 export const BUILDER_WORKERS: readonly WorkerDescriptor[] =
-  AVAILABLE_WORKERS.filter((w) => w.impl === "vercel-ai-sdk");
+  AVAILABLE_WORKERS.filter((w) => w.impl !== "anthropic-research");
 
 /**
  * Resolve a (possibly undefined or unknown) workerId to a descriptor, falling

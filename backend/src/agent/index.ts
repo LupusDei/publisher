@@ -1,12 +1,12 @@
 import type { Agent } from "./agent.js";
 import { MockAgent } from "./mock-agent.js";
-import { AnthropicAgent } from "./anthropic-agent.js";
+import { AnthropicAgent, GatewayAgent } from "./anthropic-agent.js";
 import { AnthropicResearchAgent } from "./anthropic-research-agent.js";
 import { resolveWorker, DEFAULT_WORKER_ID } from "./workers.js";
 
 export { type Agent, type ResearchResult } from "./agent.js";
 export { MockAgent } from "./mock-agent.js";
-export { AnthropicAgent } from "./anthropic-agent.js";
+export { AnthropicAgent, GatewayAgent } from "./anthropic-agent.js";
 export { AnthropicResearchAgent } from "./anthropic-research-agent.js";
 export {
   AVAILABLE_WORKERS,
@@ -32,9 +32,12 @@ export {
 export interface AgentSelection {
   USE_REAL_AGENT: boolean;
   ANTHROPIC_API_KEY?: string | undefined;
+  /** Vercel AI Gateway key — required only for `gateway`-impl workers (one key,
+   * every provider). Anthropic-backed workers ignore it. */
+  AI_GATEWAY_API_KEY?: string | undefined;
   /**
-   * Optional worker id (e.g. "opus" | "sonnet" | "anthropic-research"); unknown
-   * ids fall back to the default worker.
+   * Optional worker id (e.g. "opus" | "sonnet" | "gpt5" | "anthropic-research");
+   * unknown ids fall back to the default worker.
    */
   workerId?: string | undefined;
 }
@@ -44,34 +47,44 @@ export interface AgentSelection {
  * worker when explicitly enabled AND a key is present. When real, `workerId`
  * selects among `AVAILABLE_WORKERS` (R11) behind the same `Agent` interface and
  * the descriptor's `impl` decides which concrete implementation is built:
- *   - `vercel-ai-sdk`      → `AnthropicAgent` (no web tools; empty sources)
- *   - `anthropic-research` → `AnthropicResearchAgent` (real `web_search` → real
- *                            source URLs, D13)
- * An unknown id degrades to the default worker. This is the one place the worker
- * is chosen — the orchestrator stays provider-blind.
- *
- * NOTE: the `createAgent` export is consumed by `server.ts`; its name, signature
- * and the MockAgent default are kept stable. The real-research worker and the
- * `impl` branch are purely additive — `server.ts` (which passes no `workerId`)
- * still gets MockAgent by default.
+ *   - `vercel-ai-sdk`      → `AnthropicAgent`  (direct Anthropic; ANTHROPIC_API_KEY)
+ *   - `gateway`           → `GatewayAgent`    (any provider via the Vercel AI
+ *                            Gateway; AI_GATEWAY_API_KEY)
+ *   - `anthropic-research` → `AnthropicResearchAgent` (real `web_search`, D13)
+ * Each impl needs only ITS OWN key — a gateway worker runs with just the gateway
+ * key, an Anthropic worker with just the Anthropic key. When the required key is
+ * missing (or USE_REAL_AGENT is off) the token-free MockAgent is returned, so a
+ * stray pick can never throw. This is the one place the worker is chosen — the
+ * orchestrator stays provider-blind.
  */
 export function createAgent(env: AgentSelection): Agent {
-  if (env.USE_REAL_AGENT && env.ANTHROPIC_API_KEY) {
-    const worker = resolveWorker(env.workerId ?? DEFAULT_WORKER_ID);
-    if (worker.impl === "anthropic-research") {
-      return new AnthropicResearchAgent({
-        apiKey: env.ANTHROPIC_API_KEY,
-        model: worker.model,
-        workerId: worker.id,
-      });
-    }
-    return new AnthropicAgent({
+  if (!env.USE_REAL_AGENT) return new MockAgent();
+  const worker = resolveWorker(env.workerId ?? DEFAULT_WORKER_ID);
+
+  // Gateway-backed workers authenticate with the single AI Gateway key.
+  if (worker.impl === "gateway") {
+    if (!env.AI_GATEWAY_API_KEY) return new MockAgent();
+    return new GatewayAgent({
+      apiKey: env.AI_GATEWAY_API_KEY,
+      model: worker.model,
+      workerId: worker.id,
+    });
+  }
+
+  // Anthropic-backed workers (direct build + the web-research worker).
+  if (!env.ANTHROPIC_API_KEY) return new MockAgent();
+  if (worker.impl === "anthropic-research") {
+    return new AnthropicResearchAgent({
       apiKey: env.ANTHROPIC_API_KEY,
       model: worker.model,
       workerId: worker.id,
     });
   }
-  return new MockAgent();
+  return new AnthropicAgent({
+    apiKey: env.ANTHROPIC_API_KEY,
+    model: worker.model,
+    workerId: worker.id,
+  });
 }
 
 /**
