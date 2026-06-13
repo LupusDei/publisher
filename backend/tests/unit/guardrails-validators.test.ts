@@ -86,6 +86,33 @@ describe("bannedPhraseValidator (dp0.3.2)", () => {
   });
 });
 
+describe("bannedPhraseValidator — persona-declared extras", () => {
+  it("should FAIL when the page contains a persona-declared banned phrase", () => {
+    const strict = {
+      ...essayist,
+      designElements: { ...essayist.designElements, bannedPhrases: "synergy; leverage" },
+    };
+    const salesy: Webpage = {
+      ...goodEssayistPage,
+      html: goodEssayistPage.html.replace("</body>", "<p>Unlock synergy now.</p></body>"),
+    };
+    const findings = bannedPhraseValidator(salesy, strict);
+    expect(findings.some((f) => !f.passed && /synergy/.test(f.detail))).toBe(true);
+  });
+});
+
+describe("designTokenValidator — out-of-vocabulary value (total)", () => {
+  it("should skip (not fail) a declared value with no known markers", () => {
+    const oddTypography = {
+      ...essayist,
+      designElements: { typography: "blackletter-fraktur" },
+    };
+    const findings = designTokenValidator(goodEssayistPage, oddTypography);
+    // no marker rule matches "blackletter-fraktur" → no typography finding emitted
+    expect(findings.find((f) => f.rule.includes("typography"))).toBeUndefined();
+  });
+});
+
 describe("structureValidator (dp0.3.2)", () => {
   it("should PASS a page with a title, an h1, and adequate body length", () => {
     const findings = structureValidator(goodEssayistPage, essayist);

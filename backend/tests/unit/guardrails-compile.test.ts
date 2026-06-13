@@ -61,6 +61,19 @@ describe("compilePersonaSystem (enriched preventive compile — dp0.3.1)", () =>
     expect(out).not.toMatch(/^Voice:\s*$/m);
   });
 
+  it("should surface a non-vocabulary design key deterministically (defensive path)", () => {
+    const withExtra: Persona = {
+      ...sparse,
+      designElements: { palette: "warm", spacing: "loose", motion: "" },
+    };
+    const out = compilePersonaSystem(withExtra);
+    // known vocabulary key rendered first, unknown non-empty key appended
+    expect(out).toContain("- palette=warm");
+    expect(out).toContain("- spacing=loose");
+    // empty unknown value omitted
+    expect(out).not.toContain("motion=");
+  });
+
   it("should remain total — never throw — over a minimal persona", () => {
     const minimal: Persona = {
       id: "x",
