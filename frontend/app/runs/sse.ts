@@ -21,6 +21,25 @@ export interface RunStreamSource {
   close(): void;
 }
 
+/**
+ * Every `t` the run journal emits. The backend tags each SSE message with
+ * `event: <t>` (runs.ts `streamRun`), so a native browser `EventSource`
+ * dispatches them to `addEventListener("<t>", …)` — they do NOT fire the default
+ * `onmessage`. This list must cover the RunEvent union or those events are
+ * silently dropped (the connection opens but no events ever fold).
+ */
+export const RUN_EVENT_TYPES = [
+  "phase",
+  "draft",
+  "checkpoint",
+  "alarm",
+  "metric",
+  "escalation",
+  "resumed",
+  "published",
+  "failed",
+] as const;
+
 /** Parse a raw SSE `data:` payload into a RunEvent, or null if malformed. */
 export function parseRunEvent(raw: string): RunEvent | null {
   try {
@@ -73,10 +92,18 @@ export function eventSourceStream(url: string): RunStreamSource {
   const es = new ES(url);
   es.onopen = (): void => handlers.open();
   es.onerror = (): void => handlers.error();
-  es.onmessage = (msg: MessageEvent<string>): void => {
+
+  const forward = (msg: MessageEvent<string>): void => {
     const parsed = parseRunEvent(msg.data);
     if (parsed) handlers.event(parsed);
   };
+  // The backend names every event (`event: <t>`), so a native EventSource only
+  // delivers them via type-specific listeners — register one per RunEvent type.
+  // `onmessage` is kept as a fallback for any future untyped (default) message.
+  es.onmessage = forward;
+  for (const type of RUN_EVENT_TYPES) {
+    es.addEventListener(type, forward as EventListener);
+  }
 
   return {
     onEvent: (h) => {

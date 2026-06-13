@@ -48,6 +48,7 @@ describe("eventSourceStream", () => {
         this.url = url;
         instances.push(this);
       }
+      addEventListener(): void {}
       close(): void {
         this.closed = true;
       }
@@ -87,5 +88,78 @@ describe("eventSourceStream", () => {
 
     src.close();
     expect(es.closed).toBe(true);
+  });
+
+  it("should forward NAMED SSE events (the real backend tags every event with `event: <t>`)", () => {
+    // Regression: the backend writes `event: phase\ndata: ...`, so a native
+    // EventSource delivers them to addEventListener("phase", ...), NOT onmessage.
+    // A client that only wires onmessage connects ("live") but folds ZERO events
+    // — the run view sits at the empty initial state forever.
+    type Listener = (e: { data: string }) => void;
+    const instances: FakeES[] = [];
+    class FakeES {
+      url: string;
+      onopen: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      onmessage: Listener | null = null;
+      listeners = new Map<string, Listener[]>();
+      closed = false;
+      constructor(url: string) {
+        this.url = url;
+        instances.push(this);
+      }
+      addEventListener(type: string, fn: Listener): void {
+        const arr = this.listeners.get(type) ?? [];
+        arr.push(fn);
+        this.listeners.set(type, arr);
+      }
+      removeEventListener(type: string, fn: Listener): void {
+        this.listeners.set(
+          type,
+          (this.listeners.get(type) ?? []).filter((f) => f !== fn),
+        );
+      }
+      /** Dispatch a NAMED event exactly like a browser EventSource does. */
+      emit(type: string, data: string): void {
+        for (const fn of this.listeners.get(type) ?? []) fn({ data });
+      }
+      close(): void {
+        this.closed = true;
+      }
+    }
+    vi.stubGlobal("EventSource", FakeES);
+
+    const events: string[] = [];
+    const src = eventSourceStream("http://api.test/runs/r/stream");
+    src.onEvent((e) => events.push(e.t));
+
+    const es = instances[0]!;
+    es.emit(
+      "phase",
+      JSON.stringify({ runId: "r", seq: 0, ts: "t", t: "phase", phase: "research" }),
+    );
+    es.emit(
+      "metric",
+      JSON.stringify({
+        runId: "r",
+        seq: 1,
+        ts: "t",
+        t: "metric",
+        pillar: "observability",
+        metrics: { perPhase: {} },
+      }),
+    );
+    es.emit(
+      "escalation",
+      JSON.stringify({
+        runId: "r",
+        seq: 2,
+        ts: "t",
+        t: "escalation",
+        escalation: { id: "e1", runId: "r", reason: "x", alarm: {}, options: [] },
+      }),
+    );
+
+    expect(events).toEqual(["phase", "metric", "escalation"]);
   });
 });
