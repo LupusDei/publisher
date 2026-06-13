@@ -1,0 +1,141 @@
+/*
+ * Home (landing hero) surface styles. Atelier-only: every value is a token
+ * (var(--…)) — no raw hex / px / duration / easing here. Motion is supplied by
+ * the globals.css utilities (.stagger, .anim-rise, .draw-rule); this file only
+ * lays out the editorial hero and the demoted health chip.
+ *
+ * See specs/design/atelier.md. globals.css is the single source of motion +
+ * tokens and is NOT edited by this surface.
+ */
+
+/* The hero gets a wider, more generous measure than the default <main>. */
+.home-main {
+  max-width: 56rem;
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-9);
+}
+
+.home-hero {
+  position: relative;
+}
+
+/* The signature accent rule that draws in beneath the eyebrow. */
+.home-rule {
+  height: 3px;
+  width: var(--space-9);
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--r-pill);
+  margin: var(--space-2) 0 var(--space-5);
+}
+
+.home-headline {
+  font-size: var(--step-6);
+  max-width: 18ch;
+}
+
+.home-lead {
+  max-width: 46ch;
+  margin-bottom: var(--space-7);
+}
+
+/* Primary + secondary CTAs sit on one baseline, wrapping gracefully. */
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  margin-bottom: var(--space-9);
+}
+
+.home-secondary {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: var(--step-0);
+  color: var(--muted);
+  text-decoration: none;
+  transition: color var(--dur-1) var(--ease-out);
+}
+.home-secondary:hover {
+  color: var(--accent-strong);
+}
+.home-secondary .home-arrow {
+  color: var(--accent);
+  transition: transform var(--dur-1) var(--ease-out);
+  display: inline-block;
+}
+.home-secondary:hover .home-arrow {
+  transform: translateX(var(--space-1));
+}
+
+/* ── Capability beats ─────────────────────────────────────────────────── */
+.home-beats {
+  list-style: none;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.home-beat {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-1);
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+.home-beat:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+
+.home-beat-index {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--accent);
+  margin-bottom: var(--space-2);
+}
+
+.home-beat-title {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  line-height: 1.1;
+  margin: 0 0 var(--space-2);
+}
+
+.home-beat-body {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--step--1);
+  line-height: 1.5;
+}
+
+/* ── Demoted health chip ──────────────────────────────────────────────── */
+.home-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--bg-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--step--1);
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.home-chip .dot {
+  width: var(--space-2);
+  height: var(--space-2);
+}
+
+.home-chip-meta {
+  color: color-mix(in srgb, var(--muted) 80%, transparent);
+}

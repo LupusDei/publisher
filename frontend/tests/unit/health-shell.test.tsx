@@ -31,7 +31,7 @@ describe("HomePage (health shell)", () => {
     await waitFor(() =>
       expect(screen.getByText(/backend healthy/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText(/version 1\.4\.2/i)).toBeInTheDocument();
+    expect(screen.getByText(/v1\.4\.2/i)).toBeInTheDocument();
     expect(screen.getByText(/up 73s/i)).toBeInTheDocument();
   });
 

@@ -1,83 +1,84 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { fetchHealth, type Health } from "@/lib/api";
+import Link from "next/link";
+import { buttonClass } from "@/components/ui/Button";
+import { HealthChip } from "@/components/home/HealthChip";
+import "./home.css";
 
-type ViewState =
-  | { kind: "loading" }
-  | { kind: "ok"; health: Health }
-  | { kind: "error"; message: string };
+/** The capability beats — what the harness does, revealed in sequence. */
+const BEATS: ReadonlyArray<{ title: string; body: string }> = [
+  {
+    title: "Persona voice",
+    body: "Author a persona once; every word is written in their voice, not a template's.",
+  },
+  {
+    title: "Live guardrails",
+    body: "The harness watches as the agent works, holding each draft to your standards.",
+  },
+  {
+    title: "Self-correcting drafts",
+    body: "When research falls short, the agent re-researches and revises before you ever see it.",
+  },
+  {
+    title: "Final sign-off",
+    body: "Nothing publishes without you. The finished page waits for your approval.",
+  },
+];
 
 export default function HomePage(): React.ReactElement {
-  const [state, setState] = useState<ViewState>({ kind: "loading" });
-
-  useEffect(() => {
-    let active = true;
-    fetchHealth()
-      .then((health) => {
-        if (active) setState({ kind: "ok", health });
-      })
-      .catch((err: unknown) => {
-        if (active) {
-          setState({
-            kind: "error",
-            message: err instanceof Error ? err.message : "Unknown error",
-          });
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   return (
-    <main>
-      <p className="eyebrow">Gauntlet AI · Harness</p>
-      <h1>Publisher</h1>
-      <p className="lead">
-        Turn a research concept into a persona-voiced, single-page webpage —
-        built by an agent, governed by a harness.
-      </p>
+    <main className="home-main">
+      <section className="home-hero stagger" aria-labelledby="home-headline">
+        <p className="eyebrow" style={{ ["--i" as string]: 0 }}>
+          Gauntlet AI · Harness
+        </p>
 
-      <section className="status-card" aria-labelledby="backend-status-heading">
-        <h2
-          id="backend-status-heading"
-          style={{ fontSize: 14, margin: "0 0 10px", color: "var(--muted)" }}
+        <hr className="home-rule draw-rule" aria-hidden="true" />
+
+        <h1
+          id="home-headline"
+          className="home-headline"
+          style={{ ["--i" as string]: 1 }}
         >
-          Backend connection
-        </h2>
+          Publish beautiful ideas in your own voice.
+        </h1>
 
-        {/* aria-live so assistive tech announces the result when it resolves */}
-        <div role="status" aria-live="polite">
-          {state.kind === "loading" && (
-            <div className="status-row">
-              <span className="dot" aria-hidden="true" />
-              <span>Checking backend…</span>
-            </div>
-          )}
+        <p className="lead home-lead" style={{ ["--i" as string]: 2 }}>
+          Turn a research concept into a persona-voiced, beautiful single-page
+          site — built by an agent, governed by a harness.
+        </p>
 
-          {state.kind === "ok" && (
-            <>
-              <div className="status-row">
-                <span className="dot ok" aria-hidden="true" />
-                <span>Backend healthy</span>
-              </div>
-              <p className="status-meta">
-                version {state.health.version} · up {state.health.uptimeSeconds}
-                s
-              </p>
-            </>
-          )}
+        <div className="home-actions" style={{ ["--i" as string]: 3 }}>
+          <Link href="/onboarding" className={buttonClass("primary", "lg")}>
+            Author your persona →
+          </Link>
+          <Link href="/runs/demo" className="home-secondary">
+            See it run <span className="home-arrow">→</span>
+          </Link>
+        </div>
 
-          {state.kind === "error" && (
-            <>
-              <div className="status-row">
-                <span className="dot error" aria-hidden="true" />
-                <span>Backend unreachable</span>
-              </div>
-              <p className="status-meta">{state.message}</p>
-            </>
-          )}
+        <ul
+          className="home-beats stagger"
+          aria-label="What the harness does"
+          style={{ ["--i" as string]: 4 }}
+        >
+          {BEATS.map((beat, i) => (
+            <li
+              key={beat.title}
+              className="home-beat"
+              style={{ ["--i" as string]: i + 5 }}
+            >
+              <span className="home-beat-index" aria-hidden="true">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <h2 className="home-beat-title">{beat.title}</h2>
+              <p className="home-beat-body">{beat.body}</p>
+            </li>
+          ))}
+        </ul>
+
+        <div style={{ ["--i" as string]: 8 }}>
+          <HealthChip />
         </div>
       </section>
     </main>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { Button, buttonClass } from "@/components/ui/Button";
 import {
   createPersona,
   DESIGN_TOKEN_KEYS,
@@ -10,12 +11,17 @@ import {
   type NewPersona,
   type Persona,
 } from "../personas/persona-api";
+import "./onboarding.css";
 
 type SubmitState =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "created"; persona: Persona }
   | { kind: "error"; message: string };
+
+/** The three required fields, in order of appearance. */
+const REQUIRED_FIELDS = ["name", "voice", "voiceSample"] as const;
+type RequiredField = (typeof REQUIRED_FIELDS)[number];
 
 /** Splits a textarea of one-per-line items into a trimmed, non-empty array. */
 function lines(value: string): string[] {
@@ -26,10 +32,15 @@ function lines(value: string): string[] {
 }
 
 /**
- * Onboarding — the guided form that authors a persona (the declared guardrail).
- * Captures voice, style points, key learnings, the required voiceSample, and
- * design tokens from the FIXED vocabulary (ASSUMPTIONS D3). Intentional
- * loading/success/error states are announced via aria-live regions.
+ * Onboarding — a guided, Atelier-themed flow that authors a persona (the
+ * declared guardrail). Three titled movements — Voice, Style & convictions,
+ * Design tokens — reveal in sequence. Required fields validate inline; a live
+ * preview echoes the voice in display type; success lands as an accomplishment.
+ *
+ * All four FIXED design-token fields are offered (no free-text keys). Loading,
+ * success, and error are announced via aria-live regions. Styling is entirely
+ * token-driven (onboarding.css); motion comes from the globals utilities and
+ * collapses under prefers-reduced-motion.
  */
 export default function OnboardingPage(): React.ReactElement {
   const [name, setName] = useState("");
@@ -43,16 +54,34 @@ export default function OnboardingPage(): React.ReactElement {
     layout: "",
     tone: "",
   });
+  const [touched, setTouched] = useState<Record<RequiredField, boolean>>({
+    name: false,
+    voice: false,
+    voiceSample: false,
+  });
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
 
-  const canSubmit = useMemo(
-    () =>
-      name.trim().length > 0 &&
-      voice.trim().length > 0 &&
-      voiceSample.trim().length > 0 &&
-      state.kind !== "saving",
-    [name, voice, voiceSample, state.kind],
-  );
+  const values: Record<RequiredField, string> = {
+    name,
+    voice,
+    voiceSample,
+  };
+
+  /** A required field is in error once it has been touched and left empty. */
+  function fieldError(field: RequiredField): boolean {
+    return touched[field] && values[field].trim().length === 0;
+  }
+
+  function markTouched(field: RequiredField): void {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  }
+
+  const requiredDone = REQUIRED_FIELDS.filter(
+    (f) => values[f].trim().length > 0,
+  ).length;
+
+  const canSubmit =
+    requiredDone === REQUIRED_FIELDS.length && state.kind !== "saving";
 
   function buildPayload(): NewPersona {
     const designElements: Record<string, string> = {};
@@ -73,6 +102,9 @@ export default function OnboardingPage(): React.ReactElement {
   }
 
   async function onSubmit(): Promise<void> {
+    // Surface any missing required fields before attempting the request.
+    setTouched({ name: true, voice: true, voiceSample: true });
+    if (requiredDone !== REQUIRED_FIELDS.length) return;
     setState({ kind: "saving" });
     try {
       const persona = await createPersona(buildPayload());
@@ -86,104 +118,227 @@ export default function OnboardingPage(): React.ReactElement {
     }
   }
 
+  // ── Celebratory success state ─────────────────────────────────────────
+  if (state.kind === "created") {
+    return (
+      <main className="ob-main">
+        <div aria-live="polite">
+          <section className="ob-success anim-rise" role="status">
+            <span className="ob-success-mark" aria-hidden="true">
+              ✓
+            </span>
+            <p className="ob-success-eyebrow">Persona created</p>
+            <h1 className="ob-success-name">{state.persona.name}</h1>
+            <div className="ob-success-rule draw-rule" aria-hidden="true" />
+            <p className="ob-success-sub">
+              Your declared guardrail is set. Every checkpoint now judges drafts
+              against this voice.
+            </p>
+            <div className="ob-success-actions">
+              <Link
+                href={`/personas/${state.persona.id}`}
+                className={buttonClass("primary", "lg")}
+              >
+                View it →
+              </Link>
+              <Link
+                href="/personas"
+                className={buttonClass("ghost", "lg")}
+              >
+                All personas
+              </Link>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  const sample = voiceSample.trim();
+
   return (
-    <main style={styles.main}>
-      <header style={styles.header}>
-        <p style={styles.eyebrow}>Onboarding</p>
-        <h1 style={styles.h1}>Author a persona</h1>
-        <p style={styles.lede}>
+    <main className="ob-main">
+      <header className="ob-header anim-rise">
+        <p className="eyebrow">Onboarding</p>
+        <h1>Author a persona</h1>
+        <div className="ob-rule draw-rule" aria-hidden="true" />
+        <p className="ob-lede">
           A persona is your <strong>declared guardrail</strong>: the voice,
           style, and design the harness enforces on every page. Capture it once
           — the checkpoints judge against it.
         </p>
       </header>
 
+      <ol className="ob-rail anim-fade" aria-hidden="true">
+        <li data-reached={requiredDone >= 1}>
+          <span className="ob-rail-track">
+            <span className="ob-rail-fill" />
+          </span>
+          <span className="ob-rail-label">Voice</span>
+        </li>
+        <li data-reached={requiredDone >= 2}>
+          <span className="ob-rail-track">
+            <span className="ob-rail-fill" />
+          </span>
+          <span className="ob-rail-label">Convictions</span>
+        </li>
+        <li data-reached={requiredDone >= 3}>
+          <span className="ob-rail-track">
+            <span className="ob-rail-fill" />
+          </span>
+          <span className="ob-rail-label">Design</span>
+        </li>
+      </ol>
+
       <form
-        style={styles.form}
+        className="ob-form stagger"
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSubmit) void onSubmit();
+          void onSubmit();
         }}
       >
-        <Field
-          id="name"
-          label="Persona name"
-          help="A short handle for this voice."
-        >
-          <input
+        {/* ── Movement 1: Voice ─────────────────────────────────────────── */}
+        <section className="ob-section" style={{ ["--i" as string]: 0 }}>
+          <header className="ob-section-head">
+            <span className="ob-section-num">01</span>
+            <h2 className="ob-section-title">Voice</h2>
+          </header>
+          <p className="ob-section-sub">
+            Name this voice and describe how it sounds. The voice sample is the
+            anchor the fidelity checkpoint measures every draft against.
+          </p>
+
+          <Field
             id="name"
-            style={styles.input}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. The Essayist"
-          />
-        </Field>
+            label="Persona name"
+            help="A short handle for this voice."
+            required
+            error={fieldError("name") ? "Give your persona a name." : null}
+          >
+            <input
+              id="name"
+              className="ob-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => markTouched("name")}
+              placeholder="e.g. The Essayist"
+              autoComplete="off"
+            />
+          </Field>
 
-        <Field
-          id="voice"
-          label="Voice"
-          help="Describe the voice in a sentence or two."
-        >
-          <textarea
+          <Field
             id="voice"
-            style={styles.textarea}
-            value={voice}
-            onChange={(e) => setVoice(e.target.value)}
-            placeholder="Measured, first-person, fond of the em-dash."
-          />
-        </Field>
-
-        <Field
-          id="voiceSample"
-          label="Voice sample"
-          help="A short, authentic passage in this voice. The voice-fidelity checkpoint judges drafts against this — required."
-        >
-          <textarea
-            id="voiceSample"
-            style={styles.textarea}
-            value={voiceSample}
-            onChange={(e) => setVoiceSample(e.target.value)}
-            placeholder="Write 2–3 real sentences as this persona would."
-          />
-        </Field>
-
-        <Field
-          id="stylePoints"
-          label="Style points"
-          help="One per line — concrete rules (e.g. short paragraphs)."
-        >
-          <textarea
-            id="stylePoints"
-            style={styles.textarea}
-            value={stylePoints}
-            onChange={(e) => setStylePoints(e.target.value)}
-            placeholder={"short paragraphs\none image per section"}
-          />
-        </Field>
-
-        <Field
-          id="keyLearnings"
-          label="Key learnings"
-          help="One per line — convictions this persona writes from."
-        >
-          <textarea
-            id="keyLearnings"
-            style={styles.textarea}
-            value={keyLearnings}
-            onChange={(e) => setKeyLearnings(e.target.value)}
-            placeholder={
-              "emergence is not magic\nattention is the scarce resource"
+            label="Voice"
+            help="Describe the voice in a sentence or two."
+            required
+            error={
+              fieldError("voice") ? "Describe how this voice sounds." : null
             }
-          />
-        </Field>
+          >
+            <textarea
+              id="voice"
+              className="ob-textarea"
+              value={voice}
+              onChange={(e) => setVoice(e.target.value)}
+              onBlur={() => markTouched("voice")}
+              placeholder="Measured, first-person, fond of the em-dash."
+            />
+          </Field>
 
-        <fieldset style={styles.fieldset}>
-          <legend style={styles.legend}>Design tokens</legend>
-          <p style={styles.help}>
+          <Field
+            id="voiceSample"
+            label="Voice sample"
+            help="A short, authentic passage in this voice. The voice-fidelity checkpoint judges drafts against this."
+            required
+            error={
+              fieldError("voiceSample")
+                ? "Write a sample — it anchors every checkpoint."
+                : null
+            }
+          >
+            <textarea
+              id="voiceSample"
+              className="ob-textarea"
+              value={voiceSample}
+              onChange={(e) => setVoiceSample(e.target.value)}
+              onBlur={() => markTouched("voiceSample")}
+              placeholder="Write 2–3 real sentences as this persona would."
+            />
+          </Field>
+
+          {/* Live preview — the voice, set in the press's display type. */}
+          <figure className="ob-preview" aria-live="off">
+            <figcaption className="ob-preview-label">Voice preview</figcaption>
+            {sample.length > 0 ? (
+              <>
+                <p className="ob-preview-quote">{sample}</p>
+                <p className="ob-preview-byline">
+                  — {name.trim().length > 0 ? name.trim() : "this persona"}
+                </p>
+              </>
+            ) : (
+              <p className="ob-preview-empty">
+                Your sample will appear here, in the persona&apos;s own type.
+              </p>
+            )}
+          </figure>
+        </section>
+
+        {/* ── Movement 2: Style & convictions ──────────────────────────── */}
+        <section className="ob-section" style={{ ["--i" as string]: 1 }}>
+          <header className="ob-section-head">
+            <span className="ob-section-num">02</span>
+            <h2 className="ob-section-title">Style &amp; convictions</h2>
+          </header>
+          <p className="ob-section-sub">
+            Optional, but they sharpen the guardrail. One rule or belief per
+            line.
+          </p>
+
+          <Field
+            id="stylePoints"
+            label="Style points"
+            help="One per line — concrete rules (e.g. short paragraphs)."
+          >
+            <textarea
+              id="stylePoints"
+              className="ob-textarea"
+              value={stylePoints}
+              onChange={(e) => setStylePoints(e.target.value)}
+              placeholder={"short paragraphs\none image per section"}
+            />
+          </Field>
+
+          <Field
+            id="keyLearnings"
+            label="Key learnings"
+            help="One per line — convictions this persona writes from."
+          >
+            <textarea
+              id="keyLearnings"
+              className="ob-textarea"
+              value={keyLearnings}
+              onChange={(e) => setKeyLearnings(e.target.value)}
+              placeholder={
+                "emergence is not magic\nattention is the scarce resource"
+              }
+            />
+          </Field>
+        </section>
+
+        {/* ── Movement 3: Design tokens ────────────────────────────────── */}
+        <fieldset className="ob-section" style={{ ["--i" as string]: 2 }}>
+          <legend className="ob-section-head ob-legend">
+            <span className="ob-section-num">03</span>
+            <span className="ob-section-title ob-legend-title">
+              Design tokens
+            </span>
+          </legend>
+          <p className="ob-section-sub">
             A fixed vocabulary so the harness can validate the page&apos;s
             design. Leave any blank.
           </p>
-          <div style={styles.tokenGrid}>
+          <div className="ob-token-grid">
             {DESIGN_TOKEN_KEYS.map((key) => (
               <Field
                 key={key}
@@ -192,7 +347,7 @@ export default function OnboardingPage(): React.ReactElement {
               >
                 <input
                   id={`token-${key}`}
-                  style={styles.input}
+                  className="ob-input"
                   value={tokens[key]}
                   onChange={(e) =>
                     setTokens((prev) => ({ ...prev, [key]: e.target.value }))
@@ -204,34 +359,34 @@ export default function OnboardingPage(): React.ReactElement {
           </div>
         </fieldset>
 
-        <div style={styles.actions}>
-          <button type="submit" style={styles.primary} disabled={!canSubmit}>
+        <div className="ob-actions" style={{ ["--i" as string]: 3 }}>
+          <Button type="submit" variant="primary" size="lg" disabled={!canSubmit}>
             {state.kind === "saving" ? "Saving…" : "Create persona"}
-          </button>
-          <Link href="/personas" style={styles.secondary}>
+          </Button>
+          <Link href="/personas" className={buttonClass("quiet", "lg")}>
             View personas
           </Link>
+          {!canSubmit && state.kind !== "saving" ? (
+            <p className="ob-actions-hint">
+              {requiredDone} of {REQUIRED_FIELDS.length} required fields complete
+            </p>
+          ) : null}
         </div>
       </form>
 
-      {/* Live status region — announces loading + success to assistive tech. */}
+      {/* Live status region — announces loading to assistive tech. */}
       <div aria-live="polite">
         {state.kind === "saving" && (
-          <p role="status" style={styles.status}>
+          <p role="status" className="ob-status">
+            <span className="ob-spinner" aria-hidden="true" />
             Saving — creating your persona…
-          </p>
-        )}
-        {state.kind === "created" && (
-          <p role="status" style={styles.success}>
-            Created <strong>{state.persona.name}</strong>.{" "}
-            <Link href={`/personas/${state.persona.id}`}>View it →</Link>
           </p>
         )}
       </div>
 
       <div aria-live="assertive">
         {state.kind === "error" && (
-          <p role="alert" style={styles.error}>
+          <p role="alert" className="ob-error">
             Couldn&apos;t create persona: {state.message}
           </p>
         )}
@@ -240,94 +395,35 @@ export default function OnboardingPage(): React.ReactElement {
   );
 }
 
-/** A labelled field with optional help text. Keeps the form markup DRY. */
+/** A labelled field with optional help text, required flag, and inline error. */
 function Field(props: {
   id: string;
   label: string;
   help?: string;
+  required?: boolean;
+  error?: string | null;
   children: React.ReactNode;
 }): React.ReactElement {
+  const errorId = `${props.id}-error`;
   return (
-    <div style={styles.field}>
-      <label htmlFor={props.id} style={styles.label}>
-        {props.label}
-      </label>
-      {props.help ? <p style={styles.help}>{props.help}</p> : null}
+    <div className="ob-field" data-invalid={Boolean(props.error)}>
+      <div className="ob-label-row">
+        <label htmlFor={props.id} className="ob-label">
+          {props.label}
+        </label>
+        {props.required ? (
+          <span className="ob-req" aria-hidden="true">
+            Required
+          </span>
+        ) : null}
+      </div>
+      {props.help ? <p className="ob-help">{props.help}</p> : null}
       {props.children}
+      {props.error ? (
+        <p id={errorId} className="ob-field-error" role="alert">
+          {props.error}
+        </p>
+      ) : null}
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  main: {
-    maxWidth: 720,
-    margin: "0 auto",
-    padding: "32px 24px 80px",
-    lineHeight: 1.5,
-  },
-  header: { marginBottom: 28 },
-  eyebrow: {
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    fontSize: 12,
-    color: "#6b7280",
-    margin: 0,
-  },
-  h1: { fontSize: 32, margin: "6px 0 10px" },
-  lede: { color: "#374151", margin: 0 },
-  form: { display: "flex", flexDirection: "column", gap: 20 },
-  field: { display: "flex", flexDirection: "column", gap: 4 },
-  label: { fontWeight: 600, fontSize: 14 },
-  help: { fontSize: 13, color: "#6b7280", margin: 0 },
-  input: {
-    padding: "8px 10px",
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    fontSize: 14,
-  },
-  textarea: {
-    padding: "8px 10px",
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    fontSize: 14,
-    minHeight: 72,
-    fontFamily: "inherit",
-  },
-  fieldset: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 8,
-    padding: 16,
-    margin: 0,
-  },
-  legend: { fontWeight: 700, padding: "0 6px" },
-  tokenGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 14,
-    marginTop: 8,
-  },
-  actions: { display: "flex", gap: 12, alignItems: "center", marginTop: 4 },
-  primary: {
-    padding: "10px 18px",
-    background: "#111827",
-    color: "white",
-    border: "none",
-    borderRadius: 6,
-    fontSize: 15,
-    cursor: "pointer",
-  },
-  secondary: { fontSize: 14, color: "#2563eb" },
-  status: { color: "#374151" },
-  success: {
-    color: "#065f46",
-    background: "#ecfdf5",
-    padding: "10px 12px",
-    borderRadius: 6,
-  },
-  error: {
-    color: "#991b1b",
-    background: "#fef2f2",
-    padding: "10px 12px",
-    borderRadius: 6,
-  },
-};

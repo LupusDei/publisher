@@ -1,0 +1,378 @@
+/*
+ * Onboarding — persona authoring, Atelier theme (publisher-3jm.3).
+ * Token-driven only; no hard-coded hex/px/duration/easing. See
+ * specs/design/atelier.md. Motion comes from the globals utilities
+ * (.anim-rise/.stagger/.draw-rule), which collapse under reduced-motion.
+ */
+
+/* ── Page shell ───────────────────────────────────────────────────────── */
+.ob-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-5) var(--space-9);
+}
+
+.ob-header {
+  margin-bottom: var(--space-6);
+}
+.ob-header h1 {
+  margin-bottom: var(--space-2);
+}
+.ob-lede {
+  font-size: var(--step-1);
+  color: var(--muted);
+  margin: 0;
+  max-width: 60ch;
+}
+.ob-lede strong {
+  color: var(--ink);
+}
+
+/* The hero signature rule under the title. */
+.ob-rule {
+  height: 3px;
+  width: var(--space-8);
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  margin: var(--space-4) 0 var(--space-5);
+}
+
+/* ── Progress rail ────────────────────────────────────────────────────── */
+.ob-rail {
+  display: flex;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0 0 var(--space-7);
+  padding: 0;
+}
+.ob-rail li {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ob-rail-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--bg-sunk);
+  overflow: hidden;
+}
+.ob-rail-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--line);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform var(--dur-3) var(--ease-out);
+}
+.ob-rail li[data-reached="true"] .ob-rail-fill {
+  background: var(--accent);
+  transform: scaleX(1);
+}
+.ob-rail-label {
+  font-size: var(--step--1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--muted);
+  transition: color var(--dur-2) var(--ease-out);
+}
+.ob-rail li[data-reached="true"] .ob-rail-label {
+  color: var(--accent-strong);
+}
+
+/* ── Form + sections ──────────────────────────────────────────────────── */
+.ob-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.ob-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-1);
+}
+.ob-section legend,
+.ob-section-head {
+  padding: 0;
+}
+.ob-section-num {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.ob-section-title {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  line-height: 1.1;
+  margin: var(--space-1) 0 var(--space-2);
+  color: var(--ink);
+}
+.ob-section-sub {
+  color: var(--muted);
+  font-size: var(--step-0);
+  margin: 0 0 var(--space-5);
+  max-width: 56ch;
+}
+
+/* fieldset reset so the design-tokens group looks like the others */
+fieldset.ob-section {
+  margin: 0;
+}
+/* A <legend> can't be a flex column; stack its parts as blocks instead. */
+.ob-legend {
+  display: block;
+}
+.ob-legend-title {
+  display: block;
+}
+
+/* ── Fields ───────────────────────────────────────────────────────────── */
+.ob-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ob-field + .ob-field {
+  margin-top: var(--space-5);
+}
+.ob-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.ob-label {
+  font-weight: 600;
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+.ob-req {
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.ob-help {
+  font-size: var(--step--1);
+  color: var(--muted);
+  margin: 0;
+  max-width: 60ch;
+}
+
+.ob-input,
+.ob-textarea {
+  font: inherit;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+.ob-input::placeholder,
+.ob-textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+.ob-textarea {
+  min-height: calc(var(--space-9) + var(--space-2));
+  resize: vertical;
+  line-height: 1.55;
+}
+/* Animated focus affordance — the ink "wakes up" the field. */
+.ob-input:focus,
+.ob-textarea:focus {
+  border-color: var(--accent);
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  outline: none;
+}
+/* Invalid (touched + empty required) state. */
+.ob-field[data-invalid="true"] .ob-input,
+.ob-field[data-invalid="true"] .ob-textarea {
+  border-color: var(--crit);
+}
+.ob-field-error {
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--crit);
+  margin: 0;
+}
+
+/* Token sub-grid */
+.ob-token-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+.ob-token-grid .ob-field + .ob-field {
+  margin-top: 0;
+}
+
+/* ── Live voice preview ───────────────────────────────────────────────── */
+.ob-preview {
+  margin-top: var(--space-5);
+  background: var(--bg-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--space-5);
+}
+.ob-preview-label {
+  font-size: var(--step--1);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0 0 var(--space-3);
+}
+.ob-preview-quote {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  line-height: 1.3;
+  color: var(--ink);
+  margin: 0;
+  font-style: italic;
+}
+.ob-preview-quote::before {
+  content: "\201C";
+}
+.ob-preview-quote::after {
+  content: "\201D";
+}
+.ob-preview-byline {
+  margin: var(--space-3) 0 0;
+  font-size: var(--step-0);
+  color: var(--muted);
+}
+.ob-preview-empty {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-style: italic;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── Actions ──────────────────────────────────────────────────────────── */
+.ob-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.ob-actions-hint {
+  font-size: var(--step--1);
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── Status / error live regions ──────────────────────────────────────── */
+.ob-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--muted);
+  font-weight: 600;
+  margin: var(--space-5) 0 0;
+}
+.ob-spinner {
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--r-pill);
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  animation: ob-spin var(--dur-3) linear infinite;
+}
+@keyframes ob-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ob-error {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--crit) 40%, var(--line));
+  background: color-mix(in srgb, var(--crit) 8%, var(--panel));
+  color: var(--crit);
+  font-weight: 600;
+}
+
+/* ── Celebratory success state ────────────────────────────────────────── */
+.ob-success {
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}
+.ob-success-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--good) 16%, var(--panel));
+  color: var(--good);
+  font-size: var(--step-3);
+  line-height: 1;
+  margin: 0 auto var(--space-5);
+}
+.ob-success-eyebrow {
+  font-size: var(--step--1);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--good);
+  margin: 0 0 var(--space-2);
+}
+.ob-success-name {
+  font-family: var(--font-display);
+  font-size: var(--step-4);
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 0 0 var(--space-2);
+}
+.ob-success-rule {
+  height: 3px;
+  width: var(--space-8);
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  margin: var(--space-4) auto var(--space-5);
+}
+.ob-success-sub {
+  font-size: var(--step-1);
+  color: var(--muted);
+  margin: 0 0 var(--space-6);
+  max-width: 48ch;
+  margin-inline: auto;
+}
+.ob-success-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  .ob-token-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+  .ob-rail-label {
+    font-size: 0.62rem;
+  }
+}
