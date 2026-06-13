@@ -16,13 +16,14 @@ import type { RunStreamSource } from "@/app/runs/sse";
 import {
   mockRunEvents,
   mockEscalationEvents,
+  mockApprovalEvents,
   mockFailureEvents,
   playMockStream,
 } from "@/app/runs/mock-stream";
 import { LiveRunPanel } from "./LiveRunPanel";
 import "./runs-ui.css";
 
-type Narrative = "happy" | "escalation" | "failure";
+type Narrative = "happy" | "approval" | "escalation" | "failure";
 
 const DEMO_PERSONA: Persona = {
   id: "p_essayist",
@@ -35,8 +36,12 @@ const DEMO_PERSONA: Persona = {
   designElements: { typography: "serif headings", palette: "ink on cream" },
 };
 
-function eventsFor(n: Narrative): RunEvent[] {
+function eventsFor(
+  n: Narrative,
+  approvalOutcome?: "publish" | "discard",
+): RunEvent[] {
   if (n === "escalation") return mockEscalationEvents("run_demo");
+  if (n === "approval") return mockApprovalEvents("run_demo", approvalOutcome);
   if (n === "failure") return mockFailureEvents("run_demo");
   return mockRunEvents("run_demo");
 }
@@ -84,20 +89,41 @@ export function DemoRunner({
   const [narrative, setNarrative] = useState<Narrative>("happy");
   // `runKey` forces a fresh LiveRunPanel (new stream) when the narrative changes.
   const [runKey, setRunKey] = useState(0);
+  // How the FINAL approval gate was resolved (drives the publish/discard tail).
+  const [approvalOutcome, setApprovalOutcome] = useState<
+    "publish" | "discard" | undefined
+  >(undefined);
 
-  const events = useMemo(() => eventsFor(narrative), [narrative]);
+  const events = useMemo(
+    () => eventsFor(narrative, approvalOutcome),
+    [narrative, approvalOutcome],
+  );
   const sourceFactory = useMemo(
     () => makeMockSource(events, streamIntervalMs),
     [events, streamIntervalMs],
   );
 
+  function pickNarrative(n: Narrative): void {
+    setNarrative(n);
+    setApprovalOutcome(undefined);
+    setRunKey((k) => k + 1);
+  }
+
   const sendDecision = async (
     _runId: string,
-    _decision: { choice: EscalationOption; payload?: { persona?: Persona } },
+    decision: { choice: EscalationOption; payload?: { persona?: Persona } },
   ): Promise<void> => {
-    // In demo mode, resolving the escalation simply replays the happy path.
-    setNarrative("happy");
-    setRunKey((k) => k + 1);
+    if (narrative === "approval") {
+      // The FINAL human-in-the-loop gate: approve publishes, discard fails, and
+      // "request changes" (enrich) re-runs the build back to the approval gate.
+      if (decision.choice === "approve_anyway") setApprovalOutcome("publish");
+      else if (decision.choice === "abort") setApprovalOutcome("discard");
+      else setApprovalOutcome(undefined);
+      setRunKey((k) => k + 1);
+      return;
+    }
+    // Any other escalation in demo mode simply replays the happy path.
+    pickNarrative("happy");
   };
 
   return (
@@ -110,22 +136,21 @@ export function DemoRunner({
       </nav>
 
       <div className="demo-controls" role="group" aria-label="Choose a demo narrative">
-        {(["happy", "escalation", "failure"] as const).map((n) => (
+        {(["happy", "approval", "escalation", "failure"] as const).map((n) => (
           <button
             key={n}
             type="button"
             className={`btn ${narrative === n ? "btn-enrich" : ""}`}
             aria-pressed={narrative === n}
-            onClick={() => {
-              setNarrative(n);
-              setRunKey((k) => k + 1);
-            }}
+            onClick={() => pickNarrative(n)}
           >
             {n === "happy"
               ? "Redraft → publish (R2)"
-              : n === "escalation"
-                ? "Escalation (R10)"
-                : "Refused to publish"}
+              : n === "approval"
+                ? "Draft → approve & publish (R12)"
+                : n === "escalation"
+                  ? "Escalation (R10)"
+                  : "Refused to publish"}
           </button>
         ))}
       </div>

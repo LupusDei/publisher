@@ -164,6 +164,10 @@ textarea:focus-visible {
   background: color-mix(in srgb, var(--accent) 20%, #fff);
   color: var(--accent);
 }
+.status-awaiting_approval {
+  background: color-mix(in srgb, var(--good) 18%, #fff);
+  color: var(--good);
+}
 .run-phase,
 .run-persona,
 .run-worker {
@@ -606,6 +610,12 @@ section h3 {
   border-radius: 12px;
   padding: 18px 20px;
   background: color-mix(in srgb, var(--accent) 5%, #fff);
+}
+/* The FINAL approval gate is a calm "ready to publish" sign-off, not an alarm:
+   swap the accent border for the success hue. */
+.escalation-approval {
+  border-color: var(--good);
+  background: color-mix(in srgb, var(--good) 6%, #fff);
 }
 .escalation-reason {
   font-weight: 600;

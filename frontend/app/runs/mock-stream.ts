@@ -247,6 +247,154 @@ export function mockEscalationEvents(runId: string = RUN_ID): RunEvent[] {
   ];
 }
 
+const AWAITING_APPROVAL_ALARM: Alarm = {
+  type: "AWAITING_APPROVAL",
+  severity: "info",
+  context: {
+    draftTitle: "On Emergence",
+    attempts: 1,
+    qualityScore: 0.88,
+    gates: "voice ✓ · design ✓ · quality ✓",
+  },
+  recommendedAction:
+    "Review the finished draft, then Approve & Publish, Request changes, or Discard.",
+};
+
+const APPROVAL_ESCALATION: Escalation = {
+  id: "esc_approve",
+  runId: RUN_ID,
+  reason:
+    "The draft cleared every gate on the first pass and is ready to publish — your sign-off is the final step.",
+  alarm: AWAITING_APPROVAL_ALARM,
+  options: ["approve_anyway", "enrich_persona", "abort"],
+};
+
+/**
+ * The FINAL human-in-the-loop gate (dp0.13). A draft passes every checkpoint and
+ * pauses at `awaiting_approval` instead of auto-publishing. `resolved` drives the
+ * outcome of the user's sign-off so the demo can show the full
+ * draft → approval → publish (or discard) beat:
+ *   - undefined → ends paused at the approval gate
+ *   - "publish" → approve & publish: appends resumed + published receipt
+ *   - "discard" → discard: appends resumed + failed (refused by reviewer)
+ */
+export function mockApprovalEvents(
+  runId: string = RUN_ID,
+  resolved?: "publish" | "discard",
+): RunEvent[] {
+  const r = runId;
+  let seq = 0;
+  const t = (n: number): string =>
+    new Date(Date.UTC(2026, 5, 13, 15, 0, n)).toISOString();
+  const next = (): { runId: string; seq: number; ts: string } => {
+    const s = seq;
+    seq += 1;
+    return { runId: r, seq: s, ts: t(s) };
+  };
+
+  const events: RunEvent[] = [
+    { ...next(), t: "phase", phase: "research" },
+    {
+      ...next(),
+      pillar: "material",
+      t: "checkpoint",
+      result: {
+        name: "research-sufficiency",
+        passed: true,
+        score: 0.9,
+        threshold: 0.7,
+        details: "Four credible sources synthesized; concept well-covered.",
+        autoCorrectable: false,
+        alarms: [],
+      },
+    },
+    { ...next(), pillar: "observability", t: "metric", metrics: metrics(1300, 0, 0) },
+    { ...next(), t: "phase", phase: "build" },
+    {
+      ...next(),
+      pillar: "material",
+      t: "draft",
+      attempt: 1,
+      webpage: DRAFT_2,
+      score: 0.86,
+      passed: true,
+    },
+    { ...next(), pillar: "observability", t: "metric", metrics: metrics(1300, 2200, 0) },
+    {
+      ...next(),
+      pillar: "checkpoints",
+      t: "checkpoint",
+      result: {
+        name: "voice-fidelity",
+        passed: true,
+        score: 0.82,
+        threshold: 0.75,
+        details: "Cadence and diction match the persona voiceSample on the first pass.",
+        autoCorrectable: false,
+        alarms: [],
+      },
+    },
+    {
+      ...next(),
+      pillar: "checkpoints",
+      t: "checkpoint",
+      result: {
+        name: "design-conformance",
+        passed: true,
+        score: 0.91,
+        threshold: 0.7,
+        details: "Declared design tokens reflected in the page CSS.",
+        autoCorrectable: false,
+        alarms: [],
+      },
+    },
+    {
+      ...next(),
+      pillar: "checkpoints",
+      t: "checkpoint",
+      result: {
+        name: "quality",
+        passed: true,
+        score: 0.88,
+        threshold: 0.7,
+        details: "Coherent, publishable, on-concept.",
+        autoCorrectable: false,
+        alarms: [],
+      },
+    },
+    // Passed every gate → pause at the FINAL human approval gate (info alarm).
+    { ...next(), pillar: "observability", t: "alarm", alarm: AWAITING_APPROVAL_ALARM },
+    { ...next(), pillar: "observability", t: "escalation", escalation: APPROVAL_ESCALATION },
+  ];
+
+  if (resolved === "publish") {
+    events.push(
+      {
+        ...next(),
+        t: "resumed",
+        decision: { escalationId: APPROVAL_ESCALATION.id, choice: "approve_anyway" },
+      },
+      { ...next(), pillar: "material", t: "published", receipt: RECEIPT },
+    );
+  } else if (resolved === "discard") {
+    events.push(
+      {
+        ...next(),
+        t: "resumed",
+        decision: { escalationId: APPROVAL_ESCALATION.id, choice: "abort" },
+      },
+      {
+        ...next(),
+        t: "failed",
+        reason:
+          "Discarded by reviewer at the final approval gate — the draft was not published.",
+      },
+    );
+  }
+
+  return events;
+}
+
 /**
  * A terminal-failure narrative ("refused to publish — here's why"). The harness
  * refusing to ship a bad page is itself a feature to SHOW.

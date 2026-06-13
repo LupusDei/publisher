@@ -3,6 +3,7 @@ import { RunEventSchema } from "@publisher/shared";
 import {
   mockRunEvents,
   mockEscalationEvents,
+  mockApprovalEvents,
   mockFailureEvents,
   playMockStream,
 } from "@/app/runs/mock-stream";
@@ -39,6 +40,38 @@ describe("mock-stream fixtures", () => {
     expect(esc?.t === "escalation" && esc.escalation.options).toContain(
       "enrich_persona",
     );
+  });
+
+  it("should pause at the AWAITING_APPROVAL gate when unresolved (final HITL gate)", () => {
+    const events = mockApprovalEvents("r");
+    // Contract-valid and strictly monotonic.
+    let prev = -1;
+    for (const e of events) {
+      expect(e.seq).toBeGreaterThan(prev);
+      prev = e.seq;
+      expect(() => RunEventSchema.parse(e)).not.toThrow();
+    }
+    const last = events[events.length - 1]!;
+    expect(last.t).toBe("escalation");
+    expect(
+      last.t === "escalation" && last.escalation.alarm.type,
+    ).toBe("AWAITING_APPROVAL");
+    // No publish/failed tail while unresolved.
+    expect(events.some((e) => e.t === "published")).toBe(false);
+  });
+
+  it("should append a published receipt when the approval gate is approved (publish tail)", () => {
+    const events = mockApprovalEvents("r", "publish");
+    const last = events[events.length - 1]!;
+    expect(last.t).toBe("published");
+    expect(events.some((e) => e.t === "resumed")).toBe(true);
+  });
+
+  it("should append a failed reason when the approval gate is discarded (discard tail)", () => {
+    const events = mockApprovalEvents("r", "discard");
+    const last = events[events.length - 1]!;
+    expect(last.t).toBe("failed");
+    expect(last.t === "failed" && last.reason).toMatch(/Discarded by reviewer/);
   });
 
   it("should end the failure fixture with a failed reason (refused to publish)", () => {

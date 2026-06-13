@@ -118,6 +118,31 @@ describe("run-state reducer", () => {
     expect(v.lastDecision?.choice).toBe("approve_anyway");
   });
 
+  it("should fold an AWAITING_APPROVAL escalation into awaiting_approval, not escalated (final HITL gate)", () => {
+    const esc: RunEvent = {
+      ...env(0),
+      pillar: "observability",
+      t: "escalation",
+      escalation: {
+        id: "esc_approve",
+        runId: "r",
+        reason: "Draft ready to publish.",
+        alarm: {
+          type: "AWAITING_APPROVAL",
+          severity: "info",
+          context: {},
+          recommendedAction: "Approve to publish.",
+        },
+        options: ["approve_anyway", "enrich_persona", "abort"],
+      },
+    };
+    const v = applyEvent(emptyRunView("r"), esc);
+    expect(v.status).toBe("awaiting_approval");
+    expect(v.escalation?.id).toBe("esc_approve");
+    // Not terminal — it is paused awaiting the human.
+    expect(isTerminal(v.status)).toBe(false);
+  });
+
   it("should reach failed with a reason on a terminal failure (refused to publish)", () => {
     const v = applyEvents(emptyRunView("r"), mockFailureEvents("r"));
     expect(v.status).toBe("failed");

@@ -31,6 +31,18 @@ const OPTION_LABEL: Record<EscalationOption, string> = {
   abort: "Reject (abort)",
 };
 
+/**
+ * When the pause is the FINAL approval gate (alarm.type AWAITING_APPROVAL) the
+ * panel is not an alarm — it's a "draft ready to publish" sign-off. Relabel the
+ * same options in publishing language so the affordance reads correctly.
+ */
+const APPROVAL_OPTION_LABEL: Record<EscalationOption, string> = {
+  enrich_persona: "Request changes",
+  approve_anyway: "Approve & Publish",
+  retry: "Retry",
+  abort: "Discard",
+};
+
 export function EscalationPanel({
   escalation,
   persona,
@@ -67,10 +79,23 @@ export function EscalationPanel({
   }
 
   const options = escalation.options;
+  const isApproval = escalation.alarm.type === "AWAITING_APPROVAL";
+  const label = isApproval ? APPROVAL_OPTION_LABEL : OPTION_LABEL;
 
   return (
-    <section className="escalation-panel" role="alertdialog" aria-labelledby="esc-h" aria-describedby="esc-reason">
-      <h3 id="esc-h">Run paused — human decision required</h3>
+    <section
+      className={`escalation-panel${isApproval ? " escalation-approval" : ""}`}
+      // A draft-ready sign-off is NOT an alert; use a plain dialog role so
+      // assistive tech doesn't announce it with alarm urgency.
+      role={isApproval ? "dialog" : "alertdialog"}
+      aria-labelledby="esc-h"
+      aria-describedby="esc-reason"
+    >
+      <h3 id="esc-h">
+        {isApproval
+          ? "Draft ready — your sign-off publishes it"
+          : "Run paused — human decision required"}
+      </h3>
       <p id="esc-reason" className="escalation-reason">
         {escalation.reason}
       </p>
@@ -91,7 +116,11 @@ export function EscalationPanel({
             disabled={submitting !== null}
             onClick={() => void decide("approve_anyway")}
           >
-            {submitting === "approve_anyway" ? "Approving…" : OPTION_LABEL.approve_anyway}
+            {submitting === "approve_anyway"
+              ? isApproval
+                ? "Publishing…"
+                : "Approving…"
+              : label.approve_anyway}
           </button>
         )}
 
@@ -103,7 +132,7 @@ export function EscalationPanel({
             disabled={submitting !== null}
             onClick={() => setEnriching((e) => !e)}
           >
-            {OPTION_LABEL.enrich_persona}
+            {label.enrich_persona}
           </button>
         )}
 
@@ -114,7 +143,11 @@ export function EscalationPanel({
             disabled={submitting !== null}
             onClick={() => void decide("abort")}
           >
-            {submitting === "abort" ? "Aborting…" : OPTION_LABEL.abort}
+            {submitting === "abort"
+              ? isApproval
+                ? "Discarding…"
+                : "Aborting…"
+              : label.abort}
           </button>
         )}
       </div>
@@ -149,8 +182,12 @@ export function EscalationPanel({
             disabled={submitting !== null || voiceSample.trim().length === 0}
           >
             {submitting === "enrich_persona"
-              ? "Resuming…"
-              : "Save & resume run"}
+              ? isApproval
+                ? "Sending back…"
+                : "Resuming…"
+              : isApproval
+                ? "Submit changes & rebuild"
+                : "Save & resume run"}
           </button>
         </form>
       )}

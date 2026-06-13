@@ -44,4 +44,24 @@ describe("DemoRunner", () => {
       await screen.findByText(/Run paused/, {}, { timeout: 10000 }),
     ).toBeInTheDocument();
   });
+
+  it("should pause the approval narrative at the final gate, then publish on Approve & Publish (R12 HITL)", async () => {
+    const user = userEvent.setup();
+    render(<DemoPage streamIntervalMs={1} />);
+    await user.click(
+      screen.getByRole("button", { name: /Draft → approve & publish/ }),
+    );
+    // The run pauses at the approval gate with publishing affordances.
+    const approveBtn = await screen.findByRole(
+      "button",
+      { name: "Approve & Publish" },
+      { timeout: 10000 },
+    );
+    expect(screen.getByText(/Draft ready/)).toBeInTheDocument();
+    // Approving publishes the draft.
+    await user.click(approveBtn);
+    expect(
+      await screen.findByText("published", {}, { timeout: 10000 }),
+    ).toBeInTheDocument();
+  });
 });

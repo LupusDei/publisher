@@ -188,7 +188,14 @@ export function applyEvent(view: RunView, event: RunEvent): RunView {
       break;
     }
     case "escalation": {
-      next.status = "escalated";
+      // AWAITING_APPROVAL is not a fault — the run passed every gate and is
+      // paused at the FINAL human approval gate. Reflect that with the calm
+      // `awaiting_approval` status rather than the alarming `escalated` one,
+      // so the header chip reads "draft ready" instead of "escalated".
+      next.status =
+        event.escalation.alarm.type === "AWAITING_APPROVAL"
+          ? "awaiting_approval"
+          : "escalated";
       next.escalation = event.escalation;
       break;
     }
