@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthProvider, useAuth } from "@/app/auth/AuthContext";
@@ -71,6 +71,27 @@ describe("AuthProvider / useAuth", () => {
     );
     expect(screen.getByTestId("email")).toHaveTextContent("—");
     expect(authApi.fetchMe).not.toHaveBeenCalled();
+  });
+
+  it("should settle to authenticated under Strict Mode's double-mount (regression: stuck 'Checking your session…')", async () => {
+    // Dev Strict Mode mounts → unmounts → remounts, so two fetchMe() calls run.
+    // The cancelled (first) one finishing must NOT set the rehydration guard, or
+    // the live (second) call returns early and status sticks on "loading".
+    authApi.writeToken("tok_stored");
+    vi.mocked(authApi.fetchMe).mockResolvedValue(USER);
+
+    render(
+      <StrictMode>
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      </StrictMode>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status")).toHaveTextContent("authenticated"),
+    );
+    expect(screen.getByTestId("email")).toHaveTextContent("ada@example.com");
   });
 
   it("should rehydrate the user from a stored token on mount (state change)", async () => {

@@ -82,9 +82,14 @@ export function AuthProvider({
         setUser(null);
         setToken(null);
         setStatus("unauthenticated");
-      } finally {
-        rehydrated.current = true;
       }
+      // NB: do NOT flip `rehydrated.current` here. Under React Strict Mode the
+      // effect mounts → unmounts → remounts in dev, so two fetchMe() calls are
+      // in flight; the first (cancelled) one finishing must not set the guard,
+      // or the second (live) call sees it true and returns WITHOUT setting
+      // status — pinning the UI on "Checking your session…". The guard exists
+      // only to stop a slow rehydration from clobbering a fresh login, and
+      // that path is owned by adopt() (login/register), which sets it.
     })();
     return () => {
       cancelled = true;
