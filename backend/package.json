@@ -16,7 +16,7 @@
     "seed:admin": "tsx scripts/seed-admin.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/anthropic": "^3.0.0",
     "@anthropic-ai/sdk": "^0.104.1",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.77.0",
@@ -26,7 +26,7 @@
     "@opentelemetry/sdk-node": "^0.219.0",
     "@opentelemetry/semantic-conventions": "^1.41.1",
     "@publisher/shared": "*",
-    "ai": "^4.0.0",
+    "ai": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^11.5.0",
     "cors": "^2.8.5",
