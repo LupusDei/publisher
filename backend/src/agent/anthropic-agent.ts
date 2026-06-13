@@ -1,4 +1,4 @@
-import { generateText, generateObject } from "ai";
+import { generateText, generateObject, stepCountIs } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   WebpageSchema,
@@ -18,17 +18,21 @@ export interface AnthropicAgentOptions {
   workerId?: string;
 }
 
-/** AI SDK usage shape (v4 `LanguageModelUsage`). Mapped to our Usage contract. */
+/**
+ * AI SDK usage shape (v6 `LanguageModelUsage`). The v4→v6 rename is
+ * `promptTokens`/`completionTokens` → `inputTokens`/`outputTokens`, and every
+ * field is now `number | undefined`. Mapped to our Usage contract.
+ */
 interface SdkUsage {
-  promptTokens?: number;
-  completionTokens?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   totalTokens?: number;
 }
 
 /* c8 ignore start -- env-gated real provider path; not exercised in CI (ASSUMPTIONS D20). */
 function toUsage(u: SdkUsage | undefined): Usage {
-  const inputTokens = u?.promptTokens ?? 0;
-  const outputTokens = u?.completionTokens ?? 0;
+  const inputTokens = u?.inputTokens ?? 0;
+  const outputTokens = u?.outputTokens ?? 0;
   return {
     inputTokens,
     outputTokens,
@@ -56,10 +60,12 @@ function toFinishReason(r: string | undefined): FinishReason {
  * Env-gated; never selected unless USE_REAL_AGENT=true and a key is present, so
  * it is not exercised in CI (a contract-shape test covers construction).
  *
- * KNOWN GAP (`@ai-sdk/anthropic@1.2.12`): no server-side web_search/web_fetch,
- * so research() returns empty sources (ASSUMPTIONS D13). `ai@4.x` uses
- * `maxSteps`. The agent now receives a compiled `system` string and returns
- * `AgentResult<T>` with usage/finishReason (D2).
+ * KNOWN GAP (`@ai-sdk/anthropic@^3`): no server-side web_search/web_fetch wired
+ * here, so research() returns empty sources (ASSUMPTIONS D13; web tools land in
+ * rrt.3 via the official-SDK worker). On `ai@^6` the multi-step loop is bounded
+ * with `stopWhen: stepCountIs(N)` (the v4 `maxSteps` knob was removed). The
+ * agent receives a compiled `system` string and returns `AgentResult<T>` with
+ * usage/finishReason (D2). No `temperature` is sent — opus-4-8 rejects it.
  */
 export class AnthropicAgent implements Agent {
   /** The worker identity surfaced through the seam (R8/R11). */
@@ -84,7 +90,8 @@ export class AnthropicAgent implements Agent {
       model: this.languageModel,
       system: input.system,
       prompt: `Research the following concept in depth, gathering credible, citable detail:\n\n${input.concept}`,
-      maxSteps: 8,
+      // ai v6: bound the multi-step loop here (the v4 `maxSteps` was removed).
+      stopWhen: stepCountIs(8),
     });
     // TODO(follow-up bead): populate sources from real web tools once available.
     return {

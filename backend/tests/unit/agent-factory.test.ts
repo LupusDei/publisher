@@ -1,10 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
 
-// Mock the AI SDK so constructing/exercising the real agent never hits the network.
+// Mock the AI SDK so constructing/exercising the real agent never hits the
+// network. Usage uses the ai@^6 shape (inputTokens/outputTokens/totalTokens),
+// and `stepCountIs` must be provided since research() now bounds steps with
+// `stopWhen: stepCountIs(8)` (the v4 `maxSteps` was removed).
 vi.mock("ai", () => ({
+  stepCountIs: vi.fn((n: number) => ({ __stepCountIs: n })),
   generateText: vi.fn(async () => ({
     text: "researched text",
-    usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+    usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
     finishReason: "stop",
   })),
   generateObject: vi.fn(async () => ({
@@ -15,7 +19,7 @@ vi.mock("ai", () => ({
       summary: "s",
       sourcesUsed: [],
     },
-    usage: { promptTokens: 5, completionTokens: 15, totalTokens: 20 },
+    usage: { inputTokens: 5, outputTokens: 15, totalTokens: 20 },
     finishReason: "stop",
   })),
 }));
