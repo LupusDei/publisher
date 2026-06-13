@@ -107,12 +107,24 @@ export function createShareService(deps: ShareServiceDeps): ShareService {
       const active = shareStore.getActiveByRun(runId);
       if (active) return linkFor(active.slug);
 
-      const created = shareStore.create({
-        slug: slug(),
-        runId,
-        ownerId,
-      });
-      return linkFor(created.slug);
+      try {
+        const created = shareStore.create({
+          slug: slug(),
+          runId,
+          ownerId,
+        });
+        return linkFor(created.slug);
+      } catch (err) {
+        // Concurrent-mint race: a parallel caller committed the active share
+        // between our getActiveByRun check and our create, so the store's
+        // partial unique index (idx_shares_active_run) rejected this insert.
+        // Re-read and return the winner's link — identical to the sequential
+        // idempotent path (spec edge case: "second call returns the first").
+        // Only rethrow if no active share actually exists (a real failure).
+        const raced = shareStore.getActiveByRun(runId);
+        if (raced) return linkFor(raced.slug);
+        throw err;
+      }
     },
 
     revoke(runId, userId) {
