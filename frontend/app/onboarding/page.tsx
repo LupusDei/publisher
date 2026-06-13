@@ -10,6 +10,7 @@ import {
   type NewPersona,
   type Persona,
 } from "../personas/persona-api";
+import { useAuth } from "../auth/AuthContext";
 
 type SubmitState =
   | { kind: "idle" }
@@ -32,6 +33,16 @@ function lines(value: string): string[] {
  * loading/success/error states are announced via aria-live regions.
  */
 export default function OnboardingPage(): React.ReactElement {
+  const { status, register } = useAuth();
+  // Show the account step only for a brand-new (signed-out) visitor; a visitor
+  // who is already signed in (or whose session is still resolving) goes
+  // straight to authoring a persona.
+  const needsAccount = status === "unauthenticated";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const [name, setName] = useState("");
   const [voice, setVoice] = useState("");
   const [voiceSample, setVoiceSample] = useState("");
@@ -45,13 +56,17 @@ export default function OnboardingPage(): React.ReactElement {
   });
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
 
+  const accountReady =
+    !needsAccount || (email.trim().length > 0 && password.length > 0);
+
   const canSubmit = useMemo(
     () =>
       name.trim().length > 0 &&
       voice.trim().length > 0 &&
       voiceSample.trim().length > 0 &&
+      accountReady &&
       state.kind !== "saving",
-    [name, voice, voiceSample, state.kind],
+    [name, voice, voiceSample, accountReady, state.kind],
   );
 
   function buildPayload(): NewPersona {
@@ -75,13 +90,20 @@ export default function OnboardingPage(): React.ReactElement {
   async function onSubmit(): Promise<void> {
     setState({ kind: "saving" });
     try {
+      // A signed-out visitor sets a password here: create the account first so
+      // the persona is created with an authenticated, owner-scoped request.
+      if (needsAccount) {
+        await register(email.trim(), password);
+      }
       const persona = await createPersona(buildPayload());
       setState({ kind: "created", persona });
     } catch (err: unknown) {
       setState({
         kind: "error",
         message:
-          err instanceof Error ? err.message : "Failed to create persona",
+          err instanceof Error
+            ? err.message
+            : "Failed to complete onboarding",
       });
     }
   }
@@ -105,6 +127,58 @@ export default function OnboardingPage(): React.ReactElement {
           if (canSubmit) void onSubmit();
         }}
       >
+        {needsAccount ? (
+          <fieldset style={styles.fieldset}>
+            <legend style={styles.legend}>Create your account</legend>
+            <p style={styles.help}>
+              Set an email and password — your personas and runs are scoped to
+              you. Already have an account?{" "}
+              <Link href="/login" style={styles.secondary}>
+                Sign in
+              </Link>
+              .
+            </p>
+            <div style={styles.accountGrid}>
+              <Field id="email" label="Email">
+                <input
+                  id="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  style={styles.input}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
+              </Field>
+              <Field id="password" label="Password">
+                <div style={styles.passwordRow}>
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    style={{ ...styles.input, flex: 1 }}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Choose a password"
+                  />
+                  <button
+                    type="button"
+                    style={styles.reveal}
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-pressed={showPassword}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </Field>
+            </div>
+          </fieldset>
+        ) : null}
+
         <Field
           id="name"
           label="Persona name"
@@ -305,6 +379,22 @@ const styles: Record<string, React.CSSProperties> = {
     gridTemplateColumns: "1fr 1fr",
     gap: 14,
     marginTop: 8,
+  },
+  accountGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 14,
+    marginTop: 8,
+  },
+  passwordRow: { display: "flex", gap: 8, alignItems: "stretch" },
+  reveal: {
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
+    background: "white",
+    padding: "0 10px",
+    fontSize: 13,
+    color: "#2563eb",
+    cursor: "pointer",
   },
   actions: { display: "flex", gap: 12, alignItems: "center", marginTop: 4 },
   primary: {

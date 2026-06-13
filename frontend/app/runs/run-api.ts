@@ -14,6 +14,9 @@ import type {
   EscalationOption,
   Persona,
 } from "@publisher/shared";
+// authFetch attaches the persisted JWT as `Authorization: Bearer <token>` so
+// every authenticated run call carries the session (85q.5).
+import { authFetch } from "../auth/auth-api";
 
 export const RUN_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
@@ -70,7 +73,7 @@ export async function startRun(
   input: StartRunInput,
   base: string = RUN_API_BASE,
 ): Promise<{ runId: string }> {
-  const res = await fetch(`${base}/runs`, {
+  const res = await authFetch(`${base}/runs`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
@@ -89,7 +92,7 @@ export async function fetchRun(
   runId: string,
   base: string = RUN_API_BASE,
 ): Promise<Run> {
-  const res = await fetch(`${base}/runs/${runId}`);
+  const res = await authFetch(`${base}/runs/${runId}`);
   if (!res.ok) {
     throw new Error(`Failed to load run (HTTP ${res.status})`);
   }
@@ -98,7 +101,7 @@ export async function fetchRun(
 
 /** GET /runs → the list of runs (for the runs list / replay surface, R9). */
 export async function fetchRuns(base: string = RUN_API_BASE): Promise<Run[]> {
-  const res = await fetch(`${base}/runs`);
+  const res = await authFetch(`${base}/runs`);
   if (!res.ok) {
     throw new Error(`Failed to load runs (HTTP ${res.status})`);
   }
@@ -116,7 +119,7 @@ export async function fetchRunEvents(
   base: string = RUN_API_BASE,
 ): Promise<RunEvent[]> {
   const qs = sinceSeq >= 0 ? `?sinceSeq=${sinceSeq}` : "";
-  const res = await fetch(`${base}/runs/${runId}/events${qs}`);
+  const res = await authFetch(`${base}/runs/${runId}/events${qs}`);
   if (!res.ok) {
     throw new Error(`Failed to load run events (HTTP ${res.status})`);
   }
@@ -130,7 +133,7 @@ export async function postDecision(
   decision: { choice: EscalationOption; payload?: { persona?: Persona } },
   base: string = RUN_API_BASE,
 ): Promise<void> {
-  const res = await fetch(`${base}/runs/${runId}/decision`, {
+  const res = await authFetch(`${base}/runs/${runId}/decision`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(decision),
@@ -158,7 +161,7 @@ export interface PersonaSummary {
 export async function fetchPersonaSummaries(
   base: string = RUN_API_BASE,
 ): Promise<PersonaSummary[]> {
-  const res = await fetch(`${base}/personas`);
+  const res = await authFetch(`${base}/personas`);
   if (!res.ok) {
     throw new Error(`Failed to load personas (HTTP ${res.status})`);
   }
@@ -184,7 +187,7 @@ export async function fetchCompiledGuardrails(
   personaId: string,
   base: string = RUN_API_BASE,
 ): Promise<CompiledGuardrailsView> {
-  const res = await fetch(`${base}/personas/${personaId}/compiled`);
+  const res = await authFetch(`${base}/personas/${personaId}/compiled`);
   if (!res.ok) {
     throw new Error(`Failed to load compiled guardrails (HTTP ${res.status})`);
   }

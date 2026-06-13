@@ -12,7 +12,7 @@
  * disables the control and announces "Signing in…".
  */
 
-import { useState, useId, type FormEvent } from "react";
+import { useState, useId, Suspense, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -41,7 +41,7 @@ const COPY: Record<
   },
 };
 
-export default function LoginPage(): React.ReactElement {
+function LoginForm(): React.ReactElement {
   const { login, register } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
@@ -247,5 +247,26 @@ export default function LoginPage(): React.ReactElement {
         </p>
       </section>
     </main>
+  );
+}
+
+/**
+ * The route default. `LoginForm` reads `useSearchParams()` (for the post-login
+ * `?next=` redirect), which Next.js requires to sit inside a Suspense boundary.
+ */
+export default function LoginPage(): React.ReactElement {
+  return (
+    <Suspense
+      fallback={
+        <main className="auth-main" aria-busy="true">
+          <p role="status" className="auth-status">
+            <span className="auth-spinner" aria-hidden="true" />
+            Loading…
+          </p>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

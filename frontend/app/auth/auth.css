@@ -237,6 +237,21 @@
   }
 }
 
+/* ── Logout control ───────────────────────────────────────────────────── */
+.auth-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.auth-logout-email {
+  font-size: var(--step--1);
+  color: var(--muted);
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .auth-gate {
   min-height: 60dvh;
   display: grid;
