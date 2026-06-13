@@ -14,7 +14,7 @@
  */
 import { useEffect, useState } from "react";
 import type { ShareLink as ShareLinkData } from "@publisher/shared";
-import { createShare, fetchShare } from "@/app/runs/run-api";
+import { createShare, fetchShare, revokeShare } from "@/app/runs/run-api";
 import { Button } from "@/components/ui/Button";
 
 export interface ShareLinkProps {
@@ -79,6 +79,22 @@ export function ShareLink({ runId, base }: ShareLinkProps): React.ReactElement {
     setCopy(ok ? "copied" : "unavailable");
   }
 
+  async function onRevoke(): Promise<void> {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await (base ? revokeShare(runId, base) : revokeShare(runId));
+      // Revoked → drop the link and reset transient copy state so the UI
+      // reverts cleanly to the "Get share link" affordance.
+      setLink(null);
+      setCopy("idle");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to revoke share link");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="share-link" aria-label="Share link">
       {!link && (
@@ -115,6 +131,15 @@ export function ShareLink({ runId, base }: ShareLinkProps): React.ReactElement {
             >
               Open
             </a>
+            <Button
+              variant="danger"
+              size="md"
+              onClick={onRevoke}
+              disabled={busy}
+              aria-label="Revoke link"
+            >
+              {busy ? "Revoking…" : "Revoke link"}
+            </Button>
           </div>
           {copy === "copied" && (
             <span role="status" className="share-link-copied">
