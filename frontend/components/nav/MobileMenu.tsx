@@ -49,7 +49,11 @@ export function MobileMenu({ items }: MobileMenuProps): React.ReactElement {
         <ul id={panelId} className="mobile-menu-panel">
           {items.map((item) => (
             <li key={item.href} className="mobile-menu-item">
-              <NavLink href={item.href} className="mobile-menu-link">
+              <NavLink
+                href={item.href}
+                className="mobile-menu-link"
+                secondary={item.secondary}
+              >
                 {item.label}
               </NavLink>
             </li>

@@ -29,6 +29,8 @@ export interface NavLinkProps {
   children: ReactNode;
   /** Extra class names composed onto the anchor. */
   className?: string;
+  /** De-emphasise the link (e.g. the Demo item); exposed via `data-secondary`. */
+  secondary?: boolean;
 }
 
 /** True when `pathname` matches the section rooted at `href` (exact or nested). */
@@ -66,6 +68,7 @@ export function NavLink({
   href,
   children,
   className,
+  secondary,
 }: NavLinkProps): React.ReactElement {
   const pathname = usePathname() ?? "/";
   const active = isActivePath(pathname, href);
@@ -75,6 +78,7 @@ export function NavLink({
       className={className}
       aria-current={active ? "page" : undefined}
       data-active={active ? "true" : undefined}
+      data-secondary={secondary ? "true" : undefined}
     >
       {children}
     </Link>

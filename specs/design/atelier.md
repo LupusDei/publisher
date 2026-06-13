@@ -85,8 +85,8 @@ every route inherits the same wayfinding; do not add a second nav.
 - **Source of truth — `nav-items.ts`.** `NAV_ITEMS` is the single ordered list of
   the product's information architecture. Every surface (desktop row + mobile
   menu) renders from this one list, so the IA can never drift between viewports.
-  Each item carries optional flags: `adminOnly`, `requiresAuth`, `secondary`
-  (de-emphasised, e.g. Demo). **Add or reorder nav items only here.**
+  Each item carries optional flags: `adminOnly` and `secondary` (de-emphasised,
+  e.g. Demo, rendered via `data-secondary`). **Add or reorder nav items only here.**
 - **Active state — `NavLink` / `isActivePath`.** Active section is derived from
   `usePathname` and exposed to assistive tech via `aria-current="page"` and to CSS
   via `data-active`. Home (`/`) matches exactly; every other href matches an exact

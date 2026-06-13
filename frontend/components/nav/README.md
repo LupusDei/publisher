@@ -42,8 +42,8 @@ Both viewports render the **same** filtered list, so the IA never diverges.
    ```
 2. Set flags if needed:
    - `adminOnly: true` — visible only when `user.role === "admin"`.
-   - `requiresAuth: true` — only meaningful for a signed-in session.
-   - `secondary: true` — de-emphasised in the primary row (like Demo).
+   - `secondary: true` — de-emphasised in the primary row (like Demo); rendered
+     via `data-secondary` on the link.
 3. That's it — both the desktop masthead and the mobile menu pick it up
    automatically. Active highlighting works out of the box: an exact match, or any
    nested route under the href (`/reports/42`), is treated as active.

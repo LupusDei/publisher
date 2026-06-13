@@ -5,9 +5,8 @@
  * never drifts between viewports.
  *
  * Flags:
- *   - `requiresAuth` — only meaningful for a signed-in session.
- *   - `adminOnly`    — gated to `user.role === "admin"` (see SiteNav).
- *   - `secondary`    — de-emphasised in the primary row (e.g. the Demo link).
+ *   - `adminOnly`  — gated to `user.role === "admin"` (see SiteNav).
+ *   - `secondary`  — de-emphasised in the primary row (e.g. the Demo link).
  */
 
 export interface NavItem {
@@ -15,8 +14,6 @@ export interface NavItem {
   label: string;
   /** Destination route (Next.js href). */
   href: string;
-  /** Render only for an authenticated session when true. */
-  requiresAuth?: boolean;
   /** Render only when the current user is an admin when true. */
   adminOnly?: boolean;
   /** De-emphasised in the primary masthead row when true. */

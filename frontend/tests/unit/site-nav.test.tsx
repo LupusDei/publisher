@@ -70,6 +70,17 @@ describe("SiteNav", () => {
     }
   });
 
+  // ── publisher-nav.6.3: secondary flag is rendered (Demo de-emphasised) ────
+  it("should de-emphasise the secondary Demo link via data-secondary", () => {
+    render(<SiteNav />);
+    const nav = screen.getByRole("navigation", { name: /primary/i });
+    const demo = within(nav).getByRole("link", { name: /^demo$/i });
+    expect(demo).toHaveAttribute("data-secondary", "true");
+    // Non-secondary items do not carry the flag.
+    const runs = within(nav).getByRole("link", { name: /^runs$/i });
+    expect(runs).not.toHaveAttribute("data-secondary");
+  });
+
   it("should mark the active section via aria-current from usePathname", () => {
     pathname = "/runs/123";
     render(<SiteNav />);
