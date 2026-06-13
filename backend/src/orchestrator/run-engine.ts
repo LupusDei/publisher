@@ -25,6 +25,7 @@ import type {
   Sink,
 } from "../domain/index.js";
 import type { RunStore } from "../stores/run.store.js";
+import type { ResearchStore } from "../stores/research.store.js";
 import type { PersonaStore } from "../stores/persona.store.js";
 import type { WebpageStore } from "../stores/webpage.store.js";
 import type { CheckpointStore } from "../stores/checkpoint.store.js";
@@ -100,6 +101,9 @@ export interface RunEngineDeps {
   runStore: RunStore;
   /** Persona lookup — used to rehydrate a paused run after a process restart. */
   personaStore: PersonaStore;
+  /** Durable research (publisher-kgv) — persisted on success so a resume after a
+   * restart picks up at build instead of re-running the expensive research. */
+  researchStore: ResearchStore;
   webpageStore: WebpageStore;
   checkpointStore: CheckpointStore;
   alarmStore: AlarmStore;
@@ -180,6 +184,15 @@ type EventBody = RunEvent extends infer V
 export interface RunEngine {
   start(input: StartInput): Promise<RunOutcome>;
   resume(runId: string, decision: EscalationDecision): Promise<RunOutcome>;
+  /**
+   * Resume a run that was CUT OFF mid-flight (publisher-kgv) — e.g. a backend
+   * restart abandoned it at `interrupted`/researching/building/checking. Rebuilds
+   * the context from durable state and continues from the furthest checkpoint
+   * reached: persisted research → skip straight to build; a partially-checked
+   * draft → re-run only the gates not yet passed. Distinct from `resume`, which
+   * applies a HUMAN decision to a paused run.
+   */
+  resumeRun(runId: string): Promise<RunOutcome>;
 }
 
 export function createRunEngine(deps: RunEngineDeps): RunEngine {
@@ -450,10 +463,26 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     ctx.lastWebpage = webpage;
     deps.webpageStore.insert(ctx.runId, ctx.attempt, webpage, false);
 
-    // CHECK — voice → design → quality, in order.
+    // CHECK — voice → design → quality, in order. A fresh build runs every gate.
+    return checkAndDecide(ctx, webpage, BUILD_GATES);
+  }
+
+  /**
+   * Evaluate `gatesToRun` against a (just-built OR persisted) webpage, then
+   * decide the run's next move. Split out of `buildAndCheck` so a RESUMED run
+   * can re-check only the gates it had not reached yet (publisher-kgv) — gates
+   * already passed in this attempt are NOT re-run, so the run continues from
+   * exactly where it was cut off rather than rebuilding from scratch.
+   */
+  async function checkAndDecide(
+    ctx: RunContext,
+    webpage: Webpage,
+    gatesToRun: readonly string[],
+  ): Promise<RunOutcome> {
     deps.runStore.updateStatus(ctx.runId, "checking");
+    ctx.lastWebpage = webpage;
     const failures: CheckpointResult[] = [];
-    for (const name of BUILD_GATES) {
+    for (const name of gatesToRun) {
       const result = await gate(ctx, name).evaluate(
         checkpointContext(ctx, webpage),
       );
@@ -541,6 +570,9 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
       );
       recordCheckpoint(ctx, researchResult);
       if (researchResult.passed) {
+        // Persist the accepted research so a restart mid-build can resume here
+        // instead of re-running the expensive web_search pass (publisher-kgv).
+        deps.researchStore.save(ctx.runId, researchAttempt, ctx.research);
         telemetry.recordRunAttempts("research", researchAttempt);
         break;
       }
@@ -621,6 +653,46 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     };
     pending.set(runId, ctx);
     return ctx;
+  }
+
+  /**
+   * Reconstruct the build progress of a run from its persisted checkpoints: the
+   * latest build attempt, which of that attempt's gates already PASSED, and the
+   * failures so far (for refine feedback). Lets a resume continue checking only
+   * the gates it had not yet reached, rather than rebuilding from scratch.
+   */
+  function buildGateState(runId: string): {
+    attempt: number;
+    passed: Set<string>;
+    failures: CheckpointResult[];
+  } {
+    const buildGates = BUILD_GATES as readonly string[];
+    const buildCps = deps.checkpointStore
+      .listByRun(runId)
+      .filter((c) => buildGates.includes(c.result.name));
+    if (buildCps.length === 0) {
+      return { attempt: 1, passed: new Set(), failures: [] };
+    }
+    const attempt = Math.max(...buildCps.map((c) => c.attempt));
+    const atAttempt = buildCps.filter((c) => c.attempt === attempt);
+    const passed = new Set(
+      atAttempt.filter((c) => c.result.passed).map((c) => c.result.name),
+    );
+    const failures = atAttempt
+      .filter((c) => !c.result.passed)
+      .map((c) => c.result);
+    return { attempt, passed, failures };
+  }
+
+  /** States a cut-off run can be resumed FROM. Paused (HITL) runs resume via a
+   * decision; terminal runs are done. */
+  function resumableReason(run: { status: string } | null): string | null {
+    if (!run) return "unknown run";
+    if (run.status === "escalated" || run.status === "awaiting_approval")
+      return "run is paused for a human decision (use the decision flow)";
+    if (run.status === "published" || run.status === "failed")
+      return `run already ${run.status}`;
+    return null; // created | interrupted | researching | building | checking | refining
   }
 
   return {
@@ -718,7 +790,89 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
       ctx.passedGates.clear();
       return rehydrated ? runFromResearch(ctx) : buildAndCheck(ctx, undefined);
     },
+
+    async resumeRun(runId) {
+      const run = deps.runStore.get(runId);
+      const blocked = resumableReason(run);
+      if (!run || blocked) {
+        throw new RunNotResumableError(runId, blocked ?? "unknown run");
+      }
+      const persona = deps.personaStore.getById(run.personaId);
+      if (!persona) {
+        throw new RunNotResumableError(runId, "persona no longer exists");
+      }
+
+      const compiled = deps.guardrailEngine.compile(persona);
+      const stored = deps.researchStore.latest(runId);
+      const { attempt, passed, failures } = buildGateState(runId);
+      const drafts = deps.webpageStore.listByRun(runId);
+      const draftForAttempt = [...drafts]
+        .reverse()
+        .find((d) => d.attempt === attempt);
+      // Continue the journal's monotonic seq after the persisted events.
+      const seq = deps.journal.load(runId).length;
+
+      telemetry.runStarted();
+      const ctx: RunContext = {
+        runId,
+        workerId: run.workerId,
+        agent: agentForWorker(run.workerId),
+        researchAgent: agentForWorker(RESEARCH_WORKER_ID),
+        persona,
+        material: { concept: run.concept, persona },
+        system: compiled.systemPrompt,
+        validators: compiled.validators,
+        research: stored ? stored.research : { text: "", sources: [] },
+        attempt,
+        ...(draftForAttempt ? { lastWebpage: draftForAttempt.webpage } : {}),
+        priorResults: failures,
+        passedGates: passed,
+        meter: createMeter(),
+        alarmEmitter: deps.budget
+          ? createAlarmEmitter(deps.budget)
+          : createAlarmEmitter(),
+        seq,
+        runSpan: telemetry.startRunSpan(runId),
+        startedAt: Date.parse(run.createdAt) || Date.now(),
+      };
+
+      // No durable research → it never cleared the research gate; re-run the
+      // (unpersisted) research pipeline from the top.
+      if (!stored) return runFromResearch(ctx);
+
+      // Research is durable. If a draft for this attempt exists and only SOME of
+      // its gates ran, continue checking the remainder on that draft — pick up
+      // exactly where it was cut off (publisher-kgv).
+      const remaining = BUILD_GATES.filter((g) => !passed.has(g));
+      if (
+        draftForAttempt &&
+        remaining.length > 0 &&
+        remaining.length < BUILD_GATES.length
+      ) {
+        return checkAndDecide(ctx, draftForAttempt.webpage, remaining);
+      }
+
+      // Research done but this attempt's build didn't finish (or no partial
+      // draft to continue) → (re)build this attempt. Refine carries feedback.
+      const feedback =
+        attempt > 1 && failures.length > 0
+          ? nextBuildFeedback(failures)
+          : undefined;
+      return buildAndCheck(ctx, feedback);
+    },
   };
+}
+
+/** Raised when `resumeRun` is called for a run that cannot be resumed (unknown,
+ * terminal, or paused for a human decision). */
+export class RunNotResumableError extends Error {
+  constructor(
+    readonly runId: string,
+    readonly detail: string,
+  ) {
+    super(`Run ${runId} cannot be resumed: ${detail}`);
+    this.name = "RunNotResumableError";
+  }
 }
 
 /** A thrown true-fault carrying the alarm the loop already forwarded. */

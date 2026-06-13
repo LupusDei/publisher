@@ -10,6 +10,7 @@ export {
   MAX_ATTEMPTS,
   AgentFault,
   RunNotPausedError,
+  RunNotResumableError,
   type RunEngine,
   type RunEngineDeps,
   type StartInput,

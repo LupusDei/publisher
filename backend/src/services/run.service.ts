@@ -16,6 +16,7 @@ import type {
 } from "../domain/index.js";
 import type { PersonaStore } from "../stores/persona.store.js";
 import type { RunStore } from "../stores/run.store.js";
+import type { ResearchStore } from "../stores/research.store.js";
 import type { RunEventStore } from "../stores/run-event.store.js";
 import type { WebpageStore } from "../stores/webpage.store.js";
 import type { CheckpointStore } from "../stores/checkpoint.store.js";
@@ -27,10 +28,22 @@ import { createJournal } from "../journal/index.js";
 import {
   createRunEngine,
   RunNotPausedError,
+  RunNotResumableError,
   type RunEngine,
   type RunOutcome,
 } from "../orchestrator/index.js";
 import type { RunEventBus } from "../orchestrator/event-bus.js";
+
+/** Why a run can't be resumed via resumeRun, or null if it can. Mirrors the
+ * engine's own check so the service rejects synchronously at the boundary. */
+function resumeBlockedReason(run: Run | null): string | null {
+  if (!run) return "unknown run";
+  if (run.status === "escalated" || run.status === "awaiting_approval")
+    return "run is paused for a human decision (use the decision flow)";
+  if (run.status === "published" || run.status === "failed")
+    return `run already ${run.status}`;
+  return null;
+}
 
 /** Raised when input fails to load (empty concept / unknown persona) — 400. */
 export class InputRejectedError extends Error {
@@ -40,8 +53,8 @@ export class InputRejectedError extends Error {
   }
 }
 
-/** Re-export so the route can map a not-paused resume to a 409. */
-export { RunNotPausedError };
+/** Re-export so the route can map a not-paused/not-resumable resume to 4xx. */
+export { RunNotPausedError, RunNotResumableError };
 
 export interface RunServiceDeps {
   /**
@@ -65,6 +78,7 @@ export interface RunServiceDeps {
   ) => Checkpoint[];
   personaStore: PersonaStore;
   runStore: RunStore;
+  researchStore: ResearchStore;
   eventStore: RunEventStore;
   webpageStore: WebpageStore;
   checkpointStore: CheckpointStore;
@@ -114,6 +128,13 @@ export interface RunService {
     runId: string,
     decision: EscalationDecision,
   ): Promise<{ outcome: RunOutcome }>;
+  /**
+   * Resume a run cut off mid-flight (publisher-kgv), FIRE-AND-FORGET like
+   * `start`: kicks `engine.resumeRun` without awaiting so the route hands back
+   * immediately and the UI re-opens the stream. Rejects synchronously (before
+   * returning) with RunNotResumableError if the run can't be resumed.
+   */
+  resumeRun(runId: string): Promise<{ runId: string }>;
   /** The live event bus — the SSE route subscribes here to tail a run. */
   bus: RunEventBus;
 }
@@ -184,6 +205,7 @@ export function createRunService(deps: RunServiceDeps): RunService {
     eventBus: deps.eventBus,
     runStore: deps.runStore,
     personaStore: deps.personaStore,
+    researchStore: deps.researchStore,
     webpageStore: deps.webpageStore,
     checkpointStore: deps.checkpointStore,
     alarmStore: deps.alarmStore,
@@ -250,6 +272,17 @@ export function createRunService(deps: RunServiceDeps): RunService {
       guard(runId, resumed);
       const outcome = await resumed;
       return { outcome };
+    },
+
+    async resumeRun(runId) {
+      // Guard FIRST so a non-resumable run rejects synchronously (→ 409/404 at
+      // the route) instead of being swallowed into a `failed` outcome. We probe
+      // the run state up front; engine.resumeRun re-checks authoritatively.
+      const reason = resumeBlockedReason(deps.runStore.get(runId));
+      if (reason) throw new RunNotResumableError(runId, reason);
+      // FIRE-AND-FORGET like start: kick the engine, capture the promise, return.
+      guard(runId, engine.resumeRun(runId));
+      return { runId };
     },
   };
 }

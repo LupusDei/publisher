@@ -10,11 +10,12 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Run, Persona } from "@publisher/shared";
-import { fetchRun } from "../run-api";
+import { fetchRun, resumeRun } from "../run-api";
 import { timeAgo, absoluteTime } from "../time-ago";
 import { LiveRunPanel } from "@/components/LiveRunPanel";
 import { CompiledGuardrailPanel } from "@/components/CompiledGuardrailPanel";
 import { ShareLink } from "@/components/ShareLink";
+import { Button } from "@/components/ui/Button";
 import { RequireAuth } from "../../auth/RequireAuth";
 import "@/components/runs-ui.css";
 
@@ -37,6 +38,8 @@ function RunDetailView(): React.ReactElement {
 
   const [run, setRun] = useState<Run | null>(null);
   const [error, setError] = useState<string | undefined>();
+  const [resuming, setResuming] = useState(false);
+  const [resumeError, setResumeError] = useState<string | undefined>();
 
   useEffect(() => {
     let active = true;
@@ -52,6 +55,22 @@ function RunDetailView(): React.ReactElement {
       active = false;
     };
   }, [runId]);
+
+  // Resume a run that was cut off mid-flight (publisher-kgv). The page's SSE
+  // stream is already open, so once the engine re-enters it streams the new
+  // events live; we just refresh the header so the status leaves "interrupted".
+  async function onResume(): Promise<void> {
+    setResuming(true);
+    setResumeError(undefined);
+    try {
+      await resumeRun(runId);
+      setRun(await fetchRun(runId));
+    } catch (e: unknown) {
+      setResumeError(e instanceof Error ? e.message : "Failed to resume");
+    } finally {
+      setResuming(false);
+    }
+  }
 
   const personaId = run?.personaId ?? personaIdHint;
   const workerId = run?.workerId ?? workerHint;
@@ -89,7 +108,35 @@ function RunDetailView(): React.ReactElement {
         </p>
       )}
 
-      {/* Once a run is published it can be shared publicly (US2). */}
+      {/* Interrupted (e.g. a backend restart cut it off) → offer to resume from
+       * the furthest checkpoint reached (publisher-kgv). */}
+      {run?.status === "interrupted" && (
+        <section className="run-interrupted" aria-labelledby="resume-h">
+          <div>
+            <h2 id="resume-h" className="run-interrupted-title">
+              This run was interrupted
+            </h2>
+            <p className="run-interrupted-body">
+              It was cut off mid-run. Resume to continue from the last checkpoint
+              it reached — research it already finished won&rsquo;t re-run.
+            </p>
+            {resumeError && (
+              <p role="alert" className="form-error">
+                {resumeError}
+              </p>
+            )}
+          </div>
+          <Button
+            variant="primary"
+            onClick={() => void onResume()}
+            disabled={resuming}
+          >
+            {resuming ? "Resuming…" : "Resume run"}
+          </Button>
+        </section>
+      )}
+
+      {/* Once a run is published it can be shared publicly (share epic). */}
       {run?.status === "published" && (
         <div className="run-detail-share" style={{ marginTop: 16 }}>
           <h2 className="run-detail-share-h">Share</h2>

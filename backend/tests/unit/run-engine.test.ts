@@ -18,6 +18,7 @@ import { createPersonaStore } from "../../src/stores/persona.store.js";
 import { createRunStore } from "../../src/stores/run.store.js";
 import { createRunEventStore } from "../../src/stores/run-event.store.js";
 import { createWebpageStore } from "../../src/stores/webpage.store.js";
+import { createResearchStore } from "../../src/stores/research.store.js";
 import { createCheckpointStore } from "../../src/stores/checkpoint.store.js";
 import { createAlarmStore } from "../../src/stores/alarm.store.js";
 import { createMetricStore } from "../../src/stores/metric.store.js";
@@ -27,7 +28,10 @@ import { createGuardrailEngine } from "../../src/guardrails/index.js";
 import { createCheckpoints } from "../../src/checkpoints/index.js";
 import { createJournal } from "../../src/journal/index.js";
 import { createEventBus } from "../../src/orchestrator/event-bus.js";
-import { createRunEngine } from "../../src/orchestrator/run-engine.js";
+import {
+  createRunEngine,
+  RunNotResumableError,
+} from "../../src/orchestrator/run-engine.js";
 import type { Agent } from "../../src/domain/index.js";
 import { MockAgent } from "../../src/agent/mock-agent.js";
 
@@ -91,6 +95,7 @@ function makeEngine(
     eventBus: createEventBus(),
     runStore: createRunStore(db),
     personaStore,
+    researchStore: createResearchStore(db),
     webpageStore: createWebpageStore(db),
     checkpointStore: createCheckpointStore(db),
     alarmStore: createAlarmStore(db),
@@ -450,5 +455,147 @@ describe("RunEngine.resume", () => {
       choice: "abort",
     });
     expect(outcome.status).toBe("failed");
+  });
+});
+
+// ── Durability: resume a run CUT OFF mid-flight (publisher-kgv) ───────────
+describe("RunEngine.resumeRun (publisher-kgv)", () => {
+  let db: DB;
+  beforeEach(() => {
+    db = openDb(":memory:");
+    runMigrations(db, loadMigrations(migrationsDir));
+  });
+
+  const OFF_VOICE: Webpage = {
+    title: "A Treatise Heretofore",
+    html: "<main><h1>Furthermore</h1><p>The aforementioned scholarly treatise, pursuant to convention, warrants exhaustive formal elaboration herein at length and detail.</p></main>",
+    css: "",
+    summary: "A formal academic treatment of the subject in a detached register.",
+    sourcesUsed: ["a", "b", "c"],
+  };
+
+  /** Seed an interrupted run row (persona is seeded by makeEngine). */
+  function seedInterrupted(id: string): ReturnType<typeof createRunStore> {
+    const runs = createRunStore(db);
+    runs.create({
+      id,
+      personaId: persona.id,
+      concept: material.concept,
+      workerId: "mock",
+    });
+    runs.updateStatus(id, "interrupted");
+    return runs;
+  }
+
+  it("should SKIP research and go straight to build when research was persisted (happy path)", async () => {
+    let researchCalled = false;
+    const agent: Agent = {
+      async research(): Promise<AgentResult<ResearchResult>> {
+        researchCalled = true;
+        throw new Error("research must NOT run when it was already persisted");
+      },
+      async build(): Promise<AgentResult<Webpage>> {
+        return { value: OFF_VOICE, usage: usage(), finishReason: "stop" };
+      },
+    };
+    const engine = makeEngine(db, agent, { maxAttempts: 1 });
+    const runs = seedInterrupted("run_kgv1");
+    createResearchStore(db).save("run_kgv1", 1, {
+      text: "durable research",
+      sources: ["a", "b", "c"],
+    });
+
+    const outcome = await engine.resumeRun("run_kgv1");
+
+    expect(researchCalled).toBe(false); // the expensive research was reused
+    expect(outcome.status).toBe("escalated"); // off-voice build → escalate (maxAttempts 1)
+    expect(runs.get("run_kgv1")?.status).toBe("escalated");
+  });
+
+  it("should re-run research when none was persisted (error/edge path)", async () => {
+    // No durable research → the research gate never cleared → re-research. A
+    // throwing research proves the path was taken (the run fails on the fault).
+    let researchCalled = false;
+    const agent: Agent = {
+      async research(): Promise<AgentResult<ResearchResult>> {
+        researchCalled = true;
+        throw new Error("provider exploded");
+      },
+      async build(): Promise<AgentResult<Webpage>> {
+        throw new Error("build should not run — research failed");
+      },
+    };
+    const engine = makeEngine(db, agent);
+    seedInterrupted("run_kgv2");
+
+    const outcome = await engine.resumeRun("run_kgv2");
+
+    expect(researchCalled).toBe(true);
+    expect(outcome.status).toBe("failed");
+  });
+
+  it("should resume mid-checking and re-check ONLY the gates not yet reached, without rebuilding (state change)", async () => {
+    // A draft that passes every gate (MockAgent's output) with voice-fidelity
+    // already recorded as passed. Resume must check only design+quality on the
+    // SAVED draft and never call build again.
+    const mockPage = (
+      await new MockAgent().build({
+        system: "",
+        research: { text: "x", sources: ["a", "b", "c"] },
+      })
+    ).value;
+    let buildCalled = false;
+    const agent: Agent = {
+      async research(): Promise<AgentResult<ResearchResult>> {
+        throw new Error("no research on a mid-build resume");
+      },
+      async build(): Promise<AgentResult<Webpage>> {
+        buildCalled = true;
+        throw new Error("must NOT rebuild — continue from the saved draft");
+      },
+    };
+    const engine = makeEngine(db, agent);
+    seedInterrupted("run_kgv3");
+    createResearchStore(db).save("run_kgv3", 1, {
+      text: "durable",
+      sources: ["a", "b", "c"],
+    });
+    createWebpageStore(db).insert("run_kgv3", 1, mockPage, false);
+    createCheckpointStore(db).insert("run_kgv3", 1, {
+      name: "voice-fidelity",
+      passed: true,
+      score: 0.9,
+      threshold: 0.75,
+      details: "already passed before the cut-off",
+      autoCorrectable: true,
+      alarms: [],
+    });
+
+    const outcome = await engine.resumeRun("run_kgv3");
+
+    expect(buildCalled).toBe(false); // continued from the saved draft, no rebuild
+    expect(outcome.status).toBe("awaiting_approval"); // design+quality pass on it
+    // voice-fidelity was NOT re-evaluated: still exactly one such checkpoint.
+    const voiceChecks = createCheckpointStore(db)
+      .listByRun("run_kgv3")
+      .filter((c) => c.result.name === "voice-fidelity");
+    expect(voiceChecks).toHaveLength(1);
+  });
+
+  it("should reject resuming an unknown, terminal, or HITL-paused run (RunNotResumableError)", async () => {
+    const engine = makeEngine(db, new MockAgent());
+    const runs = createRunStore(db);
+
+    await expect(engine.resumeRun("nope")).rejects.toBeInstanceOf(
+      RunNotResumableError,
+    );
+
+    runs.create({ id: "run_pub", personaId: persona.id, concept: "c", workerId: "mock" });
+    runs.updateStatus("run_pub", "published");
+    await expect(engine.resumeRun("run_pub")).rejects.toThrow(/already published/);
+
+    runs.create({ id: "run_esc", personaId: persona.id, concept: "c", workerId: "mock" });
+    runs.updateStatus("run_esc", "escalated");
+    await expect(engine.resumeRun("run_esc")).rejects.toThrow(/human decision/);
   });
 });

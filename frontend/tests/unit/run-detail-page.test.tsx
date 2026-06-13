@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "run_1" }),
@@ -42,13 +42,15 @@ vi.mock("@/app/runs/run-api", async () => {
     await vi.importActual<typeof import("@/app/runs/run-api")>(
       "@/app/runs/run-api",
     );
-  return { ...actual, fetchRun: vi.fn() };
+  return { ...actual, fetchRun: vi.fn(), resumeRun: vi.fn() };
 });
 
-import { fetchRun } from "@/app/runs/run-api";
+import { fetchRun, resumeRun } from "@/app/runs/run-api";
 import RunDetailPage from "@/app/runs/[id]/page";
+import userEvent from "@testing-library/user-event";
 
 const mockFetchRun = vi.mocked(fetchRun);
+const mockResumeRun = vi.mocked(resumeRun);
 
 describe("RunDetailPage", () => {
   it("should render the live panel and compiled-guardrail panel from the run header (happy path)", async () => {
@@ -66,6 +68,45 @@ describe("RunDetailPage", () => {
       "compiled:p_from_header",
     );
     expect(screen.getByTestId("live-panel")).toHaveTextContent("panel:run_1");
+  });
+
+  it("should offer Resume for an interrupted run and POST resume on click (publisher-kgv)", async () => {
+    const user = userEvent.setup();
+    mockResumeRun.mockReset();
+    mockFetchRun.mockReset();
+    // First load → interrupted; after resume the header refetch → researching.
+    mockFetchRun
+      .mockResolvedValueOnce({
+        id: "run_1",
+        personaId: "p_1",
+        concept: "Orbits",
+        workerId: "sonnet",
+        status: "interrupted",
+        createdAt: "t",
+        updatedAt: "t",
+      })
+      .mockResolvedValue({
+        id: "run_1",
+        personaId: "p_1",
+        concept: "Orbits",
+        workerId: "sonnet",
+        status: "researching",
+        createdAt: "t",
+        updatedAt: "t",
+      });
+    mockResumeRun.mockResolvedValue(undefined);
+
+    render(<RunDetailPage />);
+    const btn = await screen.findByRole("button", { name: /Resume run/ });
+    await user.click(btn);
+
+    expect(mockResumeRun).toHaveBeenCalledWith("run_1");
+    // After resume + header refetch, the interrupted banner is gone.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /Resume run/ }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("should fall back to the query-param persona/worker hints when the header fails (error path)", async () => {

@@ -17,6 +17,7 @@ import { createPersonaStore } from "../../src/stores/persona.store.js";
 import { createRunStore } from "../../src/stores/run.store.js";
 import { createRunEventStore } from "../../src/stores/run-event.store.js";
 import { createWebpageStore } from "../../src/stores/webpage.store.js";
+import { createResearchStore } from "../../src/stores/research.store.js";
 import { createCheckpointStore } from "../../src/stores/checkpoint.store.js";
 import { createAlarmStore } from "../../src/stores/alarm.store.js";
 import { createMetricStore } from "../../src/stores/metric.store.js";
@@ -92,6 +93,7 @@ function makeEngine(
     eventBus: createEventBus(),
     runStore: createRunStore(db),
     webpageStore: createWebpageStore(db),
+    researchStore: createResearchStore(db),
     checkpointStore: createCheckpointStore(db),
     alarmStore: createAlarmStore(db),
     metricStore: createMetricStore(db),
