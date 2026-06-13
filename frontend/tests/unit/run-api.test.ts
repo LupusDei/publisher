@@ -63,13 +63,27 @@ describe("run-api client", () => {
     expect(run.id).toBe("run_1");
   });
 
-  it("fetchRuns should unwrap the runs array (happy path)", async () => {
+  it("fetchRuns should return the bare array the backend sends (real shape)", async () => {
+    // GET /runs returns a BARE array (backend contract — runs.test.ts asserts
+    // Array.isArray(res.body)). Mock the real shape, not a {runs} envelope.
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => jsonResponse({ runs: [{ id: "a" }, { id: "b" }] })),
+      vi.fn(async () => jsonResponse([{ id: "a" }, { id: "b" }])),
     );
     const runs = await fetchRuns("http://api.test");
     expect(runs).toHaveLength(2);
+  });
+
+  it("fetchRuns should always resolve to an array, never undefined (regression)", async () => {
+    // Defensive: a missing/odd body must not become `undefined` (that crashed
+    // the /runs page at `runs.length`). Also tolerate a {runs} envelope.
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({})));
+    expect(await fetchRuns("http://api.test")).toEqual([]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ runs: [{ id: "x" }] })),
+    );
+    expect(await fetchRuns("http://api.test")).toHaveLength(1);
   });
 
   it("fetchRunEvents should append sinceSeq for catch-up and unwrap events (edge case)", async () => {

@@ -99,14 +99,21 @@ export async function fetchRun(
   return (await res.json()) as Run;
 }
 
-/** GET /runs → the list of runs (for the runs list / replay surface, R9). */
+/**
+ * GET /runs → the list of runs (for the runs list / replay surface, R9). The
+ * backend returns a BARE array (its integration test asserts `Array.isArray`);
+ * we tolerate a `{ runs }` envelope too and ALWAYS resolve to an array so the
+ * caller never sets state to `undefined` (which crashed the page at
+ * `runs.length`).
+ */
 export async function fetchRuns(base: string = RUN_API_BASE): Promise<Run[]> {
   const res = await authFetch(`${base}/runs`);
   if (!res.ok) {
     throw new Error(`Failed to load runs (HTTP ${res.status})`);
   }
-  const body = (await res.json()) as { runs: Run[] };
-  return body.runs;
+  const body = (await res.json()) as Run[] | { runs?: Run[] };
+  if (Array.isArray(body)) return body;
+  return body.runs ?? [];
 }
 
 /**
