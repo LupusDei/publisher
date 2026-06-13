@@ -9,6 +9,7 @@ import { createFileSink } from "./material/sink.js";
 import { selectVoiceJudge } from "./checkpoints/voice-fidelity.js";
 import { composeRunDeps } from "./composition.js";
 import { runsRouter, publishedRouter } from "./routes/runs.js";
+import { shareRouter, publicShareRouter } from "./routes/share.js";
 import { personasRouter } from "./routes/personas.js";
 import { guardrailsRouter } from "./routes/guardrails.js";
 import { adminTelemetryRouter } from "./routes/admin-telemetry.js";
@@ -87,15 +88,26 @@ const voiceJudge = selectVoiceJudge({
   ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
 });
 
-// One shared PersonaStore + the full run-deps graph (composition root).
-const { deps: runsDeps, personaStore } = composeRunDeps({
+// One shared PersonaStore + the full run-deps graph (composition root). The
+// share graph (store + service) comes from here too so the mint route and the
+// public serve route share one store and resolve against the same runs.
+const {
+  deps: runsDeps,
+  personaStore,
+  shareStore,
+  shareService,
+} = composeRunDeps({
   db,
   agentFactory,
   sink,
   telemetry,
   voiceJudge,
+  shareBaseUrl: env.PUBLIC_BASE_URL,
   ...(env.USE_REAL_AGENT ? {} : { defaultWorkerId: "mock" }),
 });
+// shareStore is exposed for future route wiring (revoke/list); the mint route
+// only needs the service + run-owner lookup today.
+void shareStore;
 
 // Auth composition root (85q.3): one UserStore + JWT bound to AUTH_JWT_SECRET.
 const authService = createAuthService({
@@ -136,7 +148,20 @@ const app = createApp({
       path: "/runs",
       router: runsRouter(runsDeps, { jwtSecret: env.AUTH_JWT_SECRET }),
     },
+    // Share mint (publisher-share.2.2) shares the /runs surface: POST
+    // /runs/:id/share. Authed + owner-checked; thin over shareService.
+    {
+      path: "/runs",
+      router: shareRouter({
+        shareService,
+        runStore: runsDeps.runStore,
+        jwtSecret: env.AUTH_JWT_SECRET,
+      }),
+    },
     { path: "/published", router: publishedRouter(sink) },
+    // Public, UNAUTHENTICATED preview serve (publisher-share.2.3): GET /p/:slug
+    // → the run's self-contained HTML via the Sink; uniform 404 on any miss.
+    { path: "/p", router: publicShareRouter({ shareService, sink }) },
     // Admin observability snapshot (Epic 3 consumes this). requireAdmin guard
     // stubbed until Epic 2 lands its real middleware.
     { path: "/admin/telemetry", router: adminTelemetryRouter({ telemetry }) },
