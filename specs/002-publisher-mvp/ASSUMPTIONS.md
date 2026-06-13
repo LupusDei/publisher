@@ -79,10 +79,16 @@ The agent receives a **compiled `system` string**, never a `Persona`. `compilePe
 **Why:** The highest-value beat (R2) must not depend on a non-deterministic LLM judge passing/failing on cue.
 **Reverse if:** you want to demo exclusively on the real agent and accept the live-flakiness risk.
 
-### 🔴 D13 — Real web research is a known gap; the demo runs on Mock research
-**Call:** Installed `@ai-sdk/anthropic@1.2.12` exposes **no** `web_search`/`web_fetch` tools, so the real agent's `research()` returns empty sources → research-sufficiency would always fail on the real path. The demo's research is Mock (real-shaped sources). Follow-up bead: upgrade the SDK or inject a web tool for true real research.
-**Why:** Avoids a silent landmine where the "real input" demo has no real research.
-**⚠️ NEEDS YOUR INPUT (non-blocking):** Is real web research in-scope for the demo, or is Mock research acceptable for the graded run? Proceeding with **Mock research for reliability; real agent for the swap**.
+### 🔴 D13 — REAL research is MANDATORY (revised by General, 2026-06-13). Mechanism: a native `@anthropic-ai/sdk` worker with the server-side `web_search` tool.
+**General's directive:** "Mock research is not ok. Has to be real research… but there might be a way to leverage Adjutant… ultimately convert this to an Adjutant plugin, leveraging the ngrok tunnel for the backend."
+**Facts:** the installed `@ai-sdk/anthropic@1.2.12` exposes only bash/textEditor/computer tools — **no** web search/fetch. Native Anthropic web tools require `ai@6` + `@ai-sdk/anthropic@3` (a disruptive major upgrade of the green foundation — rejected). The reliable path is the **official Anthropic SDK** (`@anthropic-ai/sdk`), whose Messages API supports the server-side `web_search` (+ `web_fetch`) tool directly.
+**Call (locked):**
+- **Real research is the default graded path.** Add a new `Agent` worker — `AnthropicResearchAgent` — built on `@anthropic-ai/sdk`, Messages API + server-side `web_search` tool, model `claude-opus-4-8` (sonnet for cheaper), adaptive thinking. `research()` returns a synthesized narrative + the **real source URLs** from the search results; `research-sufficiency` now gates on genuine sources. Build/refine can stay on the Vercel-AI-SDK worker or move to this worker too.
+- **This becomes the R8/R11 swap story (stronger than opus→sonnet):** Worker A = Vercel AI SDK (`@ai-sdk/anthropic`), Worker B = native `@anthropic-ai/sdk` with real web search. Two genuinely different implementations behind ONE `Agent` seam — a compelling live swap.
+- **Scripted `MockAgent` (D12) stays** as the deterministic CI default AND a safety-net for the R2 voice-drift beat if the live judge doesn't cooperate on stage. The *research* in the graded run is real; the scripted mock is a fallback for the *feedback-loop visibility* segment only.
+- Runs locally behind the ngrok tunnel (D11); needs `ANTHROPIC_API_KEY` (already env-gated; never in CI).
+**Adjutant-plugin vision = north star (de-risked, not a hackathon dependency):** the ngrok-exposed backend + the swappable `Agent` seam make Publisher plugin-ready. An Adjutant-orchestrated Claude-agent worker (real web tools via Claude Code) is a clean FUTURE swap behind the same seam — the architecture already supports it; we don't bet the graded demo on building that integration in the time box.
+**Tracked as:** new bead `publisher-dp0.4.5` (Real-research worker), executed after Track C's agent work merges.
 
 ### 🔴 D14 — Multi-persona is PROMOTED into the demo spine (not cut-first)
 **Call:** Two real, voice-distinct personas are seeded in Wave 1. "Same concept → two visibly different pages, side by side" is a hero demo beat.
@@ -116,6 +122,6 @@ The agent receives a **compiled `system` string**, never a `Persona`. `compilePe
 
 ## Open questions I did NOT block on (answer when convenient)
 1. ~~**D11** — backend host for the deployed URL?~~ ✅ **RESOLVED: local backend + ngrok tunnel → Vercel frontend** (General, 2026-06-13).
-2. **D13** — is real web research in-scope for the graded demo run, or is Mock research acceptable?
+2. ~~**D13** — real vs mock research?~~ ✅ **RESOLVED: real research MANDATORY** via native `@anthropic-ai/sdk` + server-side `web_search` (a 2nd swappable worker); Adjutant-agent worker is the future swap (General, 2026-06-13).
 3. **Persona depth (D3)** — happy with `voiceSample` + fixed design-token vocabulary, or do you want a richer capture model?
 4. **Demo concept (R6)** — do you have a specific real concept/idea you want published in the demo, or should I author one?
