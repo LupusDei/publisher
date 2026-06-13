@@ -9,6 +9,41 @@ import {
   type RunServiceDeps,
 } from "../services/run.service.js";
 import type { createFileSink } from "../material/sink.js";
+import { requireAuth } from "../auth/middleware.js";
+import type { AuthClaims } from "../auth/jwt.js";
+
+/** The slice of the run store the route needs to scope reads by owner (85q.4).
+ * Declared structurally so the router stays decoupled from the SQLite store. */
+interface RunOwnerLookup {
+  ownerOf(id: string): string | null;
+  get(id: string): unknown;
+}
+
+/** Optional auth/ownership wiring for the runs router (85q.4). When `jwtSecret`
+ * is present the router gates every route with `requireAuth`, stamps the authed
+ * user on new runs, and scopes per-run reads to the owner (admins see all). The
+ * test-only `runsRouterFrom(service)` path omits this and stays open. */
+export interface RunRouterOptions {
+  jwtSecret?: string;
+  owner?: RunOwnerLookup;
+}
+
+/** Per-id ownership outcome (mirrors the persona route). */
+type RunScopeResult = "ok" | "not_found" | "forbidden";
+
+/** Decide whether the authed viewer may read run `id`. Admins see all; a
+ * non-admin only their own. Un-owned runs (user_id NULL) stay visible. */
+function scopeRun(
+  owner: RunOwnerLookup,
+  id: string,
+  viewer: AuthClaims,
+): RunScopeResult {
+  if (!owner.get(id)) return "not_found";
+  if (viewer.role === "admin") return "ok";
+  const ownerId = owner.ownerOf(id);
+  if (ownerId !== null && ownerId !== viewer.userId) return "forbidden";
+  return "ok";
+}
 
 const StartRunSchema = z.object({
   personaId: z.string().min(1),
@@ -40,14 +75,47 @@ function badRequest(res: Response, message: string, issues?: unknown): void {
  * (Rule 4). SSE (not WS) is one-way, ngrok-friendly, and reconnects via the
  * standard `Last-Event-ID` header replayed against the journal.
  */
-export function runsRouter(deps: RunServiceDeps): Router {
+export function runsRouter(deps: RunServiceDeps, options?: RunRouterOptions): Router {
   const service = createRunService(deps);
-  return runsRouterFrom(service);
+  // Default the owner-lookup to the real run store so server.ts gets scoping
+  // for free; explicit options still win (tests).
+  const resolved: RunRouterOptions = {
+    ...(options ?? {}),
+    owner: options?.owner ?? deps.runStore,
+  };
+  return runsRouterFrom(service, resolved);
 }
 
-/** Build the router from an existing service (lets tests share one instance). */
-export function runsRouterFrom(service: RunService): Router {
+/** Build the router from an existing service (lets tests share one instance).
+ * When `options.jwtSecret` is set the router is gated with `requireAuth`, stamps
+ * the authed user on new runs, and scopes per-run reads (85q.4). */
+export function runsRouterFrom(
+  service: RunService,
+  options?: RunRouterOptions,
+): Router {
   const router = Router();
+  const jwtSecret = options?.jwtSecret;
+  const owner = options?.owner;
+
+  if (jwtSecret) {
+    router.use(requireAuth(jwtSecret));
+  }
+
+  /** Guard a per-run route by ownership; returns true if the caller may
+   * proceed. A no-op (proceeds) when auth/owner-lookup aren't wired. */
+  function guardScope(req: Request, res: Response): boolean {
+    if (!jwtSecret || !owner || !req.user) return true;
+    const scope = scopeRun(owner, req.params.id ?? "", req.user);
+    if (scope === "not_found") {
+      res.status(404).json({ error: { message: "Run not found" } });
+      return false;
+    }
+    if (scope === "forbidden") {
+      res.status(403).json({ error: { message: "Not your run" } });
+      return false;
+    }
+    return true;
+  }
 
   router.post("/", (req, res) => {
     const parsed = StartRunSchema.safeParse(req.body);
@@ -63,12 +131,18 @@ export function runsRouterFrom(service: RunService): Router {
       return;
     }
     const { personaId, concept, workerId } = parsed.data;
+    const userId = req.user?.userId;
     // dp0.11 — fire-and-forget: input is validated synchronously (INPUT_EMPTY →
     // 400) but the engine runs in the background. Return 202 with the runId so
     // the client can immediately open the SSE stream and watch the run live;
     // terminal/paused outcomes (including escalation) arrive over the stream.
     service
-      .start({ personaId, concept, ...(workerId ? { workerId } : {}) })
+      .start({
+        personaId,
+        concept,
+        ...(workerId ? { workerId } : {}),
+        ...(userId ? { userId } : {}),
+      })
       .then(({ runId }) => {
         res.status(202).json({ runId, status: "running" });
       })
@@ -86,6 +160,7 @@ export function runsRouterFrom(service: RunService): Router {
   });
 
   router.get("/:id", (req, res) => {
+    if (!guardScope(req, res)) return;
     const run = service.get(req.params.id);
     if (!run) {
       res.status(404).json({ error: { message: "Run not found" } });
@@ -95,16 +170,19 @@ export function runsRouterFrom(service: RunService): Router {
   });
 
   router.get("/:id/events", (req, res) => {
+    if (!guardScope(req, res)) return;
     const sinceSeq = parseSeq(req.query["sinceSeq"]);
     const events = service.events(req.params.id, sinceSeq);
     res.json({ events });
   });
 
   router.get("/:id/stream", (req, res) => {
+    if (!guardScope(req, res)) return;
     streamRun(service, req, res);
   });
 
   router.post("/:id/decision", (req, res) => {
+    if (!guardScope(req, res)) return;
     const parsed = DecisionSchema.safeParse(req.body);
     if (!parsed.success) {
       badRequest(

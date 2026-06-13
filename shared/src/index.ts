@@ -1,6 +1,17 @@
 export { WebpageSchema, type Webpage } from "./contracts/webpage.js";
 
 export {
+  UserSchema,
+  RoleSchema,
+  CredentialsSchema,
+  AuthResultSchema,
+  type User,
+  type Role,
+  type Credentials,
+  type AuthResult,
+} from "./contracts/user.js";
+
+export {
   PersonaSchema,
   NewPersonaSchema,
   type Persona,

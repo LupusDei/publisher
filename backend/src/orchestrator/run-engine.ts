@@ -106,6 +106,8 @@ export interface StartInput {
   runId: string;
   material: Material;
   workerId: string;
+  /** Owning user (85q.4), threaded onto the run header so list/get can scope. */
+  userId?: string;
 }
 
 /** Terminal outcomes the caller (run service) reports back to the API layer. */
@@ -461,12 +463,13 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
   }
 
   return {
-    async start({ runId, material, workerId }) {
+    async start({ runId, material, workerId, userId }) {
       deps.runStore.create({
         id: runId,
         personaId: material.persona.id,
         concept: material.concept,
         workerId,
+        ...(userId ? { userId } : {}),
       });
 
       telemetry.runStarted();

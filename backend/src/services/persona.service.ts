@@ -38,9 +38,11 @@ export interface PersonaServiceDeps {
 }
 
 export interface PersonaService {
-  create(input: unknown): Persona;
+  /** Validate + create a persona, optionally stamping the owning user (85q.4). */
+  create(input: unknown, ownerId?: string | null): Persona;
   getById(id: string): Persona;
-  list(): Persona[];
+  /** List personas; with `ownerId`, only that owner's (route scopes non-admins). */
+  list(ownerId?: string): Persona[];
   update(id: string, patch: unknown): Persona;
 }
 
@@ -60,7 +62,7 @@ export function createPersonaService(deps: PersonaServiceDeps): PersonaService {
   const { store } = deps;
 
   return {
-    create(input: unknown): Persona {
+    create(input: unknown, ownerId: string | null = null): Persona {
       const parsed = NewPersonaSchema.safeParse(input);
       if (!parsed.success) {
         throw new PersonaValidationError(
@@ -68,7 +70,7 @@ export function createPersonaService(deps: PersonaServiceDeps): PersonaService {
           toIssues(parsed.error),
         );
       }
-      return store.create(parsed.data);
+      return store.create(parsed.data, ownerId);
     },
 
     getById(id: string): Persona {
@@ -79,8 +81,8 @@ export function createPersonaService(deps: PersonaServiceDeps): PersonaService {
       return persona;
     },
 
-    list(): Persona[] {
-      return store.list();
+    list(ownerId?: string): Persona[] {
+      return store.list(ownerId);
     },
 
     update(id: string, patch: unknown): Persona {

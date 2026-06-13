@@ -13,6 +13,10 @@ import { guardrailsRouter } from "./routes/guardrails.js";
 import { adminTelemetryRouter } from "./routes/admin-telemetry.js";
 import { startOtel, PROMETHEUS_PORT } from "./telemetry/otel.js";
 import { createTelemetry } from "./telemetry/metrics.js";
+import { authRouter } from "./routes/auth.js";
+import { createUserStore } from "./stores/user.store.js";
+import { createJwt } from "./auth/jwt.js";
+import { createAuthService } from "./services/auth.service.js";
 
 const VERSION = process.env["npm_package_version"] ?? "0.1.0";
 
@@ -58,16 +62,28 @@ const { deps: runsDeps, personaStore } = composeRunDeps({
   ...(env.USE_REAL_AGENT ? {} : { defaultWorkerId: "mock" }),
 });
 
+// Auth composition root (85q.3): one UserStore + JWT bound to AUTH_JWT_SECRET.
+const authService = createAuthService({
+  userStore: createUserStore(db),
+  jwt: createJwt(env.AUTH_JWT_SECRET),
+});
+
 const app = createApp({
   corsOrigin: env.CORS_ORIGIN,
   version: VERSION,
   onHttpDuration: (ms) => telemetry.recordHttpDuration(ms),
   routers: [
+    { path: "/auth", router: authRouter({ auth: authService, jwtSecret: env.AUTH_JWT_SECRET }) },
     // /personas hosts BOTH persona CRUD and the compiled-guardrail inspection
-    // route (GET /personas/:id/compiled) — same mount path, two routers.
-    { path: "/personas", router: personasRouter({ personaStore }) },
+    // route (GET /personas/:id/compiled) — same mount path, two routers. The
+    // CRUD router is gated + owner-scoped (85q.4); the compiled-guardrail
+    // inspection route stays open (read-only describe of a stored persona).
+    {
+      path: "/personas",
+      router: personasRouter({ personaStore, jwtSecret: env.AUTH_JWT_SECRET }),
+    },
     { path: "/personas", router: guardrailsRouter({ personaStore }) },
-    { path: "/runs", router: runsRouter(runsDeps) },
+    { path: "/runs", router: runsRouter(runsDeps, { jwtSecret: env.AUTH_JWT_SECRET }) },
     { path: "/published", router: publishedRouter(sink) },
     // Admin observability snapshot (Epic 3 consumes this). requireAdmin guard
     // stubbed until Epic 2 lands its real middleware.
