@@ -163,6 +163,23 @@ export async function postDecision(
   }
 }
 
+/**
+ * POST /runs/:id/resume → resume a run cut off mid-flight (publisher-kgv). The
+ * engine continues from its furthest durable checkpoint and emits new events on
+ * the SAME run stream, so an already-open SSE connection picks them up live.
+ */
+export async function resumeRun(
+  runId: string,
+  base: string = RUN_API_BASE,
+): Promise<void> {
+  const res = await authFetch(`${base}/runs/${runId}/resume`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(await readError(res, `Failed to resume run (HTTP ${res.status})`));
+  }
+}
+
 /** Minimal persona shape the start-run picker needs (id + name + voice). */
 export interface PersonaSummary {
   id: string;

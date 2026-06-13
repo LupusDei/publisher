@@ -6,6 +6,7 @@ import {
   fetchPersonaSummaries,
   fetchRunEvents,
   postDecision,
+  resumeRun,
   fetchCompiledGuardrails,
   publishedUrl,
   streamUrl,
@@ -160,6 +161,26 @@ describe("run-api client", () => {
     await expect(
       postDecision("r", { choice: "abort" }, "http://api.test"),
     ).rejects.toThrow(/HTTP 409/);
+  });
+
+  it("resumeRun should POST to /runs/:id/resume (happy path)", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(null, { status: 202 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await resumeRun("r", "http://api.test");
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("http://api.test/runs/r/resume");
+    expect((init as RequestInit).method).toBe("POST");
+  });
+
+  it("resumeRun should throw a descriptive error on failure (error path)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("nope", { status: 409 })),
+    );
+    await expect(resumeRun("r", "http://api.test")).rejects.toThrow(/HTTP 409/);
   });
 
   it("fetchCompiledGuardrails should return the systemPrompt + validators (R3 happy path)", async () => {

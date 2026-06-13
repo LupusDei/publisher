@@ -231,6 +231,33 @@ textarea:focus-visible {
   font-size: 14px;
   color: var(--muted);
 }
+/* Interrupted = cut off mid-flight, resumable (publisher-kgv). */
+.status-interrupted {
+  background: color-mix(in srgb, var(--warn) 20%, #fff);
+  color: var(--warn);
+}
+.run-interrupted {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--line));
+  background: color-mix(in srgb, var(--warn) 7%, var(--panel));
+  border-radius: 12px;
+}
+.run-interrupted-title {
+  margin: 0 0 4px;
+  font-size: var(--step-1);
+  color: var(--ink);
+}
+.run-interrupted-body {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
 
 .conn-banner {
   display: flex;

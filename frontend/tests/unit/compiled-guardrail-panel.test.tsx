@@ -46,7 +46,7 @@ describe("CompiledGuardrailPanel", () => {
     // render refired the effect → setState → re-render → an infinite /compiled
     // fetch loop. Simulate the unstable loader and assert the fetch fires ONCE
     // per personaId across re-renders.
-    const spy = vi.fn(async () => view);
+    const spy = vi.fn(async (_id: string) => view);
     const { rerender } = render(
       <CompiledGuardrailPanel personaId="p_1" load={(id) => spy(id)} />,
     );
