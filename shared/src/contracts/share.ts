@@ -10,8 +10,13 @@ import { z } from "zod";
  * TTL — revoke is the only deactivation).
  */
 export const ShareSchema = z.object({
-  /** url-safe, unguessable, ≥16 chars — validated at the route boundary too. */
-  slug: z.string().min(1),
+  /**
+   * url-safe, unguessable, ≥16 chars — over the `[A-Za-z0-9_-]` alphabet the
+   * generator (createSlug) emits and the public `GET /p/:slug` route validates.
+   * Enforced here too so a short or punctuated slug never round-trips through a
+   * persisted/parsed share (defense-in-depth at the contract boundary).
+   */
+  slug: z.string().regex(/^[A-Za-z0-9_-]{16,}$/),
   /** The run this share exposes. */
   runId: z.string().min(1),
   /** Owning user, or null for an un-owned/seeded run. */

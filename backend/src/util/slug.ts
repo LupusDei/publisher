@@ -11,19 +11,13 @@ import { randomBytes } from "node:crypto";
  * the ≥16 floor), giving ~144 bits of entropy: probing the route reveals
  * nothing about which runs exist.
  *
- * The optional `_collisionAvoid` arg lets a caller signal a value to avoid
- * (e.g. a runId) for defense-in-depth; because the slug is independent
- * randomness it is overwhelmingly never equal to that value already, but on the
- * astronomically rare match we redraw — the slug is NEVER the input.
+ * The slug is independent crypto randomness — never derived from the runId or
+ * any caller input — so it is overwhelmingly never equal to any existing value.
+ * The store's UNIQUE index on `slug` is the real collision guard; no redraw
+ * loop is needed (Constitution §8 — simplest impl, no dead code).
  */
 const SLUG_BYTES = 18;
 
-export function createSlug(_collisionAvoid?: string): string {
-  // Redraw on the (effectively impossible) event that the random token equals
-  // the value the caller asked us to avoid. Bounded loop: it terminates after
-  // one iteration in every realistic run.
-  for (;;) {
-    const slug = randomBytes(SLUG_BYTES).toString("base64url");
-    if (slug !== _collisionAvoid) return slug;
-  }
+export function createSlug(): string {
+  return randomBytes(SLUG_BYTES).toString("base64url");
 }

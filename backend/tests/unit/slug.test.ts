@@ -5,7 +5,7 @@ import { createSlug } from "../../src/util/slug.js";
  * share.1.2 — the share slug must be an UNGUESSABLE, non-enumerable, url-safe
  * token (≥16 chars over [A-Za-z0-9_-]) and NEVER derived from the runId. These
  * tests pin those three properties: shape, uniqueness over many draws, and
- * independence from any provided input.
+ * independence from any input the caller might supply.
  */
 const SLUG_RE = /^[A-Za-z0-9_-]{16,}$/;
 
@@ -25,12 +25,13 @@ describe("createSlug", () => {
     expect(seen.size).toBe(draws);
   });
 
-  it("should never equal a runId passed in for collision-avoidance (edge case)", () => {
-    // Even if a caller threads the runId in (defensive API), the slug must be
-    // independent randomness — never the runId itself (no enumeration leak).
+  it("should never equal a runId — the slug is independent randomness (edge case)", () => {
+    // The slug is crypto randomness, never derived from the runId, so it must
+    // not collide with a runId-shaped value (no enumeration leak). The store's
+    // UNIQUE index is the real guard, so createSlug takes no collision arg.
     const runId = "run_0123456789abcdef";
     for (let i = 0; i < 100; i += 1) {
-      expect(createSlug(runId)).not.toBe(runId);
+      expect(createSlug()).not.toBe(runId);
     }
   });
 
