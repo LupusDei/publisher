@@ -79,6 +79,31 @@ export function shareRouter(deps: ShareRouterDeps): Router {
     }
   });
 
+  router.delete("/:id/share", (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+    if (!userId) {
+      // Defensive: with jwtSecret set, requireAuth already 401'd. Without it
+      // (test-only open mode) there is no principal to authorize the revoke.
+      res.status(401).json({ error: { message: "Authentication required" } });
+      return;
+    }
+    try {
+      // Idempotent in the service: no active share → clean no-op → 204.
+      shareService.revoke(req.params.id ?? "", userId);
+      res.status(204).end();
+    } catch (err: unknown) {
+      if (err instanceof ShareForbiddenError) {
+        res.status(403).json({ error: { message: err.message } });
+        return;
+      }
+      res.status(500).json({
+        error: {
+          message: err instanceof Error ? err.message : "Revoke failed",
+        },
+      });
+    }
+  });
+
   return router;
 }
 

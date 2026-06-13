@@ -134,6 +134,56 @@ describe("shareService.mint", () => {
   });
 });
 
+describe("shareService.revoke", () => {
+  let ctx: ReturnType<typeof build>;
+  beforeEach(() => {
+    ctx = build();
+  });
+
+  it("should revoke the active share for an owned run (happy path)", () => {
+    const { slug } = ctx.service.mint("run_pub", "u_owner");
+    // resolves before revoke
+    expect(ctx.service.resolveBySlug(slug)).toBe("run_pub");
+    ctx.service.revoke("run_pub", "u_owner");
+    // the row is stamped revoked and no longer resolves (no oracle)
+    expect(ctx.shareStore.rows[0]?.revokedAt).not.toBeNull();
+    expect(ctx.service.resolveBySlug(slug)).toBeNull();
+  });
+
+  it("should be an idempotent no-op when there is no active share (edge case)", () => {
+    // run_pub has never been shared — revoke must not throw and must not create rows
+    expect(() => ctx.service.revoke("run_pub", "u_owner")).not.toThrow();
+    expect(ctx.shareStore.rows).toHaveLength(0);
+  });
+
+  it("should be an idempotent no-op when the only share is already revoked (edge case)", () => {
+    ctx.service.mint("run_pub", "u_owner");
+    ctx.service.revoke("run_pub", "u_owner");
+    const revokedAt = ctx.shareStore.rows[0]?.revokedAt;
+    // a second revoke changes nothing (no active share to stamp)
+    expect(() => ctx.service.revoke("run_pub", "u_owner")).not.toThrow();
+    expect(ctx.shareStore.rows[0]?.revokedAt).toBe(revokedAt);
+    expect(ctx.shareStore.rows).toHaveLength(1);
+  });
+
+  it("should throw ShareForbiddenError when a non-owner revokes an owned run's share (error path)", () => {
+    const { slug } = ctx.service.mint("run_pub", "u_owner");
+    expect(() => ctx.service.revoke("run_pub", "u_intruder")).toThrow(
+      ShareForbiddenError,
+    );
+    // the share is untouched — still resolves
+    expect(ctx.service.resolveBySlug(slug)).toBe("run_pub");
+  });
+
+  it("should allow any authed caller to revoke an un-owned run's share (edge case)", () => {
+    const { slug } = ctx.service.mint("run_unowned", "u_anyone");
+    expect(() =>
+      ctx.service.revoke("run_unowned", "u_anyone"),
+    ).not.toThrow();
+    expect(ctx.service.resolveBySlug(slug)).toBeNull();
+  });
+});
+
 describe("shareService.resolveBySlug", () => {
   it("should return the runId for an active slug (happy path)", () => {
     const ctx = build();
