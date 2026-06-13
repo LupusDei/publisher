@@ -61,16 +61,24 @@ function usage(total = 10) {
   };
 }
 
-function makeEngine(db: DB, agent: Agent, opts: { maxAttempts?: number } = {}) {
-  const personaStore = createPersonaStore(db);
-  personaStore.create({
-    name: persona.name,
-    voice: persona.voice,
-    voiceSample: persona.voiceSample,
-    stylePoints: persona.stylePoints,
-    keyLearnings: persona.keyLearnings,
-    designElements: persona.designElements,
-  });
+function makeEngine(
+  db: DB,
+  agent: Agent,
+  opts: { maxAttempts?: number; seed?: boolean } = {},
+) {
+  // Seed the persona under its real id so a rehydrated run can look it up.
+  const personaStore = createPersonaStore(db, () => persona.id);
+  // A "restarted" engine on the SAME db must not re-insert the persona.
+  if (opts.seed !== false) {
+    personaStore.create({
+      name: persona.name,
+      voice: persona.voice,
+      voiceSample: persona.voiceSample,
+      stylePoints: persona.stylePoints,
+      keyLearnings: persona.keyLearnings,
+      designElements: persona.designElements,
+    });
+  }
   const eventStore = createRunEventStore(db);
   const publishDir = mkdtempSync(join(tmpdir(), "publisher-engine-"));
   return createRunEngine({
@@ -82,6 +90,7 @@ function makeEngine(db: DB, agent: Agent, opts: { maxAttempts?: number } = {}) {
     journal: createJournal(eventStore),
     eventBus: createEventBus(),
     runStore: createRunStore(db),
+    personaStore,
     webpageStore: createWebpageStore(db),
     checkpointStore: createCheckpointStore(db),
     alarmStore: createAlarmStore(db),
@@ -319,6 +328,63 @@ describe("RunEngine.resume", () => {
     const events = load(db, "run_5");
     expect(events.some((e) => e.t === "resumed")).toBe(true);
     expect(events[events.length - 1]?.t).toBe("published");
+  });
+
+  // ── Durability: resume survives a process restart (rehydrate) ────────────
+  it("should rehydrate a paused run after a restart and apply abort (durability)", async () => {
+    const engine = makeEngine(db, alwaysOffVoiceAgent(), { maxAttempts: 1 });
+    const started = await engine.start({
+      runId: "run_reh1",
+      material,
+      workerId: "mock",
+    });
+    expect(started.status).toBe("escalated");
+    if (started.status !== "escalated") return;
+
+    // Simulate a restart: a fresh engine on the SAME db has an empty in-memory
+    // `pending` map (and must not re-seed the persona).
+    const restarted = makeEngine(db, alwaysOffVoiceAgent(), { seed: false });
+    const outcome = await restarted.resume("run_reh1", {
+      escalationId: started.escalation.id,
+      choice: "abort",
+    });
+    expect(outcome.status).toBe("failed");
+    if (outcome.status === "failed") {
+      expect(outcome.reason).toMatch(/aborted by human decision/i);
+    }
+    const events = load(db, "run_reh1");
+    expect(events[events.length - 1]?.t).toBe("failed");
+  });
+
+  it("should rehydrate after a restart and publish the last draft on approve_anyway (durability)", async () => {
+    const engine = makeEngine(db, alwaysOffVoiceAgent(), { maxAttempts: 1 });
+    const started = await engine.start({
+      runId: "run_reh2",
+      material,
+      workerId: "mock",
+    });
+    expect(started.status).toBe("escalated");
+    if (started.status !== "escalated") return;
+
+    const restarted = makeEngine(db, alwaysOffVoiceAgent(), { seed: false });
+    const outcome = await restarted.resume("run_reh2", {
+      escalationId: started.escalation.id,
+      choice: "approve_anyway",
+    });
+    expect(outcome.status).toBe("published");
+    const events = load(db, "run_reh2");
+    expect(events.some((e) => e.t === "resumed")).toBe(true);
+    expect(events[events.length - 1]?.t).toBe("published");
+  });
+
+  it("should still reject a decision for a run that is not paused (edge)", async () => {
+    const restarted = makeEngine(db, alwaysOffVoiceAgent(), { seed: false });
+    await expect(
+      restarted.resume("run_missing", {
+        escalationId: "esc_x",
+        choice: "abort",
+      }),
+    ).rejects.toThrow(/not paused/i);
   });
 
   it("should recompile guardrails and re-run on enrich_persona, then publish (D19)", async () => {

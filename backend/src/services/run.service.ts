@@ -183,6 +183,7 @@ export function createRunService(deps: RunServiceDeps): RunService {
     journal,
     eventBus: deps.eventBus,
     runStore: deps.runStore,
+    personaStore: deps.personaStore,
     webpageStore: deps.webpageStore,
     checkpointStore: deps.checkpointStore,
     alarmStore: deps.alarmStore,

@@ -25,6 +25,7 @@ import type {
   Sink,
 } from "../domain/index.js";
 import type { RunStore } from "../stores/run.store.js";
+import type { PersonaStore } from "../stores/persona.store.js";
 import type { WebpageStore } from "../stores/webpage.store.js";
 import type { CheckpointStore } from "../stores/checkpoint.store.js";
 import type { AlarmStore } from "../stores/alarm.store.js";
@@ -96,6 +97,8 @@ export interface RunEngineDeps {
   journal: Journal;
   eventBus: RunEventBus;
   runStore: RunStore;
+  /** Persona lookup — used to rehydrate a paused run after a process restart. */
+  personaStore: PersonaStore;
   webpageStore: WebpageStore;
   checkpointStore: CheckpointStore;
   alarmStore: AlarmStore;
@@ -493,6 +496,120 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     return buildAndCheck(ctx, next);
   }
 
+  // ── research → build, as one re-enterable pipeline ───────────────────────
+  /**
+   * RESEARCH (with at most ONE re-research on insufficiency, then escalate
+   * research-light) → BUILD. Extracted from `start` so a rehydrated enrich/retry
+   * — which has lost its in-memory research text after a restart — can re-run
+   * the whole pipeline rather than building on empty research. Bounded by
+   * maxResearchAttempts (default 2).
+   */
+  async function runFromResearch(ctx: RunContext): Promise<RunOutcome> {
+    let researchAttempt = 1;
+    let researchGuidance: string | undefined;
+    for (;;) {
+      deps.runStore.updateStatus(ctx.runId, "researching");
+      emit(ctx, { t: "phase", phase: "research" });
+      try {
+        ctx.research = await metered(ctx, "research", () =>
+          ctx.agent.research({
+            system: ctx.system,
+            concept: researchGuidance
+              ? `${ctx.material.concept}\n\n[Research guidance — go broader/deeper]: ${researchGuidance}`
+              : ctx.material.concept,
+          }),
+        );
+      } catch (err) {
+        return failRun(
+          ctx,
+          err instanceof AgentFault ? err.message : String(err),
+        );
+      }
+      recordMetrics(ctx);
+
+      // GATE 1 — research sufficiency (deterministic, before any build).
+      const researchResult = await gate(ctx, "research-sufficiency").evaluate(
+        checkpointContext(ctx),
+      );
+      recordCheckpoint(ctx, researchResult);
+      if (researchResult.passed) {
+        telemetry.recordRunAttempts("research", researchAttempt);
+        break;
+      }
+
+      // Insufficient. Re-research ONCE; once the retry is spent, alert the user
+      // the topic is research-light instead of looping forever.
+      if (researchAttempt >= maxResearchAttempts) {
+        telemetry.recordRunAttempts("research", researchAttempt);
+        const found = researchResult.score ?? 0;
+        const need = researchResult.threshold ?? RESEARCH_MIN_SOURCES;
+        return escalate(
+          ctx,
+          `Topic appears research-light: only ${found} credible source(s) after a re-research pass (need >= ${need}). Enrich the concept or persona, or approve anyway.`,
+          hardAlarm(researchResult),
+        );
+      }
+      researchAttempt += 1;
+      researchGuidance = researchResult.feedback;
+      // Keep build-phase priorResults clean (research verdicts are journaled).
+      ctx.priorResults = [];
+    }
+    ctx.priorResults = [];
+
+    return buildAndCheck(ctx, undefined);
+  }
+
+  /**
+   * Rebuild a paused run's context from the persisted stores when the in-memory
+   * `pending` entry is gone — e.g. after a process restart — so a human decision
+   * can still resume it (durability for the HITL gate). Returns null when the
+   * run is not in a decidable (paused) state. Research text is NOT persisted, so
+   * a rehydrated context starts with empty research: terminal decisions (abort /
+   * approve_anyway) need none; enrich / retry re-run from research.
+   */
+  function rehydrate(runId: string): RunContext | null {
+    const run = deps.runStore.get(runId);
+    if (
+      !run ||
+      (run.status !== "escalated" && run.status !== "awaiting_approval")
+    ) {
+      return null;
+    }
+    const persona = deps.personaStore.getById(run.personaId);
+    if (!persona) return null;
+
+    const compiled = deps.guardrailEngine.compile(persona);
+    const drafts = deps.webpageStore.listByRun(runId);
+    const lastDraft = drafts.length ? drafts[drafts.length - 1] : undefined;
+    // Continue the event sequence after the persisted journal so resumed events
+    // don't collide with the monotonic seq the event store enforces.
+    const seq = deps.journal.load(runId).length;
+
+    telemetry.runStarted();
+    const ctx: RunContext = {
+      runId,
+      workerId: run.workerId,
+      persona,
+      material: { concept: run.concept, persona },
+      system: compiled.systemPrompt,
+      validators: compiled.validators,
+      research: { text: "", sources: [] },
+      attempt: 1,
+      ...(lastDraft ? { lastWebpage: lastDraft.webpage } : {}),
+      priorResults: [],
+      passedGates: new Set(),
+      meter: createMeter(),
+      alarmEmitter: deps.budget
+        ? createAlarmEmitter(deps.budget)
+        : createAlarmEmitter(),
+      seq,
+      runSpan: telemetry.startRunSpan(runId),
+      startedAt: Date.parse(run.createdAt) || Date.now(),
+    };
+    pending.set(runId, ctx);
+    return ctx;
+  }
+
   return {
     async start({ runId, material, workerId, userId }) {
       deps.runStore.create({
@@ -529,68 +646,21 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
         startedAt: Date.now(),
       };
 
-      // RESEARCH — with at most ONE re-research on insufficiency, then alert.
-      // Research is not refine-correctable, so rather than escalating on the
-      // first thin result we re-run research once with the gate's guidance; if
-      // it still can't clear the bar the topic is "research-light" → stop and
-      // ask the human (R10/D19). Bounded by maxResearchAttempts (default 2).
-      let researchAttempt = 1;
-      let researchGuidance: string | undefined;
-      for (;;) {
-        deps.runStore.updateStatus(runId, "researching");
-        emit(ctx, { t: "phase", phase: "research" });
-        try {
-          ctx.research = await metered(ctx, "research", () =>
-            ctx.agent.research({
-              system: ctx.system,
-              concept: researchGuidance
-                ? `${material.concept}\n\n[Research guidance — go broader/deeper]: ${researchGuidance}`
-                : material.concept,
-            }),
-          );
-        } catch (err) {
-          return failRun(
-            ctx,
-            err instanceof AgentFault ? err.message : String(err),
-          );
-        }
-        recordMetrics(ctx);
-
-        // GATE 1 — research sufficiency (deterministic, before any build).
-        const researchResult = await gate(ctx, "research-sufficiency").evaluate(
-          checkpointContext(ctx),
-        );
-        recordCheckpoint(ctx, researchResult);
-        if (researchResult.passed) {
-          telemetry.recordRunAttempts("research", researchAttempt);
-          break;
-        }
-
-        // Insufficient. Re-research ONCE; once the retry is spent, alert the
-        // user the topic is research-light instead of looping forever.
-        if (researchAttempt >= maxResearchAttempts) {
-          telemetry.recordRunAttempts("research", researchAttempt);
-          const found = researchResult.score ?? 0;
-          const need = researchResult.threshold ?? RESEARCH_MIN_SOURCES;
-          return escalate(
-            ctx,
-            `Topic appears research-light: only ${found} credible source(s) after a re-research pass (need >= ${need}). Enrich the concept or persona, or approve anyway.`,
-            hardAlarm(researchResult),
-          );
-        }
-        researchAttempt += 1;
-        researchGuidance = researchResult.feedback;
-        // Keep build-phase priorResults clean (research verdicts are journaled).
-        ctx.priorResults = [];
-      }
-      ctx.priorResults = [];
-
-      return buildAndCheck(ctx, undefined);
+      return runFromResearch(ctx);
     },
 
     async resume(runId, decision) {
-      const ctx = pending.get(runId);
-      if (!ctx) throw new RunNotPausedError(runId);
+      // Durability (HITL): if the in-memory context is gone — e.g. the process
+      // restarted since the run paused — rebuild it from the stores so the
+      // human decision still applies, instead of dead-ending on RunNotPaused.
+      let ctx = pending.get(runId);
+      let rehydrated = false;
+      if (!ctx) {
+        const rebuilt = rehydrate(runId);
+        if (!rebuilt) throw new RunNotPausedError(runId);
+        ctx = rebuilt;
+        rehydrated = true;
+      }
 
       deps.escalationStore.resolve(decision.escalationId, decision);
       emit(ctx, { t: "resumed", decision });
@@ -611,22 +681,26 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
         const recompiled = deps.guardrailEngine.compile(enriched);
         ctx.system = recompiled.systemPrompt;
         ctx.validators = recompiled.validators;
-        // Re-enter from a fresh build attempt under the enriched guardrails.
+        // Re-enter from a fresh build attempt under the enriched guardrails. A
+        // rehydrated context lost its research text (not persisted) → re-run the
+        // full pipeline from research; a warm context already has it.
         ctx.attempt = 1;
         ctx.priorResults = [];
         ctx.passedGates.clear();
-        return buildAndCheck(ctx, undefined);
+        return rehydrated
+          ? runFromResearch(ctx)
+          : buildAndCheck(ctx, undefined);
       }
 
       if (decision.choice === "abort") {
         return failRun(ctx, "Run aborted by human decision.");
       }
 
-      // retry (interface-only, D19): re-enter with the same guardrails.
+      // retry (D19): re-enter. Rehydrated → from research; warm → from build.
       ctx.attempt = 1;
       ctx.priorResults = [];
       ctx.passedGates.clear();
-      return buildAndCheck(ctx, undefined);
+      return rehydrated ? runFromResearch(ctx) : buildAndCheck(ctx, undefined);
     },
   };
 }
