@@ -1,0 +1,11 @@
+dist/
+.next/
+coverage/
+node_modules/
+next-env.d.ts
+.beads/
+
+# Hand-authored prose & design artifacts — not subject to code formatting
+docs/
+specs/
+*.md
