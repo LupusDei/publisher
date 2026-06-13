@@ -54,3 +54,39 @@ ADMIN_EMAIL=... ADMIN_PASSWORD=... DATABASE_PATH=./publisher.db \
 Idempotent — keyed by email; re-running with an existing `ADMIN_EMAIL` leaves
 that account untouched (it does not reset the password). The reusable,
 unit-tested `seedAdmin(store, creds)` function lives in `scripts/seed-admin.ts`.
+
+## Sharing a public Preview URL (Epic `publisher-share`)
+
+From a `published` run the owner mints a public, unguessable, revocable link:
+
+| Request | Result |
+| --- | --- |
+| `POST /runs/:id/share` (owner, run `published`) | `200 { slug, url }` |
+| `GET /p/:slug` (no auth) | `200 text/html` — the run's page |
+| `DELETE /runs/:id/share` (owner) | `204` |
+
+Mint is idempotent (a second call returns the same active share); the slug is
+crypto-strong randomness over `[A-Za-z0-9_-]{16,}` — never the `runId` — and an
+unknown, malformed, or revoked slug all return a uniform `404` (no oracle). Full
+walkthrough + the lifecycle table: [`../docs/publishing.md`](../docs/publishing.md).
+
+### `PUBLIC_BASE_URL` — exposing `/p/:slug` off-box
+
+The minted `url` is `${PUBLIC_BASE_URL}/p/${slug}`, or a relative `/p/${slug}`
+when `PUBLIC_BASE_URL` is **unset** (local same-origin dev).
+
+- **Dev (ngrok):** tunnel the backend port and point the var at the HTTPS URL so
+  minted links are externally clickable:
+
+  ```bash
+  ngrok http 3001            # prints https://<sub>.ngrok-free.app
+  PUBLIC_BASE_URL=https://<sub>.ngrok-free.app npm run dev --workspace backend
+  ```
+
+- **Prod:** point it at the real public origin, e.g.
+  `PUBLIC_BASE_URL=https://api.yourdomain.com` (no tunnel — the domain's proxy
+  forwards to the backend).
+
+Public reachability is purely operational (the `PUBLIC_BASE_URL` env var); there
+is no ngrok automation or object storage in this epic. See
+[`../docs/publishing.md`](../docs/publishing.md) for the full recipe.

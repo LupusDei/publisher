@@ -42,6 +42,36 @@ describe("ShareSchema", () => {
     );
   });
 
+  it("should reject a too-short slug (< 16 chars) (error path)", () => {
+    // The documented contract + the public route both require an unguessable
+    // ≥16-char url-safe slug; the schema must enforce that floor, not just
+    // min(1). 15 chars is one below the boundary.
+    expect(
+      ShareSchema.safeParse({ ...activeRow, slug: "abcDEF123_-xyzW" }).success,
+    ).toBe(false);
+  });
+
+  it("should reject a slug with non-url-safe characters (error path)", () => {
+    // Dots, slashes, and other punctuation fall outside the [A-Za-z0-9_-]
+    // alphabet the generator and route enforce.
+    expect(
+      ShareSchema.safeParse({
+        ...activeRow,
+        slug: "has.dots.and/slashes!!",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("should accept a valid ≥16-char url-safe slug (happy path)", () => {
+    // A 24-char base64url token — exactly what createSlug() emits — validates.
+    expect(
+      ShareSchema.safeParse({
+        ...activeRow,
+        slug: "Zx9_QmA1bC2dE3fG4hI5jK6l",
+      }).success,
+    ).toBe(true);
+  });
+
   it("should reject a missing runId (error path)", () => {
     const { runId: _omit, ...noRun } = activeRow;
     expect(ShareSchema.safeParse(noRun).success).toBe(false);
