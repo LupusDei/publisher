@@ -30,6 +30,13 @@ vi.mock("@/components/CompiledGuardrailPanel", () => ({
   ),
 }));
 
+// The page is gated by RequireAuth (covered by require-auth.test.tsx and
+// auth-gated-routes.test.tsx); stub it as a pass-through so this test exercises
+// the page's own data-loading + wiring.
+vi.mock("@/app/auth/RequireAuth", () => ({
+  RequireAuth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock("@/app/runs/run-api", async () => {
   const actual =
     await vi.importActual<typeof import("@/app/runs/run-api")>(

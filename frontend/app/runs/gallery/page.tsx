@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Run } from "@publisher/shared";
 import { fetchRuns, publishedUrl } from "../run-api";
+import { RequireAuth } from "../../auth/RequireAuth";
 import "@/components/runs-ui.css";
 
 type LoadState =
@@ -17,7 +18,17 @@ type LoadState =
   | { kind: "ready"; runs: Run[] }
   | { kind: "error"; message: string };
 
+/** Protected route: the gallery lists owner-scoped published runs, so gate it
+ * behind a valid session. The no-backend demo at /runs/demo stays public. */
 export default function GalleryPage(): React.ReactElement {
+  return (
+    <RequireAuth>
+      <Gallery />
+    </RequireAuth>
+  );
+}
+
+function Gallery(): React.ReactElement {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
 
   useEffect(() => {

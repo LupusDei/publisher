@@ -10,6 +10,13 @@ vi.mock("@/app/personas/persona-api", async () => {
   return { ...actual, fetchPersona: vi.fn(), updatePersona: vi.fn() };
 });
 
+// The route is gated by RequireAuth (covered by require-auth.test.tsx and
+// auth-gated-routes.test.tsx); stub it as a pass-through so this test exercises
+// the route wrapper's param threading.
+vi.mock("@/app/auth/RequireAuth", () => ({
+  RequireAuth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 const mockFetch = vi.mocked(fetchPersona);
 
 const persona: Persona = {
