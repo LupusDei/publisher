@@ -39,9 +39,18 @@ export const DESIGN_TOKEN_META: Record<
   DesignTokenKey,
   { label: string; placeholder: string }
 > = {
-  palette: { label: "Palette", placeholder: "e.g. warm neutrals, ink on cream" },
-  typography: { label: "Typography", placeholder: "e.g. serif headings, humanist sans body" },
-  layout: { label: "Layout", placeholder: "e.g. single column, generous margins" },
+  palette: {
+    label: "Palette",
+    placeholder: "e.g. warm neutrals, ink on cream",
+  },
+  typography: {
+    label: "Typography",
+    placeholder: "e.g. serif headings, humanist sans body",
+  },
+  layout: {
+    label: "Layout",
+    placeholder: "e.g. single column, generous margins",
+  },
   tone: { label: "Tone", placeholder: "e.g. calm, confident, unhurried" },
 };
 
@@ -53,9 +62,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
   try {
     const body = (await res.json()) as ApiError;
     if (body.error?.issues && body.error.issues.length > 0) {
-      return body.error.issues
-        .map((i) => `${i.path}: ${i.message}`)
-        .join("; ");
+      return body.error.issues.map((i) => `${i.path}: ${i.message}`).join("; ");
     }
     return body.error?.message ?? fallback;
   } catch {
@@ -73,7 +80,9 @@ export async function createPersona(
     body: JSON.stringify(input),
   });
   if (!res.ok) {
-    throw new Error(await readError(res, `Failed to create persona (HTTP ${res.status})`));
+    throw new Error(
+      await readError(res, `Failed to create persona (HTTP ${res.status})`),
+    );
   }
   return (await res.json()) as Persona;
 }
@@ -111,7 +120,9 @@ export async function updatePersona(
     body: JSON.stringify(patch),
   });
   if (!res.ok) {
-    throw new Error(await readError(res, `Failed to update persona (HTTP ${res.status})`));
+    throw new Error(
+      await readError(res, `Failed to update persona (HTTP ${res.status})`),
+    );
   }
   return (await res.json()) as Persona;
 }

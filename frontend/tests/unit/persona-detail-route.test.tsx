@@ -4,10 +4,9 @@ import PersonaDetailPage from "@/app/personas/[id]/page";
 import { fetchPersona, type Persona } from "@/app/personas/persona-api";
 
 vi.mock("@/app/personas/persona-api", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/app/personas/persona-api")>(
-      "@/app/personas/persona-api",
-    );
+  const actual = await vi.importActual<
+    typeof import("@/app/personas/persona-api")
+  >("@/app/personas/persona-api");
   return { ...actual, fetchPersona: vi.fn(), updatePersona: vi.fn() };
 });
 

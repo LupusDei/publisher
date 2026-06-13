@@ -4,10 +4,9 @@ import PersonasPage from "@/app/personas/page";
 import { fetchPersonas, type Persona } from "@/app/personas/persona-api";
 
 vi.mock("@/app/personas/persona-api", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/app/personas/persona-api")>(
-      "@/app/personas/persona-api",
-    );
+  const actual = await vi.importActual<
+    typeof import("@/app/personas/persona-api")
+  >("@/app/personas/persona-api");
   return { ...actual, fetchPersonas: vi.fn() };
 });
 
@@ -50,12 +49,16 @@ describe("PersonasPage (gallery)", () => {
     mockFetch.mockResolvedValue([]);
     render(<PersonasPage />);
     await waitFor(() =>
-      expect(screen.getByText(/create your first persona/i)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/create your first persona/i),
+      ).toBeInTheDocument(),
     );
   });
 
   it("should render an error state when the fetch fails (error handling)", async () => {
-    mockFetch.mockRejectedValue(new Error("Failed to load personas (HTTP 500)"));
+    mockFetch.mockRejectedValue(
+      new Error("Failed to load personas (HTTP 500)"),
+    );
     render(<PersonasPage />);
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(/HTTP 500/),

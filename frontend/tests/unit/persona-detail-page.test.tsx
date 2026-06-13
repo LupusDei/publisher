@@ -9,10 +9,9 @@ import {
 } from "@/app/personas/persona-api";
 
 vi.mock("@/app/personas/persona-api", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/app/personas/persona-api")>(
-      "@/app/personas/persona-api",
-    );
+  const actual = await vi.importActual<
+    typeof import("@/app/personas/persona-api")
+  >("@/app/personas/persona-api");
   return { ...actual, fetchPersona: vi.fn(), updatePersona: vi.fn() };
 });
 
@@ -39,7 +38,9 @@ describe("PersonaDetail", () => {
     mockFetch.mockResolvedValue(persona);
     render(<PersonaDetail id="p_1" />);
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "The Essayist" })).toBeInTheDocument(),
+      expect(
+        screen.getByRole("heading", { name: "The Essayist" }),
+      ).toBeInTheDocument(),
     );
     expect(screen.getByText(persona.voiceSample)).toBeInTheDocument();
     expect(screen.getByText("short paragraphs")).toBeInTheDocument();
@@ -60,11 +61,16 @@ describe("PersonaDetail", () => {
   it("should let a user edit the voice and save the patch (edit — D19)", async () => {
     const user = userEvent.setup();
     mockFetch.mockResolvedValue(persona);
-    mockUpdate.mockResolvedValue({ ...persona, voice: "Sharper, more direct." });
+    mockUpdate.mockResolvedValue({
+      ...persona,
+      voice: "Sharper, more direct.",
+    });
 
     render(<PersonaDetail id="p_1" />);
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "The Essayist" })).toBeInTheDocument(),
+      expect(
+        screen.getByRole("heading", { name: "The Essayist" }),
+      ).toBeInTheDocument(),
     );
 
     await user.click(screen.getByRole("button", { name: /edit/i }));
@@ -76,7 +82,10 @@ describe("PersonaDetail", () => {
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent(/saved/i),
     );
-    expect(mockUpdate).toHaveBeenCalledWith("p_1", expect.objectContaining({ voice: "Sharper, more direct." }));
+    expect(mockUpdate).toHaveBeenCalledWith(
+      "p_1",
+      expect.objectContaining({ voice: "Sharper, more direct." }),
+    );
     expect(screen.getByText("Sharper, more direct.")).toBeInTheDocument();
   });
 });

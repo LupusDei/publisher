@@ -37,7 +37,9 @@ describe("personas routes", () => {
     app = createApp({
       corsOrigin: "*",
       version: "test",
-      routers: [{ path: "/personas", router: personasRouter({ personaStore }) }],
+      routers: [
+        { path: "/personas", router: personasRouter({ personaStore }) },
+      ],
     });
   });
 
@@ -100,9 +102,7 @@ describe("personas routes", () => {
   });
 
   it("PATCH /personas/:id should return a structured 404 for an unknown id", async () => {
-    const res = await request(app)
-      .patch("/personas/nope")
-      .send({ voice: "x" });
+    const res = await request(app).patch("/personas/nope").send({ voice: "x" });
     expect(res.status).toBe(404);
     expect(res.body.error).toBeDefined();
   });

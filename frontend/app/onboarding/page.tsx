@@ -80,7 +80,8 @@ export default function OnboardingPage(): React.ReactElement {
     } catch (err: unknown) {
       setState({
         kind: "error",
-        message: err instanceof Error ? err.message : "Failed to create persona",
+        message:
+          err instanceof Error ? err.message : "Failed to create persona",
       });
     }
   }
@@ -170,15 +171,17 @@ export default function OnboardingPage(): React.ReactElement {
             style={styles.textarea}
             value={keyLearnings}
             onChange={(e) => setKeyLearnings(e.target.value)}
-            placeholder={"emergence is not magic\nattention is the scarce resource"}
+            placeholder={
+              "emergence is not magic\nattention is the scarce resource"
+            }
           />
         </Field>
 
         <fieldset style={styles.fieldset}>
           <legend style={styles.legend}>Design tokens</legend>
           <p style={styles.help}>
-            A fixed vocabulary so the harness can validate the page&apos;s design.
-            Leave any blank.
+            A fixed vocabulary so the harness can validate the page&apos;s
+            design. Leave any blank.
           </p>
           <div style={styles.tokenGrid}>
             {DESIGN_TOKEN_KEYS.map((key) => (
@@ -256,24 +259,75 @@ function Field(props: {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  main: { maxWidth: 720, margin: "0 auto", padding: "32px 24px 80px", lineHeight: 1.5 },
+  main: {
+    maxWidth: 720,
+    margin: "0 auto",
+    padding: "32px 24px 80px",
+    lineHeight: 1.5,
+  },
   header: { marginBottom: 28 },
-  eyebrow: { textTransform: "uppercase", letterSpacing: 1, fontSize: 12, color: "#6b7280", margin: 0 },
+  eyebrow: {
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    fontSize: 12,
+    color: "#6b7280",
+    margin: 0,
+  },
   h1: { fontSize: 32, margin: "6px 0 10px" },
   lede: { color: "#374151", margin: 0 },
   form: { display: "flex", flexDirection: "column", gap: 20 },
   field: { display: "flex", flexDirection: "column", gap: 4 },
   label: { fontWeight: 600, fontSize: 14 },
   help: { fontSize: 13, color: "#6b7280", margin: 0 },
-  input: { padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 },
-  textarea: { padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, minHeight: 72, fontFamily: "inherit" },
-  fieldset: { border: "1px solid #e5e7eb", borderRadius: 8, padding: 16, margin: 0 },
+  input: {
+    padding: "8px 10px",
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
+    fontSize: 14,
+  },
+  textarea: {
+    padding: "8px 10px",
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
+    fontSize: 14,
+    minHeight: 72,
+    fontFamily: "inherit",
+  },
+  fieldset: {
+    border: "1px solid #e5e7eb",
+    borderRadius: 8,
+    padding: 16,
+    margin: 0,
+  },
   legend: { fontWeight: 700, padding: "0 6px" },
-  tokenGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 8 },
+  tokenGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 14,
+    marginTop: 8,
+  },
   actions: { display: "flex", gap: 12, alignItems: "center", marginTop: 4 },
-  primary: { padding: "10px 18px", background: "#111827", color: "white", border: "none", borderRadius: 6, fontSize: 15, cursor: "pointer" },
+  primary: {
+    padding: "10px 18px",
+    background: "#111827",
+    color: "white",
+    border: "none",
+    borderRadius: 6,
+    fontSize: 15,
+    cursor: "pointer",
+  },
   secondary: { fontSize: 14, color: "#2563eb" },
   status: { color: "#374151" },
-  success: { color: "#065f46", background: "#ecfdf5", padding: "10px 12px", borderRadius: 6 },
-  error: { color: "#991b1b", background: "#fef2f2", padding: "10px 12px", borderRadius: 6 },
+  success: {
+    color: "#065f46",
+    background: "#ecfdf5",
+    padding: "10px 12px",
+    borderRadius: 6,
+  },
+  error: {
+    color: "#991b1b",
+    background: "#fef2f2",
+    padding: "10px 12px",
+    borderRadius: 6,
+  },
 };

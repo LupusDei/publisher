@@ -36,7 +36,11 @@ function lines(value: string): string[] {
  * points, key learnings, design tokens) and supports inline edit/enrich (D19).
  * The id is passed by the route wrapper so the component is directly testable.
  */
-export default function PersonaDetail({ id }: { id: string }): React.ReactElement {
+export default function PersonaDetail({
+  id,
+}: {
+  id: string;
+}): React.ReactElement {
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
   const [save, setSave] = useState<SaveState>({ kind: "viewing" });
 
@@ -77,7 +81,8 @@ export default function PersonaDetail({ id }: { id: string }): React.ReactElemen
         if (!active) return;
         setLoad({
           kind: "error",
-          message: err instanceof Error ? err.message : "Failed to load persona",
+          message:
+            err instanceof Error ? err.message : "Failed to load persona",
         });
       });
     return () => {
@@ -135,7 +140,10 @@ export default function PersonaDetail({ id }: { id: string }): React.ReactElemen
   }
 
   const persona = load.persona;
-  const editing = save.kind === "editing" || save.kind === "saving" || save.kind === "saveError";
+  const editing =
+    save.kind === "editing" ||
+    save.kind === "saving" ||
+    save.kind === "saveError";
 
   return (
     <main style={styles.main}>
@@ -166,7 +174,12 @@ export default function PersonaDetail({ id }: { id: string }): React.ReactElemen
             void onSave();
           }}
         >
-          <LabeledTextarea id="voice" label="Voice" value={voice} onChange={setVoice} />
+          <LabeledTextarea
+            id="voice"
+            label="Voice"
+            value={voice}
+            onChange={setVoice}
+          />
           <LabeledTextarea
             id="voiceSample"
             label="Voice sample"
@@ -207,7 +220,11 @@ export default function PersonaDetail({ id }: { id: string }): React.ReactElemen
           </fieldset>
 
           <div style={styles.actions}>
-            <button type="submit" style={styles.primary} disabled={save.kind === "saving"}>
+            <button
+              type="submit"
+              style={styles.primary}
+              disabled={save.kind === "saving"}
+            >
               {save.kind === "saving" ? "Saving…" : "Save changes"}
             </button>
             <button
@@ -332,32 +349,114 @@ function LabeledTextarea(props: {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  main: { maxWidth: 720, margin: "0 auto", padding: "32px 24px 80px", lineHeight: 1.55 },
+  main: {
+    maxWidth: 720,
+    margin: "0 auto",
+    padding: "32px 24px 80px",
+    lineHeight: 1.55,
+  },
   back: { fontSize: 14, color: "#2563eb", textDecoration: "none" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", margin: "12px 0 20px", gap: 16 },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    margin: "12px 0 20px",
+    gap: 16,
+  },
   h1: { fontSize: 30, margin: 0 },
-  h2: { fontSize: 15, textTransform: "uppercase", letterSpacing: 0.6, color: "#6b7280", margin: "0 0 6px" },
+  h2: {
+    fontSize: 15,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    color: "#6b7280",
+    margin: "0 0 6px",
+  },
   readView: { display: "flex", flexDirection: "column", gap: 22 },
   section: {},
   body: { margin: 0, color: "#111827" },
-  quote: { margin: 0, padding: "10px 16px", borderLeft: "3px solid #d1d5db", color: "#374151", fontStyle: "italic", background: "#f9fafb" },
+  quote: {
+    margin: 0,
+    padding: "10px 16px",
+    borderLeft: "3px solid #d1d5db",
+    color: "#374151",
+    fontStyle: "italic",
+    background: "#f9fafb",
+  },
   list: { margin: 0, paddingLeft: 20, color: "#111827" },
   tokenList: { margin: 0 },
-  tokenRow: { display: "flex", gap: 12, padding: "4px 0", borderBottom: "1px solid #f3f4f6" },
-  tokenKey: { margin: 0, width: 120, color: "#6b7280", textTransform: "capitalize" },
+  tokenRow: {
+    display: "flex",
+    gap: 12,
+    padding: "4px 0",
+    borderBottom: "1px solid #f3f4f6",
+  },
+  tokenKey: {
+    margin: 0,
+    width: 120,
+    color: "#6b7280",
+    textTransform: "capitalize",
+  },
   tokenVal: { margin: 0, color: "#111827" },
   muted: { color: "#6b7280", margin: 0 },
   form: { display: "flex", flexDirection: "column", gap: 16 },
   field: { display: "flex", flexDirection: "column", gap: 4 },
   label: { fontWeight: 600, fontSize: 14 },
-  input: { padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 },
-  textarea: { padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, minHeight: 64, fontFamily: "inherit" },
-  fieldset: { border: "1px solid #e5e7eb", borderRadius: 8, padding: 16, margin: 0 },
+  input: {
+    padding: "8px 10px",
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
+    fontSize: 14,
+  },
+  textarea: {
+    padding: "8px 10px",
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
+    fontSize: 14,
+    minHeight: 64,
+    fontFamily: "inherit",
+  },
+  fieldset: {
+    border: "1px solid #e5e7eb",
+    borderRadius: 8,
+    padding: 16,
+    margin: 0,
+  },
   legend: { fontWeight: 700, padding: "0 6px" },
-  tokenGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 8 },
+  tokenGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 14,
+    marginTop: 8,
+  },
   actions: { display: "flex", gap: 12, alignItems: "center" },
-  primary: { padding: "10px 18px", background: "#111827", color: "white", border: "none", borderRadius: 6, fontSize: 15, cursor: "pointer" },
-  secondary: { padding: "8px 14px", background: "white", color: "#111827", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, cursor: "pointer" },
-  success: { color: "#065f46", background: "#ecfdf5", padding: "10px 12px", borderRadius: 6 },
-  error: { color: "#991b1b", background: "#fef2f2", padding: "10px 12px", borderRadius: 6 },
+  primary: {
+    padding: "10px 18px",
+    background: "#111827",
+    color: "white",
+    border: "none",
+    borderRadius: 6,
+    fontSize: 15,
+    cursor: "pointer",
+  },
+  secondary: {
+    padding: "8px 14px",
+    background: "white",
+    color: "#111827",
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
+    fontSize: 14,
+    cursor: "pointer",
+  },
+  success: {
+    color: "#065f46",
+    background: "#ecfdf5",
+    padding: "10px 12px",
+    borderRadius: 6,
+  },
+  error: {
+    color: "#991b1b",
+    background: "#fef2f2",
+    padding: "10px 12px",
+    borderRadius: 6,
+  },
 };

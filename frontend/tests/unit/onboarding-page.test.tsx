@@ -5,17 +5,18 @@ import OnboardingPage from "@/app/onboarding/page";
 import { createPersona, type Persona } from "@/app/personas/persona-api";
 
 vi.mock("@/app/personas/persona-api", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/app/personas/persona-api")>(
-      "@/app/personas/persona-api",
-    );
+  const actual = await vi.importActual<
+    typeof import("@/app/personas/persona-api")
+  >("@/app/personas/persona-api");
   return { ...actual, createPersona: vi.fn() };
 });
 
 const mockCreate = vi.mocked(createPersona);
 
 /** Fills the minimum required fields for a valid submission. */
-async function fillRequired(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+async function fillRequired(
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<void> {
   await user.type(screen.getByLabelText(/persona name/i), "The Essayist");
   await user.type(screen.getByLabelText("Voice"), "Measured, first-person.");
   await user.type(
@@ -36,7 +37,9 @@ describe("OnboardingPage", () => {
     expect(screen.getByLabelText(/layout/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^tone/i)).toBeInTheDocument();
     // The submit button starts disabled until required fields are filled.
-    expect(screen.getByRole("button", { name: /create persona/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /create persona/i }),
+    ).toBeDisabled();
   });
 
   it("should post the captured persona and show a success message (state change)", async () => {
@@ -70,7 +73,9 @@ describe("OnboardingPage", () => {
 
   it("should show an error message when creation fails (error handling)", async () => {
     const user = userEvent.setup();
-    mockCreate.mockRejectedValue(new Error("voiceSample: voiceSample is required"));
+    mockCreate.mockRejectedValue(
+      new Error("voiceSample: voiceSample is required"),
+    );
 
     render(<OnboardingPage />);
     await fillRequired(user);
