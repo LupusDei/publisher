@@ -17,6 +17,14 @@ import { authRouter } from "./routes/auth.js";
 import { createUserStore } from "./stores/user.store.js";
 import { createJwt } from "./auth/jwt.js";
 import { createAuthService } from "./services/auth.service.js";
+import { createRunStore } from "./stores/run.store.js";
+import { createMetricStore } from "./stores/metric.store.js";
+import { createWebpageStore } from "./stores/webpage.store.js";
+import { createObservabilityService } from "./services/observability.service.js";
+import {
+  meObservabilityRouter,
+  adminObservabilityRouter,
+} from "./routes/observability.js";
 
 const VERSION = process.env["npm_package_version"] ?? "0.1.0";
 
@@ -68,6 +76,17 @@ const authService = createAuthService({
   jwt: createJwt(env.AUTH_JWT_SECRET),
 });
 
+// Observability aggregation (Epic 2p3): reads the run/metric/webpage projections
+// and composes the SHARED telemetry snapshot for the admin view. Reads only — it
+// adds no instrumentation (the OTel epic owns metering).
+const observabilityService = createObservabilityService({
+  runStore: createRunStore(db),
+  metricStore: createMetricStore(db),
+  webpageStore: createWebpageStore(db),
+  db,
+  telemetrySnapshot: () => telemetry.snapshot(),
+});
+
 const app = createApp({
   corsOrigin: env.CORS_ORIGIN,
   version: VERSION,
@@ -94,6 +113,22 @@ const app = createApp({
     // Admin observability snapshot (Epic 3 consumes this). requireAdmin guard
     // stubbed until Epic 2 lands its real middleware.
     { path: "/admin/telemetry", router: adminTelemetryRouter({ telemetry }) },
+    // Observability pages (Epic 2p3): per-user costs/outcomes (requireAuth) and
+    // the system-wide aggregate + OTel snapshot (requireAdmin).
+    {
+      path: "/me/observability",
+      router: meObservabilityRouter({
+        service: observabilityService,
+        jwtSecret: env.AUTH_JWT_SECRET,
+      }),
+    },
+    {
+      path: "/admin/observability",
+      router: adminObservabilityRouter({
+        service: observabilityService,
+        jwtSecret: env.AUTH_JWT_SECRET,
+      }),
+    },
   ],
 });
 
