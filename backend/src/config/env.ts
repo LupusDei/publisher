@@ -19,6 +19,12 @@ const EnvSchema = z
       .default("false")
       .transform((v) => v === "true"),
     CORS_ORIGIN: z.string().min(1).default("http://localhost:3000"),
+    /**
+     * Absolute base URL the Sink prepends to Receipt URLs so the Vercel
+     * frontend can iframe published pages through the ngrok tunnel (D11).
+     * Defaults to "" → relative `/published/:id` for local development.
+     */
+    PUBLIC_BASE_URL: z.string().default(""),
   })
   .superRefine((env, ctx) => {
     if (env.USE_REAL_AGENT && !env.ANTHROPIC_API_KEY) {

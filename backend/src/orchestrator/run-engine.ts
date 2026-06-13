@@ -1,0 +1,498 @@
+import { randomUUID } from "node:crypto";
+import type {
+  Alarm,
+  Budget,
+  CheckpointContext,
+  CheckpointResult,
+  Escalation,
+  EscalationDecision,
+  Material,
+  Persona,
+  Phase,
+  ResearchResult,
+  RunEvent,
+  Validator,
+  Webpage,
+} from "@publisher/shared";
+import type {
+  Agent,
+  AlarmEmitter,
+  Checkpoint as CheckpointType,
+  GuardrailEngine,
+  Journal,
+  Meter,
+  Sink,
+} from "../domain/index.js";
+import type { RunStore } from "../stores/run.store.js";
+import type { WebpageStore } from "../stores/webpage.store.js";
+import type { CheckpointStore } from "../stores/checkpoint.store.js";
+import type { AlarmStore } from "../stores/alarm.store.js";
+import type { MetricStore } from "../stores/metric.store.js";
+import type { EscalationStore } from "../stores/escalation.store.js";
+import type { RunEventBus } from "./event-bus.js";
+import { createMeter } from "../observability/meter.js";
+import { detectBreaches } from "../observability/budget.js";
+import { createAlarmEmitter } from "../observability/alarm-emitter.js";
+import { persistAlarms } from "../observability/persist.js";
+import { nextBuildFeedback } from "../checkpoints/next-build-feedback.js";
+import { errorToAlarm } from "../agent/alarm-mapping.js";
+
+/**
+ * The RunEngine — the SPINE (Track G, R2/R10). A THIN sequencer (Constitution
+ * Rule 4): it owns ordering, the bounded retry loop, journaling, and HITL
+ * pause/resume — but NO domain logic. Feedback composition lives in Track D
+ * (`nextBuildFeedback`); judging lives in the checkpoints; alarm shaping lives
+ * in Track E; prompt compilation lives in Track B. The engine only decides
+ * WHAT to call NEXT and writes every transition to the authoritative journal.
+ *
+ * Per ASSUMPTIONS: the journal (`run_events`) is the source of truth (D5); a
+ * per-run `Meter` records every agent call (D9); alarms are RETURNED then
+ * forwarded, never thrown (D7); liveness is RunEvents, not token streams (D10);
+ * escalation recompiles guardrails on enrich (D19).
+ */
+
+/** Default cap on build attempts before a refusal escalates (R2 loop bound). */
+export const MAX_ATTEMPTS = 2;
+
+/** The canonical post-build gate order (research gate runs before build). */
+const BUILD_GATES = [
+  "voice-fidelity",
+  "design-conformance",
+  "quality",
+] as const;
+
+export interface RunEngineDeps {
+  agent: Agent;
+  sink: Sink;
+  guardrailEngine: GuardrailEngine;
+  /** Builds the ordered checkpoint list for a run, given a validators provider. */
+  buildCheckpoints: (
+    validators: (persona: Persona) => Validator[],
+  ) => CheckpointType[];
+  journal: Journal;
+  eventBus: RunEventBus;
+  runStore: RunStore;
+  webpageStore: WebpageStore;
+  checkpointStore: CheckpointStore;
+  alarmStore: AlarmStore;
+  metricStore: MetricStore;
+  escalationStore: EscalationStore;
+  /** Declared token/latency budget — the deterministic breach path (D12). */
+  budget?: Budget;
+  /** Override the build-attempt cap (tests use this to force escalation). */
+  maxAttempts?: number;
+  newId?: () => string;
+  now?: () => string;
+}
+
+export interface StartInput {
+  runId: string;
+  material: Material;
+  workerId: string;
+}
+
+/** Terminal outcomes the caller (run service) reports back to the API layer. */
+export type RunOutcome =
+  | { status: "published" }
+  | { status: "failed"; reason: string }
+  | { status: "escalated"; escalation: Escalation };
+
+/** The mutable per-run context the loop carries and `resume` rehydrates. */
+interface RunContext {
+  runId: string;
+  workerId: string;
+  persona: Persona;
+  material: Material;
+  system: string;
+  validators: Validator[];
+  research: ResearchResult;
+  attempt: number;
+  lastWebpage?: Webpage;
+  priorResults: CheckpointResult[];
+  passedGates: Set<string>;
+  meter: Meter;
+  alarmEmitter: AlarmEmitter;
+  seq: number;
+}
+
+// Distribute Omit across the union so each variant keeps its own field set.
+type EventBody = RunEvent extends infer V
+  ? V extends RunEvent
+    ? Omit<V, "runId" | "seq" | "ts">
+    : never
+  : never;
+
+export interface RunEngine {
+  start(input: StartInput): Promise<RunOutcome>;
+  resume(runId: string, decision: EscalationDecision): Promise<RunOutcome>;
+}
+
+export function createRunEngine(deps: RunEngineDeps): RunEngine {
+  const now = deps.now ?? (() => new Date().toISOString());
+  const newId = deps.newId ?? (() => randomUUID());
+  const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
+
+  /** Paused contexts awaiting a human decision (single-process demo, D11). */
+  const pending = new Map<string, RunContext>();
+
+  // ── journal + stream emit (every transition; D5/D10) ─────────────────────
+  function emit(ctx: RunContext, body: EventBody): RunEvent {
+    const event = {
+      runId: ctx.runId,
+      seq: ctx.seq++,
+      ts: now(),
+      ...body,
+    } as RunEvent;
+    deps.journal.append(event);
+    deps.eventBus.publish(event);
+    return event;
+  }
+
+  /** Forward a batch of returned alarms to journal + stream + store (D7). */
+  function forwardAlarms(
+    ctx: RunContext,
+    phase: Phase | undefined,
+    alarms: readonly Alarm[],
+  ): void {
+    if (alarms.length === 0) return;
+    persistAlarms(deps.alarmStore, ctx.runId, phase, alarms);
+    for (const alarm of alarms) {
+      emit(ctx, { t: "alarm", pillar: "observability", alarm });
+    }
+  }
+
+  /** Snapshot the meter → journal + store after each agent call (D9). */
+  function recordMetrics(ctx: RunContext): void {
+    const snapshot = ctx.meter.snapshot();
+    deps.metricStore.insert(ctx.runId, snapshot);
+    emit(ctx, { t: "metric", pillar: "observability", metrics: snapshot });
+    // Deterministic budget breach → structured alarm (D12).
+    if (deps.budget) {
+      const breaches = detectBreaches(deps.budget, snapshot);
+      for (const breach of breaches) {
+        forwardAlarms(ctx, breach.phase, ctx.alarmEmitter.evaluate(breach));
+      }
+    }
+  }
+
+  /**
+   * Run one agent call under the meter, mapping a thrown fault to an alarm
+   * (D7: exceptions are true faults → PROVIDER_ERROR/RATE_LIMITED). On fault we
+   * record a usage-less call (→ errorRate) and rethrow a tagged error so the
+   * loop can fail the run cleanly.
+   */
+  async function metered<T>(
+    ctx: RunContext,
+    phase: Phase,
+    call: () => Promise<{
+      value: T;
+      usage: { totalTokens: number; inputTokens: number; outputTokens: number };
+      finishReason: string;
+    }>,
+  ): Promise<T> {
+    const startedAt = Date.now();
+    try {
+      const result = await call();
+      ctx.meter.record(phase, {
+        usage: result.usage,
+        latencyMs: Date.now() - startedAt,
+      });
+      return result.value;
+    } catch (err) {
+      ctx.meter.record(phase, { latencyMs: Date.now() - startedAt });
+      const alarm = errorToAlarm(err, { phase, workerId: ctx.workerId });
+      forwardAlarms(ctx, phase, [alarm]);
+      throw new AgentFault(
+        err instanceof Error ? err.message : String(err),
+        alarm,
+      );
+    }
+  }
+
+  // ── checkpoint helpers ───────────────────────────────────────────────────
+  function checkpointContext(
+    ctx: RunContext,
+    webpage?: Webpage,
+  ): CheckpointContext {
+    return {
+      persona: ctx.persona,
+      material: ctx.material,
+      research: ctx.research,
+      ...(webpage ? { webpage } : {}),
+      attempt: ctx.attempt,
+      priorResults: ctx.priorResults,
+    };
+  }
+
+  function recordCheckpoint(ctx: RunContext, result: CheckpointResult): void {
+    deps.checkpointStore.insert(ctx.runId, ctx.attempt, result);
+    emit(ctx, { t: "checkpoint", pillar: "checkpoints", result });
+    forwardAlarms(ctx, undefined, result.alarms);
+    ctx.priorResults.push(result);
+    if (result.passed) ctx.passedGates.add(result.name);
+  }
+
+  function gate(ctx: RunContext, name: string): CheckpointType {
+    const found = deps
+      .buildCheckpoints(() => ctx.validators)
+      .find((c) => c.name === name);
+    if (!found) throw new Error(`Checkpoint ${name} not found`);
+    return found;
+  }
+
+  /** Pull the alarm off a failed checkpoint (it always carries exactly one). */
+  function hardAlarm(result: CheckpointResult): Alarm {
+    return (
+      result.alarms[0] ?? {
+        type: "CHECKPOINT_ERROR",
+        severity: "critical",
+        context: { checkpoint: result.name },
+        recommendedAction: "Escalate for human review.",
+      }
+    );
+  }
+
+  // ── terminal transitions ─────────────────────────────────────────────────
+  async function publish(
+    ctx: RunContext,
+    webpage: Webpage,
+  ): Promise<RunOutcome> {
+    deps.webpageStore.insert(ctx.runId, ctx.attempt, webpage, true);
+    const receipt = await deps.sink.publish(webpage, {
+      runId: ctx.runId,
+      workerId: ctx.workerId,
+    });
+    emit(ctx, { t: "published", pillar: "material", receipt });
+    deps.runStore.updateStatus(ctx.runId, "published");
+    pending.delete(ctx.runId);
+    return { status: "published" };
+  }
+
+  function failRun(ctx: RunContext, reason: string): RunOutcome {
+    emit(ctx, { t: "failed", reason });
+    deps.runStore.updateStatus(ctx.runId, "failed");
+    pending.delete(ctx.runId);
+    return { status: "failed", reason };
+  }
+
+  function escalate(ctx: RunContext, reason: string, alarm: Alarm): RunOutcome {
+    const escalation: Escalation = {
+      id: newId(),
+      runId: ctx.runId,
+      reason,
+      alarm,
+      options: ["enrich_persona", "approve_anyway", "retry", "abort"],
+    };
+    deps.escalationStore.insert(escalation);
+    emit(ctx, { t: "escalation", escalation });
+    deps.runStore.updateStatus(ctx.runId, "escalated");
+    pending.set(ctx.runId, ctx);
+    return { status: "escalated", escalation };
+  }
+
+  // ── the build → gate → refine loop (R2) ──────────────────────────────────
+  async function buildAndCheck(
+    ctx: RunContext,
+    feedback: string | undefined,
+  ): Promise<RunOutcome> {
+    const phase: Phase = feedback ? "refine" : "build";
+    deps.runStore.updateStatus(
+      ctx.runId,
+      ctx.attempt === 1 ? "building" : "refining",
+    );
+    emit(ctx, { t: "phase", phase });
+
+    let webpage: Webpage;
+    try {
+      webpage = await metered(ctx, phase, () =>
+        deps.agent.build({
+          system: ctx.system,
+          research: ctx.research,
+          ...(feedback ? { feedback } : {}),
+        }),
+      );
+    } catch (err) {
+      return failRun(
+        ctx,
+        err instanceof AgentFault ? err.message : String(err),
+      );
+    }
+    recordMetrics(ctx);
+    ctx.lastWebpage = webpage;
+    deps.webpageStore.insert(ctx.runId, ctx.attempt, webpage, false);
+
+    // CHECK — voice → design → quality, in order.
+    deps.runStore.updateStatus(ctx.runId, "checking");
+    const failures: CheckpointResult[] = [];
+    for (const name of BUILD_GATES) {
+      const result = await gate(ctx, name).evaluate(
+        checkpointContext(ctx, webpage),
+      );
+      recordCheckpoint(ctx, result);
+      const score = result.score;
+      // The draft event (R2 money shot) — emitted per gate so the UI sees the
+      // score that decided the verdict, keyed to this attempt.
+      emit(ctx, {
+        t: "draft",
+        attempt: ctx.attempt,
+        webpage,
+        ...(score !== undefined ? { score } : {}),
+        passed: result.passed,
+      });
+      if (!result.passed) failures.push(result);
+    }
+
+    if (failures.length === 0) {
+      return publish(ctx, webpage);
+    }
+
+    // A hard (non-auto-correctable) failure escalates immediately (R10).
+    const hard = failures.find((f) => !f.autoCorrectable);
+    if (hard) {
+      return escalate(ctx, `Hard gate failed: ${hard.name}`, hardAlarm(hard));
+    }
+
+    // Auto-correctable: refine if we have attempts left, else escalate.
+    if (ctx.attempt >= maxAttempts) {
+      return escalate(
+        ctx,
+        `Exhausted ${maxAttempts} attempts; gates still failing: ${failures
+          .map((f) => f.name)
+          .join(", ")}`,
+        hardAlarm(failures[0]!),
+      );
+    }
+
+    // Compose feedback in Track D (NOT inline) and refine.
+    const next = nextBuildFeedback(failures);
+    ctx.attempt += 1;
+    ctx.priorResults = [];
+    return buildAndCheck(ctx, next);
+  }
+
+  return {
+    async start({ runId, material, workerId }) {
+      deps.runStore.create({
+        id: runId,
+        personaId: material.persona.id,
+        concept: material.concept,
+        workerId,
+      });
+
+      const compiled = deps.guardrailEngine.compile(material.persona);
+      const ctx: RunContext = {
+        runId,
+        workerId,
+        persona: material.persona,
+        material,
+        system: compiled.systemPrompt,
+        validators: compiled.validators,
+        research: { text: "", sources: [] },
+        attempt: 1,
+        priorResults: [],
+        passedGates: new Set(),
+        meter: createMeter(),
+        alarmEmitter: deps.budget
+          ? createAlarmEmitter(deps.budget)
+          : createAlarmEmitter(),
+        seq: 0,
+      };
+
+      // RESEARCH
+      deps.runStore.updateStatus(runId, "researching");
+      emit(ctx, { t: "phase", phase: "research" });
+      let research: ResearchResult;
+      try {
+        research = await metered(ctx, "research", () =>
+          deps.agent.research({
+            system: ctx.system,
+            concept: material.concept,
+          }),
+        );
+      } catch (err) {
+        return failRun(
+          ctx,
+          err instanceof AgentFault ? err.message : String(err),
+        );
+      }
+      ctx.research = research;
+      recordMetrics(ctx);
+
+      // GATE 1 — research sufficiency (before build).
+      const researchResult = await gate(ctx, "research-sufficiency").evaluate(
+        checkpointContext(ctx),
+      );
+      recordCheckpoint(ctx, researchResult);
+      if (!researchResult.passed) {
+        // Not auto-correctable by a refine — escalate (R10/D19: enrich).
+        return escalate(
+          ctx,
+          "Research did not clear the sufficiency bar.",
+          hardAlarm(researchResult),
+        );
+      }
+
+      return buildAndCheck(ctx, undefined);
+    },
+
+    async resume(runId, decision) {
+      const ctx = pending.get(runId);
+      if (!ctx) throw new RunNotPausedError(runId);
+
+      deps.escalationStore.resolve(decision.escalationId, decision);
+      emit(ctx, { t: "resumed", decision });
+
+      if (decision.choice === "approve_anyway") {
+        // Publish the last draft as-is (human override).
+        if (!ctx.lastWebpage) {
+          return failRun(ctx, "approve_anyway with no draft to publish.");
+        }
+        return publish(ctx, ctx.lastWebpage);
+      }
+
+      if (decision.choice === "enrich_persona") {
+        // Reload + RECOMPILE the (edited) persona before continuing (D19).
+        const enriched = decision.payload?.persona ?? ctx.persona;
+        ctx.persona = enriched;
+        ctx.material = { ...ctx.material, persona: enriched };
+        const recompiled = deps.guardrailEngine.compile(enriched);
+        ctx.system = recompiled.systemPrompt;
+        ctx.validators = recompiled.validators;
+        // Re-enter from a fresh build attempt under the enriched guardrails.
+        ctx.attempt = 1;
+        ctx.priorResults = [];
+        ctx.passedGates.clear();
+        return buildAndCheck(ctx, undefined);
+      }
+
+      if (decision.choice === "abort") {
+        return failRun(ctx, "Run aborted by human decision.");
+      }
+
+      // retry (interface-only, D19): re-enter with the same guardrails.
+      ctx.attempt = 1;
+      ctx.priorResults = [];
+      ctx.passedGates.clear();
+      return buildAndCheck(ctx, undefined);
+    },
+  };
+}
+
+/** A thrown true-fault carrying the alarm the loop already forwarded. */
+export class AgentFault extends Error {
+  constructor(
+    message: string,
+    readonly alarm: Alarm,
+  ) {
+    super(message);
+    this.name = "AgentFault";
+  }
+}
+
+/** Raised when `resume` is called for a run that is not paused/escalated. */
+export class RunNotPausedError extends Error {
+  constructor(runId: string) {
+    super(`Run ${runId} is not paused awaiting a decision`);
+    this.name = "RunNotPausedError";
+  }
+}

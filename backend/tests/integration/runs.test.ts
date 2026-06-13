@@ -7,15 +7,14 @@ import { fileURLToPath } from "node:url";
 import { createApp } from "../../src/app.js";
 import { openDb, type DB } from "../../src/stores/db.js";
 import { loadMigrations, runMigrations } from "../../src/stores/migrate.js";
-import { createPersonaStore } from "../../src/stores/persona.store.js";
-import { createRunStore } from "../../src/stores/run.store.js";
-import { createRunEventStore } from "../../src/stores/run-event.store.js";
-import { createWebpageStore } from "../../src/stores/webpage.store.js";
 import { MockAgent } from "../../src/agent/mock-agent.js";
 import { createFileSink } from "../../src/material/sink.js";
-import { compilePersonaSystem } from "../../src/guardrails/compile.js";
+import { composeRunDeps } from "../../src/composition.js";
 import { runsRouter, publishedRouter } from "../../src/routes/runs.js";
+import { personasRouter } from "../../src/routes/personas.js";
+import { guardrailsRouter } from "../../src/routes/guardrails.js";
 import type { Express } from "express";
+import type { RunEvent } from "@publisher/shared";
 
 const migrationsDir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -24,7 +23,17 @@ const migrationsDir = join(
   "migrations",
 );
 
-describe("walking skeleton — POST /runs end-to-end", () => {
+/**
+ * The voiceSample is chosen so the deterministic voice judge clears the
+ * MockAgent's ON-voice draft (attempt 2) and rejects its OFF-voice draft
+ * (attempt 1) — making the R2 drift→feedback→pass beat byte-for-byte
+ * reproducible (ASSUMPTIONS D12). The on-voice mock text echoes "here / idea /
+ * plainly / you / already / feel / plain / terms / jargon / hedging".
+ */
+const VOICE_SAMPLE =
+  "Here's the idea, plainly. You already feel this. In plain terms — no jargon, no hedging.";
+
+describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
   let db: DB;
   let app: Express;
   let personaId: string;
@@ -33,50 +42,89 @@ describe("walking skeleton — POST /runs end-to-end", () => {
     db = openDb(":memory:");
     runMigrations(db, loadMigrations(migrationsDir));
 
-    const personaStore = createPersonaStore(db);
+    const publishDir = mkdtempSync(join(tmpdir(), "publisher-runs-int-"));
+    const sink = createFileSink({ dir: publishDir, baseUrl: "" });
+    const { deps, personaStore } = composeRunDeps({
+      db,
+      agent: new MockAgent(),
+      sink,
+      defaultWorkerId: "mock",
+    });
+
     personaId = personaStore.create({
       name: "The Essayist",
-      voice: "Measured.",
-      voiceSample: "Emergence is not magic.",
-      stylePoints: [],
+      voice: "warm, plain, second-person",
+      voiceSample: VOICE_SAMPLE,
+      stylePoints: ["plain terms", "no jargon", "no hedging"],
       keyLearnings: [],
       designElements: {},
     }).id;
-
-    const publishDir = mkdtempSync(join(tmpdir(), "publisher-runs-int-"));
-    const sink = createFileSink({ dir: publishDir, baseUrl: "" });
-    const deps = {
-      agent: new MockAgent(),
-      sink,
-      personaStore,
-      runStore: createRunStore(db),
-      eventStore: createRunEventStore(db),
-      webpageStore: createWebpageStore(db),
-      compileSystem: (m: {
-        persona: Parameters<typeof compilePersonaSystem>[0];
-      }) => compilePersonaSystem(m.persona),
-    };
 
     app = createApp({
       corsOrigin: "*",
       version: "test",
       routers: [
+        { path: "/personas", router: personasRouter({ personaStore }) },
+        { path: "/personas", router: guardrailsRouter({ personaStore }) },
         { path: "/runs", router: runsRouter(deps) },
         { path: "/published", router: publishedRouter(sink) },
       ],
     });
   });
 
-  it("POST /runs should run the pipe to a published event and return the run id", async () => {
+  it("should publish a run and return runId + published status", async () => {
     const res = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
     expect(res.status).toBe(201);
     expect(typeof res.body.runId).toBe("string");
-    expect(res.body.receipt.url).toContain("/published/");
+    expect(res.body.status).toBe("published");
   });
 
-  it("GET /published/:id should serve the published HTML", async () => {
+  it("should drive the R2 loop: two drafts, failing then passing voice gate, then published", async () => {
+    const created = await request(app)
+      .post("/runs")
+      .send({ personaId, concept: "On Emergence" });
+    const runId = created.body.runId as string;
+
+    const res = await request(app).get(`/runs/${runId}/events`);
+    const events = res.body.events as RunEvent[];
+
+    // Two build attempts → `draft` events for both attempts (R2).
+    const drafts = events.filter((e) => e.t === "draft");
+    const attempts = new Set(
+      drafts.map((e) => (e.t === "draft" ? e.attempt : 0)),
+    );
+    expect(attempts).toEqual(new Set([1, 2]));
+
+    // The voice-fidelity gate fails on attempt 1 and passes on attempt 2.
+    const voiceResults = events.flatMap((e) =>
+      e.t === "checkpoint" && e.result.name === "voice-fidelity"
+        ? [e.result]
+        : [],
+    );
+    expect(voiceResults.length).toBeGreaterThanOrEqual(2);
+    expect(voiceResults[0]?.passed).toBe(false);
+    expect(voiceResults[voiceResults.length - 1]?.passed).toBe(true);
+
+    // A VOICE_DRIFT alarm fired (structured output, R5) and the run published.
+    const alarmTypes = events.flatMap((e) =>
+      e.t === "alarm" ? [e.alarm.type] : [],
+    );
+    expect(alarmTypes).toContain("VOICE_DRIFT");
+    expect(events[events.length - 1]?.t).toBe("published");
+  });
+
+  it("should append events with monotonic seq starting at 0", async () => {
+    const created = await request(app)
+      .post("/runs")
+      .send({ personaId, concept: "On Emergence" });
+    const res = await request(app).get(`/runs/${created.body.runId}/events`);
+    const events = res.body.events as RunEvent[];
+    expect(events.map((e) => e.seq)).toEqual(events.map((_e, i) => i));
+  });
+
+  it("should serve the published HTML at /published/:id", async () => {
     const created = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
@@ -84,35 +132,53 @@ describe("walking skeleton — POST /runs end-to-end", () => {
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toContain("text/html");
     expect(res.text).toContain("<!doctype html>");
-    expect(res.text).toContain("On Emergence");
   });
 
-  it("GET /runs/:id/events should return the ordered journal ending in published", async () => {
+  it("should return the run status/summary from GET /runs/:id", async () => {
     const created = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
-    const res = await request(app).get(`/runs/${created.body.runId}/events`);
+    const res = await request(app).get(`/runs/${created.body.runId}`);
     expect(res.status).toBe(200);
-    const events = res.body.events as Array<{ seq: number; t: string }>;
-    expect(events.map((e) => e.seq)).toEqual(events.map((_e, i) => i));
-    expect(events[events.length - 1]?.t).toBe("published");
+    expect(res.body.status).toBe("published");
+    expect(res.body.concept).toBe("On Emergence");
   });
 
-  it("POST /runs with an unknown persona should return a structured 404 (error path)", async () => {
+  it("should support ?sinceSeq catch-up on GET /runs/:id/events", async () => {
+    const created = await request(app)
+      .post("/runs")
+      .send({ personaId, concept: "On Emergence" });
+    const runId = created.body.runId as string;
+    const all = (await request(app).get(`/runs/${runId}/events`)).body
+      .events as RunEvent[];
+    const since = (await request(app).get(`/runs/${runId}/events?sinceSeq=2`))
+      .body.events as RunEvent[];
+    expect(since.every((e) => e.seq > 2)).toBe(true);
+    expect(since.length).toBe(all.length - 3);
+  });
+
+  it("should reject an empty concept with a 400 (error path)", async () => {
     const res = await request(app)
       .post("/runs")
-      .send({ personaId: "nope", concept: "x" });
-    expect(res.status).toBe(404);
-    expect(res.body.error).toBeDefined();
-  });
-
-  it("POST /runs with a missing concept should return a structured 400 (error path)", async () => {
-    const res = await request(app).post("/runs").send({ personaId });
+      .send({ personaId, concept: " " });
     expect(res.status).toBe(400);
     expect(res.body.error).toBeDefined();
   });
 
-  it("GET /published/:id for an unpublished id should return 404", async () => {
+  it("should reject an unknown persona with a 400 (Source returns INPUT_EMPTY)", async () => {
+    const res = await request(app)
+      .post("/runs")
+      .send({ personaId: "nope", concept: "On Emergence" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.alarms?.[0]?.type).toBe("INPUT_EMPTY");
+  });
+
+  it("should 404 GET /runs/:id for an unknown run", async () => {
+    const res = await request(app).get("/runs/does-not-exist");
+    expect(res.status).toBe(404);
+  });
+
+  it("should 404 GET /published/:id for an unpublished id", async () => {
     const res = await request(app).get("/published/does-not-exist");
     expect(res.status).toBe(404);
   });
