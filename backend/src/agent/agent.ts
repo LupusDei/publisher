@@ -1,47 +1,28 @@
-import type { Persona, Webpage } from "@publisher/shared";
+import type { AgentResult, ResearchResult, Webpage } from "@publisher/shared";
 
 /**
- * The single Agent seam. The orchestrator (future) only ever talks to this
- * interface — never to the pillars and never to a concrete provider. Swapping
- * the worker (a different Claude model, or a whole different provider) happens
- * behind this boundary, which is the portability bonus.
+ * The single Agent seam (RECONCILED — ASSUMPTIONS D2). The orchestrator only
+ * ever talks to this interface — never to the pillars and never to a concrete
+ * provider. The agent receives a COMPILED `system: string` (produced by the
+ * Guardrails pillar), never a `Persona` — a pillar must not live inside the
+ * worker. Every call returns `AgentResult<T>` so `usage`/`finishReason` ride
+ * through for Observability (Pillar 4) and the error alarms.
+ *
+ * `ResearchResult` now lives in `@publisher/shared` (it crosses the seam AND
+ * feeds CheckpointContext); re-exported here for callers that import from agent/.
  */
-export interface ResearchResult {
-  /** The agent's synthesized research narrative. */
-  text: string;
-  /** Source URLs the agent drew on (may be empty in the stub). */
-  sources: string[];
-}
+export type { ResearchResult } from "@publisher/shared";
 
 export interface Agent {
-  /** RESEARCH phase: gather credible depth on a concept, in the persona's lens. */
-  research(persona: Persona, concept: string): Promise<ResearchResult>;
+  /** RESEARCH phase: gather credible depth on a concept, under the compiled system. */
+  research(input: {
+    system: string;
+    concept: string;
+  }): Promise<AgentResult<ResearchResult>>;
   /** BUILD/REFINE phase: produce a typed webpage; `feedback` drives a refine pass. */
-  build(
-    persona: Persona,
-    research: ResearchResult,
-    feedback?: string,
-  ): Promise<Webpage>;
-}
-
-/** Compile a persona into a system-prompt fragment. A minimal preview of the
- * Guardrails pillar — the full declared-guardrail compile is a separate epic. */
-export function compilePersonaSystem(persona: Persona): string {
-  return [
-    `You write in the authentic voice of "${persona.name}".`,
-    persona.voice ? `Voice: ${persona.voice}` : "",
-    persona.stylePoints.length
-      ? `Style points: ${persona.stylePoints.join("; ")}`
-      : "",
-    persona.keyLearnings.length
-      ? `Key learnings to draw on: ${persona.keyLearnings.join("; ")}`
-      : "",
-    Object.keys(persona.designElements).length
-      ? `Design elements: ${Object.entries(persona.designElements)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(", ")}`
-      : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  build(input: {
+    system: string;
+    research: ResearchResult;
+    feedback?: string;
+  }): Promise<AgentResult<Webpage>>;
 }

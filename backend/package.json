@@ -10,7 +10,8 @@
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "smoke": "vitest run tests/integration/runs.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",

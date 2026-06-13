@@ -12,6 +12,9 @@ export const PersonaSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1, "persona name is required"),
   voice: z.string(),
+  /** A short authentic writing sample the voice-fidelity checkpoint judges
+   * against (ASSUMPTIONS D3). Required — the gate needs something to compare to. */
+  voiceSample: z.string().min(1, "voiceSample is required"),
   stylePoints: z.array(z.string()),
   keyLearnings: z.array(z.string()),
   designElements: z.record(z.string(), z.string()),

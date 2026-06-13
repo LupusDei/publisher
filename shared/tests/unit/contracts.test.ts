@@ -42,6 +42,7 @@ describe("PersonaSchema", () => {
     id: "p_1",
     name: "The Essayist",
     voice: "Measured, first-person, fond of the em-dash.",
+    voiceSample: "I have always believed that emergence is not magic.",
     stylePoints: ["short paragraphs", "one image per section"],
     keyLearnings: ["emergence is not magic"],
     designElements: { palette: "warm neutrals", typography: "serif" },

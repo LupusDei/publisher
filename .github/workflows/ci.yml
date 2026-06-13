@@ -32,5 +32,16 @@ jobs:
       - name: Build (all workspaces)
         run: npm run build
 
+      # Blocking smoke gate (ASSUMPTIONS D1): the walking skeleton must run the
+      # full mock pipe — POST /runs -> published event -> /published/:id serves
+      # HTML -> ordered journal. If the spine is broken, fail fast and loud
+      # before the broader suite. The protected pipe stays green from hour 2.
+      - name: Walking-skeleton smoke gate (mock pipe E2E)
+        run: npm run smoke --workspace backend
+
+      # Coverage gate (80/70/60). Per ASSUMPTIONS D20, env-gated real paths
+      # (AnthropicAgent network calls) and the Sink's real-IO host read are
+      # excluded via inline `c8 ignore` + covered by contract-shape / integration
+      # tests; the Mock/deterministic path is fully covered.
       - name: Test with coverage (80/70/60 gate)
         run: npm run test:coverage

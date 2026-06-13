@@ -16,6 +16,7 @@ const migrationsDir = join(
 const sample: NewPersona = {
   name: "The Essayist",
   voice: "Measured, first-person, fond of the em-dash.",
+  voiceSample: "Emergence is not magic — only attention paid closely enough.",
   stylePoints: ["short paragraphs", "one image per section"],
   keyLearnings: ["emergence is not magic"],
   designElements: { palette: "warm neutrals", typography: "serif" },

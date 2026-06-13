@@ -2,11 +2,7 @@ import type { Agent } from "./agent.js";
 import { MockAgent } from "./mock-agent.js";
 import { AnthropicAgent } from "./anthropic-agent.js";
 
-export {
-  type Agent,
-  type ResearchResult,
-  compilePersonaSystem,
-} from "./agent.js";
+export { type Agent, type ResearchResult } from "./agent.js";
 export { MockAgent } from "./mock-agent.js";
 export { AnthropicAgent } from "./anthropic-agent.js";
 
