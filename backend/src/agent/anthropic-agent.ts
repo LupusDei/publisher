@@ -14,6 +14,8 @@ export interface AnthropicAgentOptions {
   apiKey: string;
   /** Default research/build model. Swap for the portability bonus. */
   model?: string;
+  /** Stable worker id (R8/R11) — labels which worker produced the output. */
+  workerId?: string;
 }
 
 /** AI SDK usage shape (v4 `LanguageModelUsage`). Mapped to our Usage contract. */
@@ -60,11 +62,18 @@ function toFinishReason(r: string | undefined): FinishReason {
  * `AgentResult<T>` with usage/finishReason (D2).
  */
 export class AnthropicAgent implements Agent {
-  private readonly model: ReturnType<ReturnType<typeof createAnthropic>>;
+  /** The worker identity surfaced through the seam (R8/R11). */
+  readonly workerId: string;
+  readonly model: string;
+  private readonly languageModel: ReturnType<
+    ReturnType<typeof createAnthropic>
+  >;
 
   constructor(opts: AnthropicAgentOptions) {
     const provider = createAnthropic({ apiKey: opts.apiKey });
-    this.model = provider(opts.model ?? "claude-opus-4-8");
+    this.model = opts.model ?? "claude-opus-4-8";
+    this.workerId = opts.workerId ?? "opus";
+    this.languageModel = provider(this.model);
   }
 
   async research(input: {
@@ -72,7 +81,7 @@ export class AnthropicAgent implements Agent {
     concept: string;
   }): Promise<AgentResult<ResearchResult>> {
     const { text, usage, finishReason } = await generateText({
-      model: this.model,
+      model: this.languageModel,
       system: input.system,
       prompt: `Research the following concept in depth, gathering credible, citable detail:\n\n${input.concept}`,
       maxSteps: 8,
@@ -91,7 +100,7 @@ export class AnthropicAgent implements Agent {
     feedback?: string;
   }): Promise<AgentResult<Webpage>> {
     const { object, usage, finishReason } = await generateObject({
-      model: this.model,
+      model: this.languageModel,
       schema: WebpageSchema,
       system: input.system,
       prompt:
