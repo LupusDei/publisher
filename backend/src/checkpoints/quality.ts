@@ -1,9 +1,9 @@
 import type {
   Alarm,
-  Checkpoint,
   CheckpointContext,
   CheckpointResult,
 } from "@publisher/shared";
+import type { Checkpoint } from "../domain/index.js";
 import { deterministicQualityJudge, runJudge, type Judge } from "./judge.js";
 
 /**
@@ -18,9 +18,9 @@ export const QUALITY_THRESHOLD = 0.75;
 
 export interface QualityDeps {
   /** Injectable judge; defaults to the deterministic offline judge. */
-  judge?: Judge;
+  judge?: Judge | undefined;
   /** Override the pass threshold (calibration in Wave 2). */
-  threshold?: number;
+  threshold?: number | undefined;
 }
 
 export function quality(deps: QualityDeps = {}): Checkpoint {

@@ -18,7 +18,7 @@ import type { Persona, Webpage } from "@publisher/shared";
 /** What a judge sees: the persona to measure against and the page under review. */
 export interface JudgeInput {
   persona: Persona;
-  webpage?: Webpage;
+  webpage?: Webpage | undefined;
 }
 
 /** An injectable judge: scores an attempt in [0,1]. May be sync or async. */

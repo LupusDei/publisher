@@ -1,6 +1,5 @@
 import type {
   Alarm,
-  Checkpoint,
   CheckpointContext,
   CheckpointResult,
   Persona,
@@ -8,6 +7,7 @@ import type {
   ValidatorFinding,
   Webpage,
 } from "@publisher/shared";
+import type { Checkpoint } from "../domain/index.js";
 
 /**
  * Gate 3 — DESIGN CONFORMANCE (deterministic, validator-driven). Runs the
@@ -30,7 +30,7 @@ const noValidators: ValidatorsProvider = () => [];
 
 export interface DesignConformanceDeps {
   /** Injectable validators provider; defaults to a no-op stub (no Track B dep). */
-  validators?: ValidatorsProvider;
+  validators?: ValidatorsProvider | undefined;
 }
 
 function runValidators(

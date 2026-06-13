@@ -1,9 +1,9 @@
 import type {
   Alarm,
-  Checkpoint,
   CheckpointContext,
   CheckpointResult,
 } from "@publisher/shared";
+import type { Checkpoint } from "../domain/index.js";
 
 /**
  * Gate 1 — RESEARCH SUFFICIENCY (deterministic). The first ordered checkpoint:

@@ -1,4 +1,4 @@
-import type { Checkpoint } from "@publisher/shared";
+import type { Checkpoint } from "../domain/index.js";
 import { researchSufficiency } from "./research-sufficiency.js";
 import { voiceFidelity } from "./voice-fidelity.js";
 import { designConformance, type ValidatorsProvider } from "./design-conformance.js";
