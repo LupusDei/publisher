@@ -27,6 +27,8 @@ export interface StartRunFormProps {
   loadingPersonas?: boolean | undefined;
   /** An error loading personas, shown above the form. */
   personasError?: string | undefined;
+  /** Preselect this persona (e.g. a deep-link from a persona card — pdp.2). */
+  initialPersonaId?: string | undefined;
 }
 
 export function StartRunForm({
@@ -34,8 +36,9 @@ export function StartRunForm({
   onStart,
   loadingPersonas = false,
   personasError,
+  initialPersonaId,
 }: StartRunFormProps): React.ReactElement {
-  const [personaId, setPersonaId] = useState("");
+  const [personaId, setPersonaId] = useState(initialPersonaId ?? "");
   const [concept, setConcept] = useState("");
   const [workerId, setWorkerId] = useState<string>(DEFAULT_WORKER_ID);
   const [submitting, setSubmitting] = useState(false);

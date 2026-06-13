@@ -5,8 +5,8 @@
  * a run (POST /runs) then routes to the live run view, and lists prior runs for
  * replay (R9). First-class loading/error/empty states throughout.
  */
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Run } from "@publisher/shared";
 import {
@@ -24,13 +24,19 @@ import "@/components/runs-ui.css";
 export default function RunsPage(): React.ReactElement {
   return (
     <RequireAuth>
-      <RunsControlPlane />
+      {/* useSearchParams() must sit inside a Suspense boundary in the App
+       * Router, or the build bails on the /runs page. */}
+      <Suspense fallback={null}>
+        <RunsControlPlane />
+      </Suspense>
     </RequireAuth>
   );
 }
 
 function RunsControlPlane(): React.ReactElement {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialPersonaId = searchParams.get("persona") ?? undefined;
   const [personas, setPersonas] = useState<PersonaSummary[]>([]);
   const [personasError, setPersonasError] = useState<string | undefined>();
   const [loadingPersonas, setLoadingPersonas] = useState(true);
@@ -80,6 +86,7 @@ function RunsControlPlane(): React.ReactElement {
         personas={personas}
         loadingPersonas={loadingPersonas}
         personasError={personasError}
+        initialPersonaId={initialPersonaId}
         onStart={async (input) => {
           const { runId } = await startRun(input);
           router.push(

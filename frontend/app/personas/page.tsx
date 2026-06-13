@@ -126,15 +126,23 @@ function PersonasGallery(): React.ReactElement {
                   </p>
                 )}
                 {Object.keys(p.designElements).length > 0 && (
-                  <div className="persona-card-chips">
+                  <div className="persona-card-tags">
                     {Object.entries(p.designElements).map(([k, v]) => (
-                      <span key={k} className="persona-chip">
-                        <span className="persona-chip-key">{k}</span>: {v}
+                      <span key={k} className="persona-tag">
+                        <span className="persona-tag-key">{k}</span>: {v}
                       </span>
                     ))}
                   </div>
                 )}
               </Link>
+              <div className="persona-card-actions">
+                <Link
+                  href={`/runs?persona=${p.id}`}
+                  className={buttonClass("primary", "md")}
+                >
+                  Draft a Post
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
