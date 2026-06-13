@@ -43,6 +43,40 @@ async function awaitTerminal(app: Express, runId: string): Promise<RunEvent[]> {
   throw new Error(`Run ${runId} did not reach a terminal event in time`);
 }
 
+/** Poll until the run actually publishes (or fails). */
+async function awaitPublished(
+  app: Express,
+  runId: string,
+): Promise<RunEvent[]> {
+  for (let i = 0; i < 200; i += 1) {
+    const res = await request(app).get(`/runs/${runId}/events`);
+    const events = res.body.events as RunEvent[];
+    if (events.some((e) => e.t === "published" || e.t === "failed")) {
+      return events;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error(`Run ${runId} did not publish in time`);
+}
+
+/**
+ * Drive a run through the FINAL APPROVAL GATE (dp0.13): wait for it to pause at
+ * the approval escalation, POST an approve decision, then wait for `published`.
+ */
+async function approveToPublished(
+  app: Express,
+  runId: string,
+): Promise<RunEvent[]> {
+  const paused = await awaitTerminal(app, runId);
+  const esc = [...paused].reverse().find((e) => e.t === "escalation");
+  if (esc && esc.t === "escalation") {
+    await request(app)
+      .post(`/runs/${runId}/decision`)
+      .send({ escalationId: esc.escalation.id, choice: "approve_anyway" });
+  }
+  return awaitPublished(app, runId);
+}
+
 /**
  * The voiceSample is chosen so the deterministic voice judge clears the
  * MockAgent's ON-voice draft (attempt 2) and rejects its OFF-voice draft
@@ -108,7 +142,7 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
     const runId = created.body.runId as string;
-    const events = await awaitTerminal(app, runId);
+    const events = await approveToPublished(app, runId);
     expect(events[events.length - 1]?.t).toBe("published");
     const run = await request(app).get(`/runs/${runId}`);
     expect(run.body.status).toBe("published");
@@ -120,7 +154,7 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
       .send({ personaId, concept: "On Emergence" });
     const runId = created.body.runId as string;
 
-    const events = await awaitTerminal(app, runId);
+    const events = await approveToPublished(app, runId);
 
     // Two build attempts → `draft` events for both attempts (R2).
     const drafts = events.filter((e) => e.t === "draft");
@@ -161,7 +195,7 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
     const runId = created.body.runId as string;
-    await awaitTerminal(app, runId);
+    await approveToPublished(app, runId);
     const res = await request(app).get(`/published/${runId}`);
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toContain("text/html");
@@ -173,7 +207,7 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
     const runId = created.body.runId as string;
-    await awaitTerminal(app, runId);
+    await approveToPublished(app, runId);
     const res = await request(app).get(`/runs/${runId}`);
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("published");

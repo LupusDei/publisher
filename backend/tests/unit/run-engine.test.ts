@@ -196,17 +196,27 @@ describe("RunEngine.start", () => {
     runMigrations(db, loadMigrations(migrationsDir));
   });
 
-  it("should run the R2 loop to published with the scripted MockAgent (happy path)", async () => {
+  it("should run the R2 loop to the approval gate, then publish on approval (happy path)", async () => {
     const engine = makeEngine(db, new MockAgent());
-    const outcome = await engine.start({
+    // Cleared every gate → pauses for the final human approval gate (HITL).
+    const started = await engine.start({
       runId: "run_1",
       material,
       workerId: "mock",
     });
+    expect(started.status).toBe("awaiting_approval");
+    if (started.status !== "awaiting_approval") return;
+    expect(started.escalation.alarm.type).toBe("AWAITING_APPROVAL");
+    expect(load(db, "run_1").some((e) => e.t === "published")).toBe(false);
+
+    // The user approves → publish.
+    const outcome = await engine.resume("run_1", {
+      escalationId: started.escalation.id,
+      choice: "approve_anyway",
+    });
     expect(outcome.status).toBe("published");
     const events = load(db, "run_1");
     expect(events[events.length - 1]?.t).toBe("published");
-    // Per-run metrics were recorded (D9): at least one metric event.
     expect(events.some((e) => e.t === "metric")).toBe(true);
   });
 
@@ -334,16 +344,25 @@ describe("RunEngine.resume", () => {
     expect(started.status).toBe("escalated");
     if (started.status !== "escalated") return;
 
-    const outcome = await engine.resume("run_6", {
+    // Enrich → recompiled guardrails → the on-voice draft now clears all gates
+    // → it returns to the final approval gate (a fresh draft to sign off on).
+    const reapproval = await engine.resume("run_6", {
       escalationId: started.escalation.id,
       choice: "enrich_persona",
       payload: { persona: { ...mismatched, voiceSample: VOICE_SAMPLE } },
     });
+    expect(reapproval.status).toBe("awaiting_approval");
+    if (reapproval.status !== "awaiting_approval") return;
+    const events1 = load(db, "run_6");
+    expect(events1.find((e) => e.t === "resumed")?.t).toBe("resumed");
+
+    // Approve the enriched draft → publish.
+    const outcome = await engine.resume("run_6", {
+      escalationId: reapproval.escalation.id,
+      choice: "approve_anyway",
+    });
     expect(outcome.status).toBe("published");
-    const events = load(db, "run_6");
-    const resumed = events.find((e) => e.t === "resumed");
-    expect(resumed?.t).toBe("resumed");
-    expect(events[events.length - 1]?.t).toBe("published");
+    expect(load(db, "run_6").at(-1)?.t).toBe("published");
   });
 
   it("should throw RunNotPausedError when resuming a run that is not paused (edge)", async () => {

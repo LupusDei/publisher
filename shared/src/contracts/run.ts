@@ -22,6 +22,9 @@ export const RunStatusSchema = z.enum([
   "checking",
   "refining",
   "escalated",
+  // Passed every gate; the finished draft is paused for the FINAL human
+  // approval gate (HITL) and publishes only on the user's sign-off.
+  "awaiting_approval",
   "published",
   "failed",
 ]);

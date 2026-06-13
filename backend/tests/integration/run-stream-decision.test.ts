@@ -143,9 +143,9 @@ describe("GET /runs/:id/stream (SSE)", () => {
       .parse((r, cb) => {
         let data = "";
         r.on("data", (chunk: Buffer) => (data += chunk.toString()));
-        // The stream stays open; end it once the published frame arrives.
+        // The stream stays open; end it once the run pauses at the approval gate.
         r.on("data", () => {
-          if (data.includes("event: published")) r.destroy();
+          if (data.includes("event: escalation")) r.destroy();
         });
         r.on("close", () => cb(null, data));
         r.on("end", () => cb(null, data));
@@ -154,7 +154,8 @@ describe("GET /runs/:id/stream (SSE)", () => {
     const body = res.body as string;
     expect(body).toContain("id: 0");
     expect(body).toContain("event: phase");
-    expect(body).toContain("event: published");
+    // The happy run pauses at the final approval gate (surfaced as an escalation).
+    expect(body).toContain("event: escalation");
   });
 
   it("should honor ?sinceSeq by replaying only later events", async () => {
@@ -170,7 +171,7 @@ describe("GET /runs/:id/stream (SSE)", () => {
         let data = "";
         r.on("data", (chunk: Buffer) => {
           data += chunk.toString();
-          if (data.includes("event: published")) r.destroy();
+          if (data.includes("event: escalation")) r.destroy();
         });
         r.on("close", () => cb(null, data));
         r.on("end", () => cb(null, data));
@@ -179,7 +180,7 @@ describe("GET /runs/:id/stream (SSE)", () => {
     const body = res.body as string;
     expect(body).not.toContain("id: 0\n");
     expect(body).not.toContain("id: 1\n");
-    expect(body).toContain("event: published");
+    expect(body).toContain("event: escalation");
   });
 });
 
@@ -215,8 +216,17 @@ describe("POST /runs/:id/decision (HITL resume)", () => {
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
     const runId = created.body.runId as string;
-    // This run publishes outright — wait for it, then there is no escalation.
-    await awaitEvent(app, runId, ["published", "failed"]);
+    // This run clears all gates and pauses at the approval gate; approve it to
+    // drive it to a terminal (published) state, after which it has nothing to
+    // resume — a second decision must 409.
+    const paused = await awaitEvent(app, runId, ["escalation"]);
+    const esc = [...paused].reverse().find((e) => e.t === "escalation");
+    if (esc && esc.t === "escalation") {
+      await request(app)
+        .post(`/runs/${runId}/decision`)
+        .send({ escalationId: esc.escalation.id, choice: "approve_anyway" });
+    }
+    await awaitEvent(app, runId, ["published"]);
     const res = await request(app)
       .post(`/runs/${runId}/decision`)
       .send({ choice: "approve_anyway" });

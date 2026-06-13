@@ -61,8 +61,17 @@ describe("createRunService", () => {
       concept: "On Emergence",
     });
     expect(typeof runId).toBe("string");
+    // Cleared all gates → pauses at the final approval gate (not auto-published).
     const outcome = await service.waitFor(runId);
-    expect(outcome.status).toBe("published");
+    expect(outcome.status).toBe("awaiting_approval");
+    if (outcome.status !== "awaiting_approval") return;
+    expect(service.get(runId)?.status).toBe("awaiting_approval");
+    // Approve → publish.
+    const final = await service.decide(runId, {
+      escalationId: outcome.escalation.id,
+      choice: "approve_anyway",
+    });
+    expect(final.outcome.status).toBe("published");
     expect(service.get(runId)?.status).toBe("published");
   });
 
@@ -75,9 +84,10 @@ describe("createRunService", () => {
     });
     const status = service.get(runId)?.status;
     expect(status).not.toBe("published");
-    // And it still finishes when we wait for it.
-    await service.waitFor(runId);
-    expect(service.get(runId)?.status).toBe("published");
+    // And it still reaches the approval gate when we wait for it.
+    const outcome = await service.waitFor(runId);
+    expect(outcome.status).toBe("awaiting_approval");
+    expect(service.get(runId)?.status).toBe("awaiting_approval");
   });
 
   it("should reject an unknown persona with InputRejectedError before minting a runId (error path)", async () => {
@@ -129,7 +139,16 @@ describe("createRunService", () => {
       personaId,
       concept: "On Emergence",
     });
-    await service.waitFor(runId);
+    // Approve at the gate to drive the run to a terminal (published) state.
+    const paused = await service.waitFor(runId);
+    if (paused.status === "awaiting_approval") {
+      await service.decide(runId, {
+        escalationId: paused.escalation.id,
+        choice: "approve_anyway",
+      });
+    }
+    expect(service.get(runId)?.status).toBe("published");
+    // A published run has nothing to resume — decide must reject (route → 409).
     await expect(
       service.decide(runId, {
         escalationId: "nope",

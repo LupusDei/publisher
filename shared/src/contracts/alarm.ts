@@ -22,6 +22,9 @@ export const AlarmTypeSchema = z.enum([
   "OUTPUT_TRUNCATED",
   "PROVIDER_ERROR",
   "CHECKPOINT_ERROR",
+  // Not a fault — the run passed every gate and is paused at the final human
+  // approval gate (info severity). Drives the "draft ready to publish" pause.
+  "AWAITING_APPROVAL",
 ]);
 export type AlarmType = z.infer<typeof AlarmTypeSchema>;
 

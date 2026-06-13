@@ -104,7 +104,10 @@ export interface StartInput {
 export type RunOutcome =
   | { status: "published" }
   | { status: "failed"; reason: string }
-  | { status: "escalated"; escalation: Escalation };
+  | { status: "escalated"; escalation: Escalation }
+  // Passed every gate; paused at the final human approval gate (HITL). The
+  // user approves → publish, requests changes → enrich/retry, or discards.
+  | { status: "awaiting_approval"; escalation: Escalation };
 
 /** The mutable per-run context the loop carries and `resume` rehydrates. */
 interface RunContext {
@@ -301,6 +304,37 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     return { status: "escalated", escalation };
   }
 
+  /**
+   * FINAL APPROVAL GATE (HITL). A draft that cleared every gate is NOT auto-
+   * published — it pauses awaiting the user's sign-off. We reuse the same
+   * pause/resume machinery as escalation (the harness "stops and asks"), with a
+   * benign info-severity AWAITING_APPROVAL signal so the existing approve/reject
+   * UI works. On resume: approve_anyway → publish; enrich_persona → recompile +
+   * rebuild (request changes); abort → discard.
+   */
+  function awaitApproval(ctx: RunContext, webpage: Webpage): RunOutcome {
+    ctx.lastWebpage = webpage;
+    const escalation: Escalation = {
+      id: newId(),
+      runId: ctx.runId,
+      reason:
+        "Draft is ready and cleared every gate — approve to publish, request changes, or discard.",
+      alarm: {
+        type: "AWAITING_APPROVAL",
+        severity: "info",
+        context: { attempt: ctx.attempt },
+        recommendedAction:
+          "Review the draft and approve to publish (final human-in-the-loop gate).",
+      },
+      options: ["approve_anyway", "enrich_persona", "abort"],
+    };
+    deps.escalationStore.insert(escalation);
+    emit(ctx, { t: "escalation", escalation });
+    deps.runStore.updateStatus(ctx.runId, "awaiting_approval");
+    pending.set(ctx.runId, ctx);
+    return { status: "awaiting_approval", escalation };
+  }
+
   // ── the build → gate → refine loop (R2) ──────────────────────────────────
   async function buildAndCheck(
     ctx: RunContext,
@@ -354,7 +388,9 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     }
 
     if (failures.length === 0) {
-      return publish(ctx, webpage);
+      // Cleared every gate → pause at the final human approval gate, do NOT
+      // auto-publish. Publishing happens on the user's approval in resume().
+      return awaitApproval(ctx, webpage);
     }
 
     // A hard (non-auto-correctable) failure escalates immediately (R10).
