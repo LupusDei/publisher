@@ -1,0 +1,326 @@
+/*
+ * Observability surfaces (Epic publisher-2p3). Shared by the per-user page and
+ * the admin page (the admin layout = the user layout + extra panels). Consumes
+ * Atelier tokens only — no hard-coded hex / px / duration.
+ */
+
+.obs-shell {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-5);
+}
+
+.obs-lead {
+  margin-bottom: var(--space-4);
+}
+
+/* ── Nav ──────────────────────────────────────────────────────────────── */
+.obs-nav {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) 0 var(--space-5);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-6);
+  font-size: var(--step--1);
+}
+.obs-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+}
+.obs-nav a:hover {
+  color: var(--accent);
+}
+.obs-nav a[aria-current="page"] {
+  color: var(--ink);
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: var(--space-1);
+}
+
+/* ── Status region (loading / error) ──────────────────────────────────── */
+.obs-status-region:empty {
+  display: none;
+}
+.obs-loading {
+  color: var(--muted);
+}
+.obs-error {
+  color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 8%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--crit) 30%, var(--line));
+  border-radius: var(--r-md);
+  padding: var(--space-4) var(--space-5);
+  font-weight: 600;
+}
+
+.obs-section-h {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  margin: 0 0 var(--space-4);
+}
+
+.obs-body > section {
+  margin-bottom: var(--space-7);
+}
+
+/* ── Stat cards ───────────────────────────────────────────────────────── */
+.obs-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+}
+.obs-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-1);
+}
+.obs-stat-value {
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.obs-stat-label {
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.obs-stat-hint {
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+.obs-stat-good .obs-stat-value {
+  color: var(--good);
+}
+.obs-stat-crit .obs-stat-value {
+  color: var(--crit);
+}
+
+/* ── Outcome proportion bar ───────────────────────────────────────────── */
+.obs-bar {
+  display: flex;
+  height: 32px;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg-sunk);
+}
+.obs-bar-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  transition: width var(--dur-3) var(--ease-out);
+}
+.obs-bar-text {
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  padding: 0 var(--space-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.obs-bar-good {
+  background: var(--good);
+}
+.obs-bar-crit {
+  background: var(--crit);
+}
+
+/* ── Per-article table ────────────────────────────────────────────────── */
+.obs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.obs-table th,
+.obs-table td {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.obs-table thead th {
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: var(--bg-sunk);
+}
+.obs-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.obs-table .obs-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+.obs-table a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+.obs-table a:hover {
+  text-decoration: underline;
+}
+
+.obs-empty {
+  color: var(--muted);
+  background: var(--bg-sunk);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  padding: var(--space-5);
+}
+
+/* ── Status / severity pills (text + color, never color-only) ─────────── */
+.obs-pill {
+  display: inline-block;
+  font-size: var(--step--1);
+  font-weight: 700;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--r-pill);
+  text-transform: capitalize;
+}
+.obs-pill-good {
+  background: color-mix(in srgb, var(--good) 18%, #fff);
+  color: var(--good);
+}
+.obs-pill-crit {
+  background: color-mix(in srgb, var(--crit) 18%, #fff);
+  color: var(--crit);
+}
+.obs-pill-muted {
+  background: var(--bg-sunk);
+  color: var(--muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * Admin-only panels
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* Access-denied state for non-admins reaching the admin route. */
+.obs-denied {
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--crit) 30%, var(--line));
+  border-left: 4px solid var(--crit);
+  border-radius: var(--r-md);
+  padding: var(--space-6);
+}
+.obs-denied h1 {
+  font-size: var(--step-3);
+}
+
+/* Phase-duration mini bars. */
+.obs-phases {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.obs-phase-row {
+  display: grid;
+  grid-template-columns: 88px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.obs-phase-name {
+  font-weight: 600;
+  text-transform: capitalize;
+  font-size: var(--step--1);
+}
+.obs-phase-track {
+  height: 12px;
+  background: var(--bg-sunk);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.obs-phase-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transition: width var(--dur-3) var(--ease-out);
+}
+.obs-phase-value {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+/* ── Error-tracking panel ─────────────────────────────────────────────── */
+.obs-errors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+.obs-error-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--muted);
+  border-radius: var(--r-md);
+  padding: var(--space-4);
+}
+.obs-error-card.sev-info {
+  border-left-color: var(--muted);
+}
+.obs-error-card.sev-warning {
+  border-left-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 5%, var(--panel));
+}
+.obs-error-card.sev-critical {
+  border-left-color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 6%, var(--panel));
+}
+.obs-error-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.obs-error-type {
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  word-break: break-word;
+}
+.obs-error-count {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.obs-error-sev {
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sev-info .obs-error-sev {
+  color: var(--muted);
+}
+.sev-warning .obs-error-sev {
+  color: var(--warn);
+}
+.sev-critical .obs-error-sev {
+  color: var(--crit);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obs-bar-seg,
+  .obs-phase-fill {
+    transition: none;
+  }
+}
