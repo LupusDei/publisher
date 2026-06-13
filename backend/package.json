@@ -11,7 +11,8 @@
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "smoke": "vitest run tests/integration/runs.test.ts"
+    "smoke": "vitest run tests/integration/runs.test.ts",
+    "seed": "tsx scripts/seed-personas.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",

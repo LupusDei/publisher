@@ -6,12 +6,20 @@ import {
 } from "@publisher/shared";
 import type { DB } from "./db.js";
 
+/** A partial edit to a persona. `id` cannot change; every other declared field
+ * may be patched. Array/object fields are replaced wholesale, not merged
+ * (ASSUMPTIONS D19 — edit/enrich for HITL). */
+export type PersonaPatch = Partial<NewPersona>;
+
 /** Data-access contract for personas. Callers depend on this interface, not on
  * the SQLite implementation (Constitution Rule 4). */
 export interface PersonaStore {
   create(input: NewPersona): Persona;
   getById(id: string): Persona | null;
   list(): Persona[];
+  /** Apply a partial patch to an existing persona; returns the updated record,
+   * or null if no persona with that id exists (D19 — enrich on escalation). */
+  update(id: string, patch: PersonaPatch): Persona | null;
 }
 
 interface PersonaRow {
@@ -52,6 +60,12 @@ export function createPersonaStore(
   const listStmt = db.prepare(
     `SELECT * FROM personas ORDER BY created_at ASC, id ASC`,
   );
+  const updateStmt = db.prepare(
+    `UPDATE personas
+        SET name = ?, voice = ?, voice_sample = ?,
+            style_points = ?, key_learnings = ?, design_elements = ?
+      WHERE id = ?`,
+  );
 
   const store: PersonaStore = {
     create(input) {
@@ -83,6 +97,26 @@ export function createPersonaStore(
     list() {
       const rows = listStmt.all() as PersonaRow[];
       return rows.map(rowToPersona);
+    },
+
+    update(id, patch) {
+      const existing = store.getById(id);
+      if (!existing) {
+        return null;
+      }
+      // Patch over the current record, then re-validate before writing so the
+      // DB never holds a persona that violates the contract (Rule 2).
+      const next = PersonaSchema.parse({ ...existing, ...patch, id });
+      updateStmt.run(
+        next.name,
+        next.voice,
+        next.voiceSample,
+        JSON.stringify(next.stylePoints),
+        JSON.stringify(next.keyLearnings),
+        JSON.stringify(next.designElements),
+        id,
+      );
+      return next;
     },
   };
 
