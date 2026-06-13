@@ -134,6 +134,138 @@ describe("shareService.mint", () => {
   });
 });
 
+describe("shareService.mint — concurrent idempotency race (publisher-share.2.1.1)", () => {
+  /**
+   * Simulates the race interleaving [A:getActiveByRun→null][B:getActiveByRun→
+   * null][A:create→ok][B:create→THROW]: the losing caller (B) sees null from
+   * getActiveByRun, then its create() hits the partial-unique-index throw the
+   * real store raises. mint() must recover by re-reading the now-committed
+   * active share and returning THAT link — not propagate a 500. We model B's
+   * view of the store: getActiveByRun returns null exactly once (B's pre-check),
+   * create throws the UNIQUE error, and any subsequent getActiveByRun returns
+   * the winner's row (A's committed share).
+   */
+  function racingStore(winner: Share): ShareStoreSlice & { createCalls: number } {
+    let activeCalls = 0;
+    return {
+      createCalls: 0,
+      create() {
+        this.createCalls += 1;
+        // The real store's better-sqlite3 throws this exact message shape.
+        throw new Error(
+          "UNIQUE constraint failed: index 'idx_shares_active_run'",
+        );
+      },
+      getBySlug(slug) {
+        return slug === winner.slug ? winner : null;
+      },
+      getActiveByRun() {
+        activeCalls += 1;
+        // First call (B's pre-check before create) sees no active share; the
+        // post-throw re-read sees the winner's committed row.
+        return activeCalls === 1 ? null : winner;
+      },
+      revoke() {},
+    };
+  }
+
+  const winner: Share = {
+    slug: "winnerslug_00000000000",
+    runId: "run_pub",
+    ownerId: "u_owner",
+    createdAt: "2026-06-13T00:00:00.000Z",
+    revokedAt: null,
+  };
+
+  it("should return the existing active share when create() loses the unique-index race (no 500)", () => {
+    const shareStore = racingStore(winner);
+    const service = createShareService({
+      shareStore,
+      runStore: fakeRunLookup(),
+      slug: () => "loserslug_000000000000",
+      baseUrl: "https://share.example.com",
+    });
+    const link = service.mint("run_pub", "u_owner");
+    // The loser re-reads and returns the WINNER's slug, identical to the
+    // sequential idempotent path — never its own freshly-generated slug.
+    expect(link.slug).toBe("winnerslug_00000000000");
+    expect(link.url).toBe("https://share.example.com/p/winnerslug_00000000000");
+    expect(shareStore.createCalls).toBe(1);
+  });
+
+  it("should rethrow when create() fails and there is still no active share (real error, not a race)", () => {
+    // A non-race failure: create throws but no active share ever appears. The
+    // service must NOT silently swallow it — it rethrows so the route 500s.
+    const shareStore: ShareStoreSlice = {
+      create() {
+        throw new Error("UNIQUE constraint failed: index 'idx_shares_active_run'");
+      },
+      getBySlug: () => null,
+      getActiveByRun: () => null,
+      revoke() {},
+    };
+    const service = createShareService({
+      shareStore,
+      runStore: fakeRunLookup(),
+      slug: () => "loserslug_000000000000",
+      baseUrl: "",
+    });
+    expect(() => service.mint("run_pub", "u_owner")).toThrow(
+      /UNIQUE constraint/,
+    );
+  });
+});
+
+describe("shareService.revoke", () => {
+  let ctx: ReturnType<typeof build>;
+  beforeEach(() => {
+    ctx = build();
+  });
+
+  it("should revoke the active share for an owned run (happy path)", () => {
+    const { slug } = ctx.service.mint("run_pub", "u_owner");
+    // resolves before revoke
+    expect(ctx.service.resolveBySlug(slug)).toBe("run_pub");
+    ctx.service.revoke("run_pub", "u_owner");
+    // the row is stamped revoked and no longer resolves (no oracle)
+    expect(ctx.shareStore.rows[0]?.revokedAt).not.toBeNull();
+    expect(ctx.service.resolveBySlug(slug)).toBeNull();
+  });
+
+  it("should be an idempotent no-op when there is no active share (edge case)", () => {
+    // run_pub has never been shared — revoke must not throw and must not create rows
+    expect(() => ctx.service.revoke("run_pub", "u_owner")).not.toThrow();
+    expect(ctx.shareStore.rows).toHaveLength(0);
+  });
+
+  it("should be an idempotent no-op when the only share is already revoked (edge case)", () => {
+    ctx.service.mint("run_pub", "u_owner");
+    ctx.service.revoke("run_pub", "u_owner");
+    const revokedAt = ctx.shareStore.rows[0]?.revokedAt;
+    // a second revoke changes nothing (no active share to stamp)
+    expect(() => ctx.service.revoke("run_pub", "u_owner")).not.toThrow();
+    expect(ctx.shareStore.rows[0]?.revokedAt).toBe(revokedAt);
+    expect(ctx.shareStore.rows).toHaveLength(1);
+  });
+
+  it("should throw ShareForbiddenError when a non-owner revokes an owned run's share (error path)", () => {
+    const { slug } = ctx.service.mint("run_pub", "u_owner");
+    expect(() => ctx.service.revoke("run_pub", "u_intruder")).toThrow(
+      ShareForbiddenError,
+    );
+    // the share is untouched — still resolves
+    expect(ctx.service.resolveBySlug(slug)).toBe("run_pub");
+  });
+
+  it("should allow any authed caller to revoke an un-owned run's share (edge case)", () => {
+    const { slug } = ctx.service.mint("run_unowned", "u_anyone");
+    expect(() =>
+      ctx.service.revoke("run_unowned", "u_anyone"),
+    ).not.toThrow();
+    expect(ctx.service.resolveBySlug(slug)).toBeNull();
+  });
+});
+
 describe("shareService.resolveBySlug", () => {
   it("should return the runId for an active slug (happy path)", () => {
     const ctx = build();

@@ -57,6 +57,14 @@ export interface ShareService {
    */
   mint(runId: string, userId: string): ShareLink;
   /**
+   * Revoke `runId`'s active share on behalf of `userId`. Idempotent: with no
+   * active share this is a clean no-op (mirrors the spec's revoke-no-op edge
+   * case → the route returns 204, not an error). Throws {@link
+   * ShareForbiddenError} when an owned run is revoked by a non-owner. After a
+   * successful revoke the run's slug no longer resolves (public route 404s).
+   */
+  revoke(runId: string, userId: string): void;
+  /**
    * Resolve a slug to its runId, or null when the slug is unknown OR revoked.
    * The null-for-both is deliberate: the public route must not distinguish a
    * revoked link from one that never existed (no information leak).
@@ -99,12 +107,38 @@ export function createShareService(deps: ShareServiceDeps): ShareService {
       const active = shareStore.getActiveByRun(runId);
       if (active) return linkFor(active.slug);
 
-      const created = shareStore.create({
-        slug: slug(),
-        runId,
-        ownerId,
-      });
-      return linkFor(created.slug);
+      try {
+        const created = shareStore.create({
+          slug: slug(),
+          runId,
+          ownerId,
+        });
+        return linkFor(created.slug);
+      } catch (err) {
+        // Concurrent-mint race: a parallel caller committed the active share
+        // between our getActiveByRun check and our create, so the store's
+        // partial unique index (idx_shares_active_run) rejected this insert.
+        // Re-read and return the winner's link — identical to the sequential
+        // idempotent path (spec edge case: "second call returns the first").
+        // Only rethrow if no active share actually exists (a real failure).
+        const raced = shareStore.getActiveByRun(runId);
+        if (raced) return linkFor(raced.slug);
+        throw err;
+      }
+    },
+
+    revoke(runId, userId) {
+      // Idempotent: with no active share there is nothing to revoke — a clean
+      // no-op (the route surfaces this as 204, never an error).
+      const active = shareStore.getActiveByRun(runId);
+      if (!active) return;
+      const ownerId = runStore.ownerOf(runId);
+      // An owned run revoked by a non-owner is forbidden. Un-owned runs
+      // (ownerId null) are revocable by any authed caller (mirrors mint).
+      if (ownerId !== null && ownerId !== userId) {
+        throw new ShareForbiddenError();
+      }
+      shareStore.revoke(runId);
     },
 
     resolveBySlug(slugValue) {
