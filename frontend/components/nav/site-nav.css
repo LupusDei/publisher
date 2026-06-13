@@ -179,10 +179,9 @@
   min-width: 12rem;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   margin: 0;
   padding: var(--space-2);
-  list-style: none;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
@@ -191,8 +190,24 @@
     opacity var(--dur-2) var(--ease-out),
     transform var(--dur-2) var(--ease-out);
 }
+.mobile-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .mobile-menu-item {
   flex: 0 0 auto;
+}
+/* Auth cluster mirrored from the desktop bar, stacked under the IA links. */
+.mobile-menu-auth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
 }
 .mobile-menu-link {
   display: block;
@@ -218,6 +233,10 @@
     padding: var(--space-2) var(--space-4);
   }
   .site-nav-links {
+    display: none;
+  }
+  /* The mobile panel mirrors the auth cluster, so hide the desktop one here. */
+  .site-nav-auth {
     display: none;
   }
   .mobile-menu {
