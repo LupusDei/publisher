@@ -33,6 +33,48 @@ function usage(input: number, output: number, searches = 1) {
 }
 
 /**
+ * A realistic web-search + web-fetch assistant response. After the two search
+ * results, the model fetches one page (a `web_fetch_tool_result` whose single
+ * `web_fetch_result.url` overlaps a prior search hit — so it must dedupe) and
+ * fetches a NEW page (a distinct URL contributing a fresh source). The fetched
+ * URLs are interleaved before the final cited text block.
+ */
+function webSearchAndFetchResponse() {
+  const base = webSearchResponse();
+  return {
+    ...base,
+    content: [
+      base.content[0], // "I'll research that." text
+      base.content[1], // server_tool_use (search)
+      base.content[2], // web_search_tool_result (two results)
+      {
+        // Fetch of an already-seen search hit — deduped, contributes nothing new.
+        type: "web_fetch_tool_result",
+        tool_use_id: "srvtoolu_fetch_1",
+        content: {
+          type: "web_fetch_result",
+          url: "https://en.wikipedia.org/wiki/A",
+          retrieved_at: "2025-05-01T00:00:00Z",
+          content: { type: "document", title: "A — Wikipedia" },
+        },
+      },
+      {
+        // Fetch of a brand-new page — a genuinely fresh source URL.
+        type: "web_fetch_tool_result",
+        tool_use_id: "srvtoolu_fetch_2",
+        content: {
+          type: "web_fetch_result",
+          url: "https://fetched-only.example/deep-dive",
+          retrieved_at: "2025-05-01T00:01:00Z",
+          content: { type: "document", title: "Deep Dive" },
+        },
+      },
+      base.content[3], // final cited text block
+    ],
+  };
+}
+
+/**
  * A realistic web-search assistant response: a search decision, a
  * server_tool_use, a web_search_tool_result with two results, and a final
  * cited text block (one citation URL overlaps a result, one is citation-only).
@@ -149,6 +191,61 @@ describe("AnthropicResearchAgent.research — real web_search wiring", () => {
     expect(webTool!.type).toMatch(/^web_search_/);
     // The compiled persona system rides through unchanged.
     expect(body.system).toBe(system);
+  });
+
+  it("should ALSO request the server-side web_fetch tool", async () => {
+    const client = fakeClient({ create: webSearchResponse() });
+    const agent = new AnthropicResearchAgent({ apiKey: "sk-x", client });
+    await agent.research({ system, concept: "the concept" });
+
+    const createMock = client.messages.create as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    const body = createMock.mock.calls[0]![0] as {
+      tools: Array<{ type: string; name: string }>;
+    };
+    const fetchTool = body.tools.find((t) => t.name === "web_fetch");
+    expect(fetchTool).toBeDefined();
+    expect(fetchTool!.type).toMatch(/^web_fetch_/);
+  });
+
+  it("should extract REAL source URLs from web_fetch results, deduped", async () => {
+    const client = fakeClient({ create: webSearchAndFetchResponse() });
+    const agent = new AnthropicResearchAgent({ apiKey: "sk-x", client });
+    const result = await agent.research({ system, concept: "c" });
+
+    // Discovery order is preserved: the two search-result URLs, then the fresh
+    // fetched URL (its block precedes the final cited text), then the
+    // citation-only URL from that final text block. The fetch of wikipedia/A
+    // overlaps a search hit and is deduped.
+    expect(result.value.sources).toEqual([
+      "https://en.wikipedia.org/wiki/A",
+      "https://example.org/b",
+      "https://fetched-only.example/deep-dive",
+      "https://citation-only.example/c",
+    ]);
+  });
+
+  it("should tolerate a web_fetch_tool_result error block (no source, no throw)", async () => {
+    const errored = {
+      ...webSearchResponse(),
+      content: [
+        { type: "text", text: "fetch failed", citations: null },
+        {
+          type: "web_fetch_tool_result",
+          tool_use_id: "srvtoolu_fetch_err",
+          content: {
+            type: "web_fetch_tool_result_error",
+            error_code: "url_not_accessible",
+          },
+        },
+      ],
+    };
+    const client = fakeClient({ create: errored });
+    const agent = new AnthropicResearchAgent({ apiKey: "sk-x", client });
+    const result = await agent.research({ system, concept: "c" });
+    expect(result.value.sources).toEqual([]);
+    expect(result.value.text).toContain("fetch failed");
   });
 
   it("should extract REAL source URLs from results AND citations, deduped", async () => {

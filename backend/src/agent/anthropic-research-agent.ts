@@ -34,6 +34,21 @@ const WEB_SEARCH_TOOL = {
   max_uses: 8,
 };
 
+/**
+ * The server-side web fetch tool: lets the model pull the full content of a
+ * promising page (typically a search hit) so synthesis is grounded in the real
+ * article, not just the snippet. Each fetched page's URL is harvested as a
+ * source. Tool type/name verified against the installed `@anthropic-ai/sdk`
+ * `WebFetchTool20250910` (the non-beta GA shape that pairs with the GA
+ * `web_search_20250305` above).
+ */
+const WEB_FETCH_TOOL = {
+  type: "web_fetch_20250910" as const,
+  name: "web_fetch" as const,
+  /** Bound fetches per research call, mirroring the search cap. */
+  max_uses: 8,
+};
+
 /** Hard ceiling on server-loop continuations (pause_turn) per research call. */
 const MAX_PAUSE_CONTINUATIONS = 4;
 
@@ -127,9 +142,16 @@ interface SearchResultItem {
   url?: string;
 }
 
+/** The (single) content of a `web_fetch_tool_result` block: success or error. */
+interface FetchResultContent {
+  type?: string;
+  url?: string;
+}
+
 /**
  * Pull every REAL source URL out of an assistant message's content blocks:
  *   - `web_search_tool_result` blocks → each `web_search_result.url`
+ *   - `web_fetch_tool_result` blocks → the fetched `web_fetch_result.url`
  *   - cited `text` blocks → each `web_search_result_location.url`
  * Mutates `sources` (an ordered, de-duplicating accumulator) and appends any
  * narrative `text` to `textParts`.
@@ -140,25 +162,70 @@ function harvestBlocks(
   seen: Set<string>,
   textParts: string[],
 ): void {
+  // A single dispatch per block keeps this loop low-complexity; each block
+  // shape is harvested by its own small helper below.
   for (const block of blocks) {
-    if (block.type === "text" && typeof block.text === "string") {
-      textParts.push(block.text);
-      for (const citation of block.citations ?? []) {
-        addSource(citation?.url, sources, seen);
-      }
-      continue;
+    switch (block.type) {
+      case "text":
+        harvestTextBlock(block, sources, seen, textParts);
+        break;
+      case "web_search_tool_result":
+        harvestSearchResultBlock(block, sources, seen);
+        break;
+      case "web_fetch_tool_result":
+        harvestFetchResultBlock(block, sources, seen);
+        break;
+      default:
+        break;
     }
-    if (block.type === "web_search_tool_result") {
-      // `content` is either an error object or an array of result items.
-      const content = block.content;
-      if (Array.isArray(content)) {
-        for (const item of content as SearchResultItem[]) {
-          if (item?.type === "web_search_result") {
-            addSource(item.url, sources, seen);
-          }
-        }
-      }
+  }
+}
+
+/** Narrative `text` block: append its text and harvest its citation URLs. */
+function harvestTextBlock(
+  block: LooseBlock,
+  sources: string[],
+  seen: Set<string>,
+  textParts: string[],
+): void {
+  if (typeof block.text !== "string") return;
+  textParts.push(block.text);
+  for (const citation of block.citations ?? []) {
+    addSource(citation?.url, sources, seen);
+  }
+}
+
+/**
+ * `web_search_tool_result` block: `content` is an array of result items on
+ * success (each carrying a `url`) or an error object (skipped).
+ */
+function harvestSearchResultBlock(
+  block: LooseBlock,
+  sources: string[],
+  seen: Set<string>,
+): void {
+  const content = block.content;
+  if (!Array.isArray(content)) return;
+  for (const item of content as SearchResultItem[]) {
+    if (item?.type === "web_search_result") {
+      addSource(item.url, sources, seen);
     }
+  }
+}
+
+/**
+ * `web_fetch_tool_result` block: `content` is a SINGLE object —
+ * `web_fetch_result` on success (carrying the fetched `url`) or
+ * `web_fetch_tool_result_error` on failure (no url, skipped).
+ */
+function harvestFetchResultBlock(
+  block: LooseBlock,
+  sources: string[],
+  seen: Set<string>,
+): void {
+  const content = block.content as FetchResultContent | undefined;
+  if (content?.type === "web_fetch_result") {
+    addSource(content.url, sources, seen);
   }
 }
 
@@ -219,7 +286,7 @@ export class AnthropicResearchAgent implements Agent {
         max_tokens: 8000,
         system: input.system,
         thinking: { type: "adaptive" },
-        tools: [WEB_SEARCH_TOOL],
+        tools: [WEB_SEARCH_TOOL, WEB_FETCH_TOOL],
         messages: messages as Anthropic.MessageParam[],
       });
 
