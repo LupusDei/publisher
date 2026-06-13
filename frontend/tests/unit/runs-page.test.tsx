@@ -63,13 +63,20 @@ describe("RunsPage", () => {
         concept: "On Emergence",
         workerId: "opus",
         status: "published",
-        createdAt: "t",
-        updatedAt: "t",
+        createdAt: "2026-06-13T11:59:30.000Z",
+        updatedAt: "2026-06-13T11:59:30.000Z",
       },
     ]);
     render(<RunsPage />);
     expect(await screen.findByText("The Essayist")).toBeInTheDocument();
-    expect(await screen.findByText("run_9")).toBeInTheDocument();
+    // New design: the CONCEPT is the prominent, eye-catching item (not the
+    // UUID), the whole row links to the run, and the status renders.
+    const concept = await screen.findByText("On Emergence");
+    expect(concept).toBeInTheDocument();
+    expect(concept.closest("a")).toHaveAttribute("href", "/runs/run_9");
+    expect(screen.getByText("published")).toBeInTheDocument();
+    // The raw run id/UUID is intentionally no longer surfaced in the list.
+    expect(screen.queryByText("run_9")).not.toBeInTheDocument();
   });
 
   it("should start a run and route to the live view (state change)", async () => {

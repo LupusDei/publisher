@@ -16,6 +16,7 @@ import {
   type PersonaSummary,
 } from "./run-api";
 import { StartRunForm } from "@/components/StartRunForm";
+import { timeAgo, absoluteTime } from "./time-ago";
 import { RequireAuth } from "../auth/RequireAuth";
 import "@/components/runs-ui.css";
 
@@ -104,13 +105,24 @@ function RunsControlPlane(): React.ReactElement {
         <ul className="runs-list">
           {runs.map((r) => (
             <li key={r.id} className="run-list-item">
-              <Link href={`/runs/${r.id}`}>{r.id}</Link>
-              <span className={`run-status status-${r.status}`}>
-                {r.status}
-              </span>
-              <span style={{ color: "var(--muted)", fontSize: 13 }}>
-                {r.concept}
-              </span>
+              <Link
+                href={`/runs/${r.id}`}
+                className="run-row"
+                title={absoluteTime(r.createdAt)}
+                aria-label={`${r.concept || "Untitled run"} — ${r.status}, ${timeAgo(
+                  r.createdAt,
+                )}`}
+              >
+                <span className={`run-status status-${r.status}`}>
+                  {r.status}
+                </span>
+                <span className="run-concept">
+                  {r.concept || "Untitled run"}
+                </span>
+                <time className="run-ago" dateTime={r.createdAt}>
+                  {timeAgo(r.createdAt)}
+                </time>
+              </Link>
             </li>
           ))}
         </ul>
