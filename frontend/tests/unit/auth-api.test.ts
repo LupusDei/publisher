@@ -138,6 +138,24 @@ describe("auth-api requests", () => {
     await expect(fetchMe("stale", "http://api.test")).rejects.toThrow();
   });
 
+  it("should attach an abort-timeout signal so a stuck backend cannot hang rehydration", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonResponse(USER));
+    await fetchMe("tok_abc", "http://api.test");
+    const [, init] = fetchSpy.mock.calls[0]!;
+    // The signal is what bounds the request: without it, a backend mid-restart
+    // (socket accepted, no response) would hang the "Checking your session…" state.
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("should reject (not hang) when the request times out / aborts (edge)", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(
+      new DOMException("The operation timed out.", "TimeoutError"),
+    );
+    await expect(fetchMe("tok_abc", "http://api.test", 10)).rejects.toThrow();
+  });
+
   it("should POST /auth/logout and resolve even if the server errors (best-effort)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({}, 200));
     await expect(

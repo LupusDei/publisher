@@ -135,13 +135,23 @@ export async function registerRequest(
   return (await res.json()) as AuthResult;
 }
 
-/** Resolve the current user from a token (used to rehydrate a session). */
+/**
+ * Resolve the current user from a token (used to rehydrate a session).
+ *
+ * Hard-capped with an abort timeout: if the backend is mid-restart it can
+ * accept the socket but never respond, and an un-timed fetch would hang
+ * forever — pinning AuthContext in `loading` so the UI sticks on
+ * "Checking your session…" with no way out. On timeout this rejects; the
+ * rehydration effect catches it and falls back to the signed-out state.
+ */
 export async function fetchMe(
   token: string,
   base: string = AUTH_API_BASE,
+  timeoutMs = 6000,
 ): Promise<AuthUser> {
   const res = await fetch(`${base}/auth/me`, {
     headers: { authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
     throw new Error(
