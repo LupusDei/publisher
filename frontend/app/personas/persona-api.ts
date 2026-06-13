@@ -5,6 +5,10 @@
  * same build points at a local or deployed backend.
  */
 
+// authFetch attaches the persisted JWT as `Authorization: Bearer <token>` so
+// every authenticated persona call carries the session (85q.5).
+import { authFetch } from "../auth/auth-api";
+
 export const PERSONA_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
 
@@ -74,7 +78,7 @@ export async function createPersona(
   input: NewPersona,
   base: string = PERSONA_API_BASE,
 ): Promise<Persona> {
-  const res = await fetch(`${base}/personas`, {
+  const res = await authFetch(`${base}/personas`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
@@ -90,7 +94,7 @@ export async function createPersona(
 export async function fetchPersonas(
   base: string = PERSONA_API_BASE,
 ): Promise<Persona[]> {
-  const res = await fetch(`${base}/personas`);
+  const res = await authFetch(`${base}/personas`);
   if (!res.ok) {
     throw new Error(`Failed to load personas (HTTP ${res.status})`);
   }
@@ -102,7 +106,7 @@ export async function fetchPersona(
   id: string,
   base: string = PERSONA_API_BASE,
 ): Promise<Persona> {
-  const res = await fetch(`${base}/personas/${id}`);
+  const res = await authFetch(`${base}/personas/${id}`);
   if (!res.ok) {
     throw new Error(`Failed to load persona (HTTP ${res.status})`);
   }
@@ -114,7 +118,7 @@ export async function updatePersona(
   patch: Partial<NewPersona>,
   base: string = PERSONA_API_BASE,
 ): Promise<Persona> {
-  const res = await fetch(`${base}/personas/${id}`, {
+  const res = await authFetch(`${base}/personas/${id}`, {
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(patch),

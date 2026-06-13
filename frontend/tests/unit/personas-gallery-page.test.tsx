@@ -3,6 +3,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import PersonasPage from "@/app/personas/page";
 import { fetchPersonas, type Persona } from "@/app/personas/persona-api";
 
+// The page is gated by RequireAuth (the auth gate has its own dedicated tests
+// in require-auth.test.tsx). Here we stub it to a pass-through so these tests
+// stay focused on the gallery's loading / ready / empty / error behavior.
+vi.mock("@/app/auth/RequireAuth", () => ({
+  RequireAuth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock("@/app/personas/persona-api", async () => {
   const actual = await vi.importActual<
     typeof import("@/app/personas/persona-api")

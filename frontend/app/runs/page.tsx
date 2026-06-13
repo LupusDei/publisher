@@ -16,9 +16,20 @@ import {
   type PersonaSummary,
 } from "./run-api";
 import { StartRunForm } from "@/components/StartRunForm";
+import { RequireAuth } from "../auth/RequireAuth";
 import "@/components/runs-ui.css";
 
+/** Protected route: runs are owner-scoped, so gate the control plane behind a
+ * valid session. The no-backend demo at /runs/demo stays public. */
 export default function RunsPage(): React.ReactElement {
+  return (
+    <RequireAuth>
+      <RunsControlPlane />
+    </RequireAuth>
+  );
+}
+
+function RunsControlPlane(): React.ReactElement {
   const router = useRouter();
   const [personas, setPersonas] = useState<PersonaSummary[]>([]);
   const [personasError, setPersonasError] = useState<string | undefined>();

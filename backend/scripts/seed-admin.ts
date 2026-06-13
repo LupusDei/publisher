@@ -15,7 +15,11 @@
  */
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { CredentialsSchema, type Credentials, type User } from "@publisher/shared";
+import {
+  CredentialsSchema,
+  type Credentials,
+  type User,
+} from "@publisher/shared";
 import { openDb } from "../src/stores/db.js";
 import { loadMigrations, runMigrations } from "../src/stores/migrate.js";
 import {

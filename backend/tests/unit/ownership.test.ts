@@ -47,7 +47,12 @@ describe("PersonaStore ownership", () => {
     store.create({ ...sample, name: "A" }, "u_alice");
     store.create({ ...sample, name: "B" }, "u_bob");
     expect(store.list("u_alice").map((p) => p.name)).toEqual(["A"]);
-    expect(store.list().map((p) => p.name).sort()).toEqual(["A", "B"]);
+    expect(
+      store
+        .list()
+        .map((p) => p.name)
+        .sort(),
+    ).toEqual(["A", "B"]);
   });
 
   it("should return null ownerOf for an unknown id", () => {
@@ -77,7 +82,12 @@ describe("RunStore ownership", () => {
 
   it("should default ownerId to null when none is supplied (edge case)", () => {
     const store = createRunStore(db);
-    store.create({ id: "run_2", personaId: "p", concept: "c", workerId: "mock" });
+    store.create({
+      id: "run_2",
+      personaId: "p",
+      concept: "c",
+      workerId: "mock",
+    });
     expect(store.ownerOf("run_2")).toBeNull();
   });
 
@@ -98,6 +108,11 @@ describe("RunStore ownership", () => {
       userId: "u_bob",
     });
     expect(store.list("u_alice").map((r) => r.id)).toEqual(["run_a"]);
-    expect(store.list().map((r) => r.id).sort()).toEqual(["run_a", "run_b"]);
+    expect(
+      store
+        .list()
+        .map((r) => r.id)
+        .sort(),
+    ).toEqual(["run_a", "run_b"]);
   });
 });

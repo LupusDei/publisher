@@ -73,7 +73,10 @@ const app = createApp({
   version: VERSION,
   onHttpDuration: (ms) => telemetry.recordHttpDuration(ms),
   routers: [
-    { path: "/auth", router: authRouter({ auth: authService, jwtSecret: env.AUTH_JWT_SECRET }) },
+    {
+      path: "/auth",
+      router: authRouter({ auth: authService, jwtSecret: env.AUTH_JWT_SECRET }),
+    },
     // /personas hosts BOTH persona CRUD and the compiled-guardrail inspection
     // route (GET /personas/:id/compiled) — same mount path, two routers. The
     // CRUD router is gated + owner-scoped (85q.4); the compiled-guardrail
@@ -83,7 +86,10 @@ const app = createApp({
       router: personasRouter({ personaStore, jwtSecret: env.AUTH_JWT_SECRET }),
     },
     { path: "/personas", router: guardrailsRouter({ personaStore }) },
-    { path: "/runs", router: runsRouter(runsDeps, { jwtSecret: env.AUTH_JWT_SECRET }) },
+    {
+      path: "/runs",
+      router: runsRouter(runsDeps, { jwtSecret: env.AUTH_JWT_SECRET }),
+    },
     { path: "/published", router: publishedRouter(sink) },
     // Admin observability snapshot (Epic 3 consumes this). requireAdmin guard
     // stubbed until Epic 2 lands its real middleware.

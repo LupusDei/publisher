@@ -1,0 +1,267 @@
+/*
+ * Auth surfaces — login / register + the RequireAuth holding state.
+ * Token-driven only (no hard-coded hex/px/duration/easing); mirrors the
+ * Atelier system in globals.css. Motion comes from the shared utilities and
+ * collapses under prefers-reduced-motion.
+ */
+
+/* ── Page shell ───────────────────────────────────────────────────────── */
+.auth-main {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-7) var(--space-5);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  padding: var(--space-7) var(--space-6);
+}
+
+.auth-eyebrow {
+  font-size: var(--step--1);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 var(--space-2);
+}
+.auth-title {
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  line-height: 1.1;
+  margin: 0 0 var(--space-2);
+  color: var(--ink);
+}
+.auth-rule {
+  height: 3px;
+  width: var(--space-8);
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  margin: var(--space-3) 0 var(--space-5);
+}
+.auth-lede {
+  color: var(--muted);
+  margin: 0 0 var(--space-6);
+  max-width: 46ch;
+}
+
+/* ── Form ─────────────────────────────────────────────────────────────── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.auth-label {
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--ink);
+}
+.auth-help {
+  font-size: var(--step--1);
+  color: var(--muted);
+  margin: 0;
+}
+.auth-input {
+  font: inherit;
+  font-size: var(--step-0);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--space-3) var(--space-4);
+  width: 100%;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+.auth-input::placeholder {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+.auth-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+.auth-field[data-invalid="true"] .auth-input {
+  border-color: var(--crit);
+}
+
+/* Inline field error — an icon + text, never color alone. */
+.auth-field-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--step--1);
+  color: var(--crit);
+  margin: 0;
+}
+.auth-field-error::before {
+  content: "!";
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 1.1em;
+  height: 1.1em;
+  border-radius: var(--r-pill);
+  background: var(--crit);
+  color: var(--panel);
+  font-size: 0.7em;
+  font-weight: 700;
+}
+
+/* Password row with a show/hide affordance. */
+.auth-password {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+.auth-password .auth-input {
+  padding-right: var(--space-9);
+}
+.auth-reveal {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  font: inherit;
+  font-size: var(--step--1);
+  color: var(--accent-strong);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-sm);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+.auth-reveal:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Live regions ─────────────────────────────────────────────────────── */
+.auth-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--step--1);
+  color: var(--muted);
+  margin: 0;
+}
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--step--1);
+  color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 8%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--crit) 30%, var(--line));
+  border-radius: var(--r-md);
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+}
+.auth-error::before {
+  content: "!";
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: var(--r-pill);
+  background: var(--crit);
+  color: var(--panel);
+  font-size: 0.75em;
+  font-weight: 700;
+  margin-top: 0.1em;
+}
+
+/* ── Mode toggle ──────────────────────────────────────────────────────── */
+.auth-switch {
+  margin: var(--space-6) 0 0;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+  font-size: var(--step--1);
+  color: var(--muted);
+  text-align: center;
+}
+.auth-switch-btn {
+  font: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--accent-strong);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-sm);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.auth-switch-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+/* ── Shared spinner + the RequireAuth gate ────────────────────────────── */
+.auth-spinner {
+  width: 1em;
+  height: 1em;
+  border-radius: var(--r-pill);
+  border: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-top-color: var(--accent);
+  animation: auth-spin 0.7s linear infinite;
+}
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+/* ── Logout control ───────────────────────────────────────────────────── */
+.auth-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.auth-logout-email {
+  font-size: var(--step--1);
+  color: var(--muted);
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-gate {
+  min-height: 60dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8) var(--space-5);
+}
+.auth-gate-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--muted);
+  font-size: var(--step-0);
+}

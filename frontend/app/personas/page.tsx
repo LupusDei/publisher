@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchPersonas, type Persona } from "./persona-api";
+import { RequireAuth } from "../auth/RequireAuth";
 
 type GalleryState =
   | { kind: "loading" }
@@ -14,7 +15,17 @@ type GalleryState =
  * a first-class loading / error / empty state. The empty state invites the user
  * to author their first persona (US3).
  */
+/** Protected route: the persona gallery is owner-scoped, so gate it behind a
+ * valid session (integration wiring — RequireAuth was built in 85q.5). */
 export default function PersonasPage(): React.ReactElement {
+  return (
+    <RequireAuth>
+      <PersonasGallery />
+    </RequireAuth>
+  );
+}
+
+function PersonasGallery(): React.ReactElement {
   const [state, setState] = useState<GalleryState>({ kind: "loading" });
 
   useEffect(() => {

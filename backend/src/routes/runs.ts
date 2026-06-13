@@ -75,7 +75,10 @@ function badRequest(res: Response, message: string, issues?: unknown): void {
  * (Rule 4). SSE (not WS) is one-way, ngrok-friendly, and reconnects via the
  * standard `Last-Event-ID` header replayed against the journal.
  */
-export function runsRouter(deps: RunServiceDeps, options?: RunRouterOptions): Router {
+export function runsRouter(
+  deps: RunServiceDeps,
+  options?: RunRouterOptions,
+): Router {
   const service = createRunService(deps);
   // Default the owner-lookup to the real run store so server.ts gets scoping
   // for free; explicit options still win (tests).

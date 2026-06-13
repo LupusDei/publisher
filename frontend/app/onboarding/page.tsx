@@ -11,6 +11,7 @@ import {
   type NewPersona,
   type Persona,
 } from "../personas/persona-api";
+import { useAuth } from "../auth/AuthContext";
 import "./onboarding.css";
 
 type SubmitState =
@@ -43,6 +44,16 @@ function lines(value: string): string[] {
  * collapses under prefers-reduced-motion.
  */
 export default function OnboardingPage(): React.ReactElement {
+  const { status, register } = useAuth();
+  // Show the account step only for a brand-new (signed-out) visitor; a visitor
+  // who is already signed in (or whose session is still resolving) goes
+  // straight to authoring a persona.
+  const needsAccount = status === "unauthenticated";
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const [name, setName] = useState("");
   const [voice, setVoice] = useState("");
   const [voiceSample, setVoiceSample] = useState("");
@@ -80,8 +91,15 @@ export default function OnboardingPage(): React.ReactElement {
     (f) => values[f].trim().length > 0,
   ).length;
 
+  // A signed-out visitor must also supply email + password before submit; a
+  // signed-in (or still-resolving) visitor skips the account step entirely.
+  const accountReady =
+    !needsAccount || (email.trim().length > 0 && password.length > 0);
+
   const canSubmit =
-    requiredDone === REQUIRED_FIELDS.length && state.kind !== "saving";
+    requiredDone === REQUIRED_FIELDS.length &&
+    accountReady &&
+    state.kind !== "saving";
 
   function buildPayload(): NewPersona {
     const designElements: Record<string, string> = {};
@@ -107,13 +125,18 @@ export default function OnboardingPage(): React.ReactElement {
     if (requiredDone !== REQUIRED_FIELDS.length) return;
     setState({ kind: "saving" });
     try {
+      // A signed-out visitor sets a password here: create the account first so
+      // the persona is created with an authenticated, owner-scoped request.
+      if (needsAccount) {
+        await register(email.trim(), password);
+      }
       const persona = await createPersona(buildPayload());
       setState({ kind: "created", persona });
     } catch (err: unknown) {
       setState({
         kind: "error",
         message:
-          err instanceof Error ? err.message : "Failed to create persona",
+          err instanceof Error ? err.message : "Failed to complete onboarding",
       });
     }
   }
@@ -194,6 +217,56 @@ export default function OnboardingPage(): React.ReactElement {
           void onSubmit();
         }}
       >
+        {/* ── Movement 0: Account (signed-out visitors only) ────────────── */}
+        {needsAccount ? (
+          <fieldset className="ob-section" style={{ ["--i" as string]: 0 }}>
+            <legend className="ob-section-head ob-legend">
+              <span className="ob-section-num">00</span>
+              <span className="ob-section-title ob-legend-title">
+                Create your account
+              </span>
+            </legend>
+            <p className="ob-section-sub">
+              Set an email and password — your personas and runs are scoped to
+              you. Already have an account? <Link href="/login">Sign in</Link>.
+            </p>
+            <div className="ob-token-grid">
+              <Field id="email" label="Email">
+                <input
+                  id="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  className="ob-input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
+              </Field>
+              <Field id="password" label="Password">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  className="ob-input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Choose a password"
+                />
+                <button
+                  type="button"
+                  className={buttonClass("quiet", "md")}
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? "Hide password" : "Show password"}
+                </button>
+              </Field>
+            </div>
+          </fieldset>
+        ) : null}
+
         {/* ── Movement 1: Voice ─────────────────────────────────────────── */}
         <section className="ob-section" style={{ ["--i" as string]: 0 }}>
           <header className="ob-section-head">

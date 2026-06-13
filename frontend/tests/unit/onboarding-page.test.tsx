@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import {
+  render as renderRTL,
+  screen,
+  waitFor,
+  act,
+  type RenderResult,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import OnboardingPage from "@/app/onboarding/page";
+import { AuthProvider } from "@/app/auth/AuthContext";
 import { createPersona, type Persona } from "@/app/personas/persona-api";
+import * as authApi from "@/app/auth/auth-api";
 
 vi.mock("@/app/personas/persona-api", async () => {
   const actual = await vi.importActual<
@@ -11,7 +19,32 @@ vi.mock("@/app/personas/persona-api", async () => {
   return { ...actual, createPersona: vi.fn() };
 });
 
+vi.mock("@/app/auth/auth-api", async () => {
+  const actual = await vi.importActual<typeof import("@/app/auth/auth-api")>(
+    "@/app/auth/auth-api",
+  );
+  return {
+    ...actual,
+    // Hang /auth/me so the provider stays in its "loading" state for the whole
+    // test — the account/password step only shows once status is
+    // "unauthenticated", so these persona-authoring tests never see it.
+    fetchMe: vi.fn().mockReturnValue(new Promise(() => {})),
+    registerRequest: vi.fn(),
+    loginRequest: vi.fn(),
+    logoutRequest: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
 const mockCreate = vi.mocked(createPersona);
+
+/** Render the onboarding page inside an AuthProvider (session resolving). */
+function render(): RenderResult {
+  return renderRTL(
+    <AuthProvider>
+      <OnboardingPage />
+    </AuthProvider>,
+  );
+}
 
 /** Fills the minimum required fields for a valid submission. */
 async function fillRequired(
@@ -28,10 +61,14 @@ async function fillRequired(
 describe("OnboardingPage", () => {
   beforeEach(() => {
     mockCreate.mockReset();
+    // Seed a token so the provider starts in "loading" (fetchMe hangs),
+    // keeping the account/password step hidden for these persona tests.
+    window.localStorage.clear();
+    authApi.writeToken("tok_seeded");
   });
 
   it("should render all four fixed design-token fields and no free-text key input (initial state)", () => {
-    render(<OnboardingPage />);
+    render();
     expect(screen.getByLabelText(/palette/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/typography/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/layout/i)).toBeInTheDocument();
@@ -54,7 +91,7 @@ describe("OnboardingPage", () => {
       designElements: { palette: "warm neutrals" },
     });
 
-    render(<OnboardingPage />);
+    render();
     await fillRequired(user);
     await user.type(screen.getByLabelText(/style points/i), "short paragraphs");
     await user.type(screen.getByLabelText(/palette/i), "warm neutrals");
@@ -77,7 +114,7 @@ describe("OnboardingPage", () => {
       new Error("voiceSample: voiceSample is required"),
     );
 
-    render(<OnboardingPage />);
+    render();
     await fillRequired(user);
     await user.click(screen.getByRole("button", { name: /create persona/i }));
 
@@ -194,7 +231,7 @@ describe("OnboardingPage", () => {
       }),
     );
 
-    render(<OnboardingPage />);
+    render();
     await fillRequired(user);
     await user.click(screen.getByRole("button", { name: /create persona/i }));
 

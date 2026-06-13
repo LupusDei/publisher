@@ -18,6 +18,12 @@ vi.mock("next/link", () => ({
   }) => <a href={href}>{children}</a>,
 }));
 
+// The page is gated by RequireAuth (covered by require-auth.test.tsx). Stub it
+// to a pass-through so these tests stay focused on the run control plane.
+vi.mock("@/app/auth/RequireAuth", () => ({
+  RequireAuth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock("@/app/runs/run-api", async () => {
   const actual =
     await vi.importActual<typeof import("@/app/runs/run-api")>(

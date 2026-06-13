@@ -38,9 +38,9 @@ export function requireAuth(secret: string): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     const token = bearerToken(req);
     if (!token) {
-      res
-        .status(401)
-        .json({ error: { message: "Missing or malformed Authorization header" } });
+      res.status(401).json({
+        error: { message: "Missing or malformed Authorization header" },
+      });
       return;
     }
     try {

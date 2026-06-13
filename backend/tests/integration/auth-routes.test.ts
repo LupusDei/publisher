@@ -30,7 +30,9 @@ function makeApp(): Express {
   return createApp({
     corsOrigin: "*",
     version: "test",
-    routers: [{ path: "/auth", router: authRouter({ auth, jwtSecret: SECRET }) }],
+    routers: [
+      { path: "/auth", router: authRouter({ auth, jwtSecret: SECRET }) },
+    ],
   });
 }
 

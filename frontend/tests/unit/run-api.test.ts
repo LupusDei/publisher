@@ -72,22 +72,26 @@ describe("run-api client", () => {
   });
 
   it("fetchRunEvents should append sinceSeq for catch-up and unwrap events (edge case)", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL) =>
       jsonResponse({ events: [{ runId: "r", seq: 3, ts: "t", t: "phase" }] }),
     );
     vi.stubGlobal("fetch", fetchMock);
     const events = await fetchRunEvents("r", 2, "http://api.test");
     expect(events).toHaveLength(1);
-    expect(fetchMock).toHaveBeenCalledWith(
+    // The client routes through authFetch, so a (possibly empty) init object
+    // travels alongside the URL; assert on the URL argument.
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
       "http://api.test/runs/r/events?sinceSeq=2",
     );
   });
 
   it("fetchRunEvents should omit the query when sinceSeq is negative (edge case)", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ events: [] }));
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL) =>
+      jsonResponse({ events: [] }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     await fetchRunEvents("r", -1, "http://api.test");
-    expect(fetchMock).toHaveBeenCalledWith("http://api.test/runs/r/events");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://api.test/runs/r/events");
   });
 
   it("fetchRunEvents should throw on a non-ok response (error path)", async () => {

@@ -1,182 +1,584 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Publisher — Build Status</title>
-<style>
-  :root{
-    --bg:#0b0e14; --panel:#131824; --panel2:#1a2030; --ink:#e6ebf5; --muted:#9aa6bf;
-    --line:#26304a; --acc:#6ea8fe; --good:#3ecf8e; --warn:#f4b740; --crit:#ff6b6b;
-    --chip:#202a40; --mono:"SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);
-    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
-  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
-  .wrap{max-width:1040px;margin:0 auto;padding:40px 24px 80px}
-  header{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:32px}
-  .kicker{color:var(--acc);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
-  h1{font-size:38px;margin:8px 0 6px;letter-spacing:-.02em}
-  h2{font-size:22px;margin:40px 0 14px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
-  h2 .n{color:var(--acc);font:700 14px/1 var(--mono);background:var(--chip);border:1px solid var(--line);
-    padding:6px 8px;border-radius:7px}
-  h3{font-size:15px;margin:18px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-  p{color:#cfd6e6}
-  .lead{font-size:18px;color:#cfd6e6;max-width:78ch}
-  .badge{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--line);
-    border-radius:999px;padding:6px 14px;font:600 13px var(--mono)}
-  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-  .dot.g{background:var(--good)} .dot.w{background:var(--warn)} .dot.a{background:var(--acc)}
-  .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-  .grid{display:grid;gap:14px}
-  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
-  @media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
-  .card.tight{padding:14px 16px}
-  .stat{font:800 30px/1 var(--mono);letter-spacing:-.02em}
-  .stat.good{color:var(--good)} .stat.acc{color:var(--acc)}
-  .stat .u{font-size:13px;color:var(--muted);font-weight:600;margin-left:6px}
-  .label{color:var(--muted);font-size:13px;margin-top:6px}
-  ul.clean{list-style:none;padding:0;margin:10px 0}
-  ul.clean li{padding:9px 0;border-bottom:1px dashed var(--line);display:flex;gap:12px;align-items:flex-start}
-  ul.clean li:last-child{border-bottom:0}
-  .tick{color:var(--good);font-weight:800;flex:0 0 auto}
-  .todo{color:var(--warn);font-weight:800;flex:0 0 auto}
-  .wip{color:var(--acc);font-weight:800;flex:0 0 auto}
-  .pill{display:inline-block;background:var(--chip);border:1px solid var(--line);border-radius:6px;
-    padding:1px 7px;font:600 12px var(--mono);color:var(--muted)}
-  .who{font:600 12px var(--mono);color:var(--acc)}
-  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14.5px}
-  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.07em}
-  td .s{color:var(--good);font-weight:700}
-  pre{background:#0a0d14;border:1px solid var(--line);border-radius:10px;padding:16px;overflow:auto;
-    font:13px/1.55 var(--mono);color:#cdd6ea}
-  .diagram{background:#0a0d14;border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto;
-    font:12.5px/1.5 var(--mono);color:#aeb9d4;white-space:pre}
-  .muted{color:var(--muted)}
-  .foot{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
-  .bar{height:10px;border-radius:6px;background:var(--panel2);overflow:hidden;border:1px solid var(--line)}
-  .bar > i{display:block;height:100%;background:linear-gradient(90deg,#3ecf8e,#6ea8fe)}
-  .sealed{border:1.5px dashed var(--acc);border-radius:8px;padding:2px 6px;color:var(--acc)}
-  .tag{display:inline-block;font:600 11px var(--mono);padding:2px 8px;border-radius:999px;border:1px solid var(--line)}
-  .tag.done{color:var(--good)} .tag.wip{color:var(--acc)} .tag.todo{color:var(--warn)}
-</style>
-</head>
-<body>
-<div class="wrap">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Publisher — Build Status</title>
+    <style>
+      :root {
+        --bg: #0b0e14;
+        --panel: #131824;
+        --panel2: #1a2030;
+        --ink: #e6ebf5;
+        --muted: #9aa6bf;
+        --line: #26304a;
+        --acc: #6ea8fe;
+        --good: #3ecf8e;
+        --warn: #f4b740;
+        --crit: #ff6b6b;
+        --chip: #202a40;
+        --mono: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.6 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+      }
+      a {
+        color: var(--acc);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+      header {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 24px;
+        margin-bottom: 32px;
+      }
+      .kicker {
+        color: var(--acc);
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+      h1 {
+        font-size: 38px;
+        margin: 8px 0 6px;
+        letter-spacing: -0.02em;
+      }
+      h2 {
+        font-size: 22px;
+        margin: 40px 0 14px;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      h2 .n {
+        color: var(--acc);
+        font: 700 14px/1 var(--mono);
+        background: var(--chip);
+        border: 1px solid var(--line);
+        padding: 6px 8px;
+        border-radius: 7px;
+      }
+      h3 {
+        font-size: 15px;
+        margin: 18px 0 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      p {
+        color: #cfd6e6;
+      }
+      .lead {
+        font-size: 18px;
+        color: #cfd6e6;
+        max-width: 78ch;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font: 600 13px var(--mono);
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .dot.g {
+        background: var(--good);
+      }
+      .dot.w {
+        background: var(--warn);
+      }
+      .dot.a {
+        background: var(--acc);
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      .g2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .g3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .g4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      @media (max-width: 760px) {
+        .g2,
+        .g3,
+        .g4 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px;
+      }
+      .card.tight {
+        padding: 14px 16px;
+      }
+      .stat {
+        font: 800 30px/1 var(--mono);
+        letter-spacing: -0.02em;
+      }
+      .stat.good {
+        color: var(--good);
+      }
+      .stat.acc {
+        color: var(--acc);
+      }
+      .stat .u {
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 600;
+        margin-left: 6px;
+      }
+      .label {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 6px;
+      }
+      ul.clean {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0;
+      }
+      ul.clean li {
+        padding: 9px 0;
+        border-bottom: 1px dashed var(--line);
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      ul.clean li:last-child {
+        border-bottom: 0;
+      }
+      .tick {
+        color: var(--good);
+        font-weight: 800;
+        flex: 0 0 auto;
+      }
+      .todo {
+        color: var(--warn);
+        font-weight: 800;
+        flex: 0 0 auto;
+      }
+      .wip {
+        color: var(--acc);
+        font-weight: 800;
+        flex: 0 0 auto;
+      }
+      .pill {
+        display: inline-block;
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 7px;
+        font: 600 12px var(--mono);
+        color: var(--muted);
+      }
+      .who {
+        font: 600 12px var(--mono);
+        color: var(--acc);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 14.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+      }
+      td .s {
+        color: var(--good);
+        font-weight: 700;
+      }
+      pre {
+        background: #0a0d14;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+        overflow: auto;
+        font: 13px/1.55 var(--mono);
+        color: #cdd6ea;
+      }
+      .diagram {
+        background: #0a0d14;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px;
+        overflow: auto;
+        font: 12.5px/1.5 var(--mono);
+        color: #aeb9d4;
+        white-space: pre;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .foot {
+        margin-top: 48px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .bar {
+        height: 10px;
+        border-radius: 6px;
+        background: var(--panel2);
+        overflow: hidden;
+        border: 1px solid var(--line);
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #3ecf8e, #6ea8fe);
+      }
+      .sealed {
+        border: 1.5px dashed var(--acc);
+        border-radius: 8px;
+        padding: 2px 6px;
+        color: var(--acc);
+      }
+      .tag {
+        display: inline-block;
+        font: 600 11px var(--mono);
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+      }
+      .tag.done {
+        color: var(--good);
+      }
+      .tag.wip {
+        color: var(--acc);
+      }
+      .tag.todo {
+        color: var(--warn);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="kicker">Gauntlet Hackathon · Live Build Status</div>
+        <h1>Publisher — the Harness</h1>
+        <p class="lead">
+          Turn a research concept into an elegantly-designed single-page webpage
+          written in the authentic voice of <em>your</em> persona. A
+          research-and-build agent, wrapped in four separable constraint pillars
+          that guarantee voice, design, research depth, and quality — it
+          researches, drafts, and refines, then waits for your approval before
+          publishing, or refuses and says exactly why.
+        </p>
+        <div class="row">
+          <span class="badge"
+            ><span class="dot g"></span> MVP shipped to origin/main</span
+          >
+          <span class="badge"
+            ><span class="dot a"></span> 3 new epics in flight</span
+          >
+          <span class="badge"
+            ><span class="dot w"></span> deploy + obs pages remain</span
+          >
+          <span class="badge">branch <code>main</code></span>
+        </div>
+      </header>
 
-  <header>
-    <div class="kicker">Gauntlet Hackathon · Live Build Status</div>
-    <h1>Publisher — the Harness</h1>
-    <p class="lead">Turn a research concept into an elegantly-designed single-page webpage written in the authentic voice of <em>your</em> persona. A research-and-build agent, wrapped in four separable constraint pillars that guarantee voice, design, research depth, and quality — it researches, drafts, and refines, then waits for your approval before publishing, or refuses and says exactly why.</p>
-    <div class="row">
-      <span class="badge"><span class="dot g"></span> MVP shipped to origin/main</span>
-      <span class="badge"><span class="dot a"></span> 3 new epics in flight</span>
-      <span class="badge"><span class="dot w"></span> deploy + obs pages remain</span>
-      <span class="badge">branch <code>main</code></span>
-    </div>
-  </header>
+      <!-- WHERE WE ARE -->
+      <section>
+        <h2><span class="n">01</span> Where we are</h2>
+        <p>
+          The MVP harness is <b>complete and on <code>origin/main</code></b> —
+          the four pillars, the swappable worker, the orchestrator spine, the
+          human-in-the-loop refinements, and the control-plane UI. Three new
+          epics are now in flight in parallel: <b>OpenTelemetry</b>,
+          <b>Authentication</b>, and <b>Observability Pages</b>. What's left to
+          ship the live demo is operational (deploy via ngrok + Vercel) plus
+          those three epics.
+        </p>
+        <div class="grid g4" style="margin-top: 16px">
+          <div class="card tight">
+            <div class="stat good">78<span class="u">/ 104</span></div>
+            <div class="label">beads closed</div>
+          </div>
+          <div class="card tight">
+            <div class="stat good">~530</div>
+            <div class="label">tests passing</div>
+          </div>
+          <div class="card tight">
+            <div class="stat acc">3</div>
+            <div class="label">epics in flight</div>
+          </div>
+          <div class="card tight">
+            <div class="stat good">0</div>
+            <div class="label">lint warnings</div>
+          </div>
+        </div>
+        <div style="margin-top: 18px">
+          <div class="muted" style="font-size: 13px; margin-bottom: 6px">
+            MVP shipped · HITL refinements shipped · 3 new epics underway
+          </div>
+          <div class="bar"><i style="width: 78%"></i></div>
+        </div>
+      </section>
 
-  <!-- WHERE WE ARE -->
-  <section>
-    <h2><span class="n">01</span> Where we are</h2>
-    <p>The MVP harness is <b>complete and on <code>origin/main</code></b> — the four pillars, the swappable worker, the orchestrator spine, the human-in-the-loop refinements, and the control-plane UI. Three new epics are now in flight in parallel: <b>OpenTelemetry</b>, <b>Authentication</b>, and <b>Observability Pages</b>. What's left to ship the live demo is operational (deploy via ngrok + Vercel) plus those three epics.</p>
-    <div class="grid g4" style="margin-top:16px">
-      <div class="card tight"><div class="stat good">78<span class="u">/ 104</span></div><div class="label">beads closed</div></div>
-      <div class="card tight"><div class="stat good">~530</div><div class="label">tests passing</div></div>
-      <div class="card tight"><div class="stat acc">3</div><div class="label">epics in flight</div></div>
-      <div class="card tight"><div class="stat good">0</div><div class="label">lint warnings</div></div>
-    </div>
-    <div style="margin-top:18px">
-      <div class="muted" style="font-size:13px;margin-bottom:6px">MVP shipped · HITL refinements shipped · 3 new epics underway</div>
-      <div class="bar"><i style="width:78%"></i></div>
-    </div>
-  </section>
+      <!-- WHAT'S SHIPPED -->
+      <section>
+        <h2><span class="n">02</span> What's shipped to <code>main</code></h2>
+        <div class="grid g2">
+          <div class="card">
+            <h3>The four pillars + worker + spine</h3>
+            <ul class="clean">
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Pillar 1 — Material:</b> Source (+<span class="pill"
+                    >INPUT_EMPTY</span
+                  >) / self-contained, hostable Sink.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Pillar 2 — Guardrails:</b> persona compiled into prompt +
+                  detective validators; two-persona divergence.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Pillar 3 — Checkpoints:</b> 4 ordered gates, fail-closed
+                  judges, journal + replay.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Pillar 4 — Observability &amp; Alarms:</b> per-run meters,
+                  budgets, structured alarms.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Agent worker — 3 behind one seam:</b> Mock, Vercel AI SDK,
+                  and
+                  <b
+                    >native Anthropic + real
+                    <span class="pill">web_search</span></b
+                  >.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Orchestrator spine:</b> RunEngine, SSE stream, escalation,
+                  deterministic R2 proof.
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Human-in-the-loop refinements &amp; UI</h3>
+            <ul class="clean">
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Async runs <span class="pill">dp0.11</span>:</b>
+                  <code>POST /runs</code> returns immediately; the real agent
+                  streams live into the lanes.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Research re-try <span class="pill">dp0.12</span>:</b> a
+                  thin topic re-researches ONCE, then alerts "research-light" —
+                  never loops.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Final approval gate <span class="pill">dp0.13</span>:</b> a
+                  passing draft waits for your sign-off before publishing.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b
+                    >Approve &amp; Publish UI
+                    <span class="pill">dp0.14</span></b
+                  >
+                  for the approval gate.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Proof-surface UI:</b> four pillar lanes + sealed-agent box,
+                  draft before/after diff, alarm cards,
+                  <span class="pill">/runs/demo</span>.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Atelier frontend:</b> design-token system, homepage hero,
+                  onboarding flow. <span class="who">@Nick</span>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
-  <!-- WHAT'S SHIPPED -->
-  <section>
-    <h2><span class="n">02</span> What's shipped to <code>main</code></h2>
-    <div class="grid g2">
-      <div class="card">
-        <h3>The four pillars + worker + spine</h3>
+      <!-- IN FLIGHT -->
+      <section>
+        <h2><span class="n">03</span> In flight — three new epics</h2>
+        <div class="grid g3">
+          <div class="card">
+            <h3>OpenTelemetry <span class="tag wip">in progress</span></h3>
+            <p class="muted" style="font-size: 14px">
+              System telemetry + <b>error tracking</b>. Per-run traces,
+              exception capture, and 6 curated metrics surfaced on the admin
+              page: http latency, run.phase.duration, agent.errors,
+              checkpoint.failures, run.outcomes, tokens.total.
+            </p>
+            <div class="who">owner · Valerian</div>
+          </div>
+          <div class="card">
+            <h3>Authentication <span class="tag wip">squad executing</span></h3>
+            <p class="muted" style="font-size: 14px">
+              Register/set-password during onboarding, login/logout, JWT bearer
+              sessions, roles (user/admin), per-user ownership of personas +
+              runs. Foundation (users · bcrypt · JWT · auth service) done &amp;
+              green; routes + ownership + frontend building.
+            </p>
+            <div class="who">owner · Tassadar</div>
+          </div>
+          <div class="card">
+            <h3>Observability Pages <span class="tag todo">specced</span></h3>
+            <p class="muted" style="font-size: 14px">
+              Per-user page (token costs, research loops, failed-vs-published,
+              per-article cost) + a mirrored admin page (aggregate latency, loop
+              durations, rejected/published ratio, token totals, OTel error
+              tracking). Gated on Auth + OTel.
+            </p>
+            <div class="who">owner · TBD</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- WHAT REMAINS -->
+      <section>
+        <h2><span class="n">04</span> What remains</h2>
         <ul class="clean">
-          <li><span class="tick">✓</span><div><b>Pillar 1 — Material:</b> Source (+<span class="pill">INPUT_EMPTY</span>) / self-contained, hostable Sink.</div></li>
-          <li><span class="tick">✓</span><div><b>Pillar 2 — Guardrails:</b> persona compiled into prompt + detective validators; two-persona divergence.</div></li>
-          <li><span class="tick">✓</span><div><b>Pillar 3 — Checkpoints:</b> 4 ordered gates, fail-closed judges, journal + replay.</div></li>
-          <li><span class="tick">✓</span><div><b>Pillar 4 — Observability &amp; Alarms:</b> per-run meters, budgets, structured alarms.</div></li>
-          <li><span class="tick">✓</span><div><b>Agent worker — 3 behind one seam:</b> Mock, Vercel AI SDK, and <b>native Anthropic + real <span class="pill">web_search</span></b>.</div></li>
-          <li><span class="tick">✓</span><div><b>Orchestrator spine:</b> RunEngine, SSE stream, escalation, deterministic R2 proof.</div></li>
+          <li>
+            <span class="wip">◐</span>
+            <div>
+              <b>Finish OpenTelemetry, Authentication, Observability Pages</b>
+              (the three epics above).
+            </div>
+          </li>
+          <li>
+            <span class="todo">○</span>
+            <div>
+              <b>Deploy for judges</b> — local backend via <code>ngrok</code> +
+              Vercel frontend (scripted in DEMO.md §2).
+            </div>
+          </li>
+          <li>
+            <span class="todo">○</span>
+            <div>
+              <b>Rehearse the mid-demo worker swap</b> (Vercel-SDK → native +
+              real web search) and record the 5-min demo.
+            </div>
+          </li>
         </ul>
-      </div>
-      <div class="card">
-        <h3>Human-in-the-loop refinements &amp; UI</h3>
-        <ul class="clean">
-          <li><span class="tick">✓</span><div><b>Async runs <span class="pill">dp0.11</span>:</b> <code>POST /runs</code> returns immediately; the real agent streams live into the lanes.</div></li>
-          <li><span class="tick">✓</span><div><b>Research re-try <span class="pill">dp0.12</span>:</b> a thin topic re-researches ONCE, then alerts "research-light" — never loops.</div></li>
-          <li><span class="tick">✓</span><div><b>Final approval gate <span class="pill">dp0.13</span>:</b> a passing draft waits for your sign-off before publishing.</div></li>
-          <li><span class="tick">✓</span><div><b>Approve &amp; Publish UI <span class="pill">dp0.14</span></b> for the approval gate.</div></li>
-          <li><span class="tick">✓</span><div><b>Proof-surface UI:</b> four pillar lanes + sealed-agent box, draft before/after diff, alarm cards, <span class="pill">/runs/demo</span>.</div></li>
-          <li><span class="tick">✓</span><div><b>Atelier frontend:</b> design-token system, homepage hero, onboarding flow. <span class="who">@Nick</span></div></li>
-        </ul>
-      </div>
-    </div>
-  </section>
+      </section>
 
-  <!-- IN FLIGHT -->
-  <section>
-    <h2><span class="n">03</span> In flight — three new epics</h2>
-    <div class="grid g3">
-      <div class="card">
-        <h3>OpenTelemetry <span class="tag wip">in progress</span></h3>
-        <p class="muted" style="font-size:14px">System telemetry + <b>error tracking</b>. Per-run traces, exception capture, and 6 curated metrics surfaced on the admin page: http latency, run.phase.duration, agent.errors, checkpoint.failures, run.outcomes, tokens.total.</p>
-        <div class="who">owner · Valerian</div>
-      </div>
-      <div class="card">
-        <h3>Authentication <span class="tag wip">squad executing</span></h3>
-        <p class="muted" style="font-size:14px">Register/set-password during onboarding, login/logout, JWT bearer sessions, roles (user/admin), per-user ownership of personas + runs. Foundation (users · bcrypt · JWT · auth service) done &amp; green; routes + ownership + frontend building.</p>
-        <div class="who">owner · Tassadar</div>
-      </div>
-      <div class="card">
-        <h3>Observability Pages <span class="tag todo">specced</span></h3>
-        <p class="muted" style="font-size:14px">Per-user page (token costs, research loops, failed-vs-published, per-article cost) + a mirrored admin page (aggregate latency, loop durations, rejected/published ratio, token totals, OTel error tracking). Gated on Auth + OTel.</p>
-        <div class="who">owner · TBD</div>
-      </div>
-    </div>
-  </section>
+      <!-- HOW IT WORKS -->
+      <section>
+        <h2><span class="n">05</span> How it works</h2>
+        <p>
+          The hackathon grades the <b>harness</b>, not the agent. The agent
+          stays dumb — it only ever sees
+          <code>system + messages + feedback</code>. The orchestrator drives the
+          loop; the four pillars constrain, around a swappable worker; a human
+          approves before anything publishes.
+        </p>
 
-  <!-- WHAT REMAINS -->
-  <section>
-    <h2><span class="n">04</span> What remains</h2>
-    <ul class="clean">
-      <li><span class="wip">◐</span><div><b>Finish OpenTelemetry, Authentication, Observability Pages</b> (the three epics above).</div></li>
-      <li><span class="todo">○</span><div><b>Deploy for judges</b> — local backend via <code>ngrok</code> + Vercel frontend (scripted in DEMO.md §2).</div></li>
-      <li><span class="todo">○</span><div><b>Rehearse the mid-demo worker swap</b> (Vercel-SDK → native + real web search) and record the 5-min demo.</div></li>
-    </ul>
-  </section>
+        <div class="diagram">
+          ORCHESTRATOR (Run Engine) — thin sequencer, no domain logic
+          ┌──────────┬────────────┬─────────────┬───────────────┬─────────────┐
+          │ MATERIAL │ GUARDRAILS │ CHECKPOINTS │ OBSERVABILITY │ PERSONA │ │
+          in/out │ (persona) │ (gates) │ &amp; ALARMS │ STORE │
+          └──────────┴─────┬──────┴─────────────┴──────┬────────┴─────────────┘
+          │ system + messages + feedback (only) ▼
+          ┌─────────────────────────────┐ ── critical ──▶ HUMAN-IN-THE-LOOP │
+          AGENT (worker, SWAPPABLE) │ Mock · Vercel-SDK · native+web_search │
+          research → build → refine │ └─────────────────────────────┘ draft ──▶
+          FINAL APPROVAL GATE ──▶ publish
+        </div>
 
-  <!-- HOW IT WORKS -->
-  <section>
-    <h2><span class="n">05</span> How it works</h2>
-    <p>The hackathon grades the <b>harness</b>, not the agent. The agent stays dumb — it only ever sees <code>system + messages + feedback</code>. The orchestrator drives the loop; the four pillars constrain, around a swappable worker; a human approves before anything publishes.</p>
-
-    <div class="diagram">                 ORCHESTRATOR (Run Engine) — thin sequencer, no domain logic
-   ┌──────────┬────────────┬─────────────┬───────────────┬─────────────┐
-   │ MATERIAL │ GUARDRAILS │ CHECKPOINTS │ OBSERVABILITY │   PERSONA   │
-   │  in/out  │ (persona)  │   (gates)   │   &amp; ALARMS    │    STORE    │
-   └──────────┴─────┬──────┴─────────────┴──────┬────────┴─────────────┘
-                    │  system + messages + feedback (only)
-                    ▼
-            ┌─────────────────────────────┐   ── critical ──▶  HUMAN-IN-THE-LOOP
-            │  AGENT (worker, SWAPPABLE)  │   Mock · Vercel-SDK · native+web_search
-            │  research → build → refine  │
-            └─────────────────────────────┘   draft ──▶  FINAL APPROVAL GATE ──▶ publish</div>
-
-    <div class="grid g2" style="margin-top:16px">
-      <div class="card">
-        <h3>The control loop — where behavior changes</h3>
-        <pre>research = agent.research(...)
+        <div class="grid g2" style="margin-top: 16px">
+          <div class="card">
+            <h3>The control loop — where behavior changes</h3>
+            <pre>
+research = agent.research(...)
 if research-sufficiency FAILS → re-research ONCE
     else → alert "research-light"        // dp0.12
 
@@ -187,38 +589,74 @@ for gate in [voice, design, quality]:
     elif CRITICAL: escalate()              // stop &amp; ask
 
 → all gates pass → AWAITING APPROVAL        // dp0.13
-→ user approves → Sink.publish(webpage)</pre>
-      </div>
-      <div class="card">
-        <h3>What a judge sees on screen</h3>
-        <ul class="clean">
-          <li><span class="tick">▸</span><div><b>R1:</b> four pillar lanes around a <span class="sealed">sealed agent box</span>.</div></li>
-          <li><span class="tick">▸</span><div><b>R2:</b> draft-1 <span class="pill">VOICE_DRIFT 0.42</span> → feedback → draft-2 <span class="pill">0.81</span>, shown as a diff.</div></li>
-          <li><span class="tick">▸</span><div><b>R3:</b> the compiled-guardrail panel (persona → prompt + validators).</div></li>
-          <li><span class="tick">▸</span><div><b>HITL:</b> the run pauses at the approval gate — approve to publish.</div></li>
-          <li><span class="tick">▸</span><div><b>★ Two personas, one concept → two pages</b> side by side; live worker swap (R8/R11).</div></li>
-        </ul>
-      </div>
-    </div>
-  </section>
+→ user approves → Sink.publish(webpage)</pre
+            >
+          </div>
+          <div class="card">
+            <h3>What a judge sees on screen</h3>
+            <ul class="clean">
+              <li>
+                <span class="tick">▸</span>
+                <div>
+                  <b>R1:</b> four pillar lanes around a
+                  <span class="sealed">sealed agent box</span>.
+                </div>
+              </li>
+              <li>
+                <span class="tick">▸</span>
+                <div>
+                  <b>R2:</b> draft-1
+                  <span class="pill">VOICE_DRIFT 0.42</span> → feedback →
+                  draft-2 <span class="pill">0.81</span>, shown as a diff.
+                </div>
+              </li>
+              <li>
+                <span class="tick">▸</span>
+                <div>
+                  <b>R3:</b> the compiled-guardrail panel (persona → prompt +
+                  validators).
+                </div>
+              </li>
+              <li>
+                <span class="tick">▸</span>
+                <div>
+                  <b>HITL:</b> the run pauses at the approval gate — approve to
+                  publish.
+                </div>
+              </li>
+              <li>
+                <span class="tick">▸</span>
+                <div>
+                  <b>★ Two personas, one concept → two pages</b> side by side;
+                  live worker swap (R8/R11).
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
-  <section>
-    <h2><span class="n">06</span> Run it yourself</h2>
-    <pre>npm install &amp;&amp; npm run build
+      <section>
+        <h2><span class="n">06</span> Run it yourself</h2>
+        <pre>
+npm install &amp;&amp; npm run build
 npm run seed --workspace backend     # two demo personas
 npm run dev                          # backend :4000 + frontend :3000
-# Guaranteed-live, no backend:  http://localhost:3000/runs/demo</pre>
-  </section>
+# Guaranteed-live, no backend:  http://localhost:3000/runs/demo</pre
+        >
+      </section>
 
-  <div class="foot">
-    Publisher · agent harness for persona-faithful publishing. On <code>origin/main</code>. Sources: <code>HARNESS.md</code>, <code>DEMO.md</code>, <code>specs/002-publisher-mvp/OVERVIEW.md</code>. Served via ngrok at c4.jmm.ngrok.io.
-    <div id="ts" style="margin-top:8px"></div>
-  </div>
-
-</div>
-<script>
-  document.getElementById('ts').textContent =
-    'Snapshot: MVP shipped to origin/main; OpenTelemetry + Authentication + Observability Pages in flight.';
-</script>
-</body>
+      <div class="foot">
+        Publisher · agent harness for persona-faithful publishing. On
+        <code>origin/main</code>. Sources: <code>HARNESS.md</code>,
+        <code>DEMO.md</code>, <code>specs/002-publisher-mvp/OVERVIEW.md</code>.
+        Served via ngrok at c4.jmm.ngrok.io.
+        <div id="ts" style="margin-top: 8px"></div>
+      </div>
+    </div>
+    <script>
+      document.getElementById("ts").textContent =
+        "Snapshot: MVP shipped to origin/main; OpenTelemetry + Authentication + Observability Pages in flight.";
+    </script>
+  </body>
 </html>

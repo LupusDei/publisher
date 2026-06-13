@@ -75,7 +75,10 @@ describe("personas routes", () => {
 
   // ── GET /personas ─────────────────────────────────────────────────────────
   it("GET /personas should return the list of personas", async () => {
-    await request(app).post("/personas").set("Authorization", AUTH).send(validBody);
+    await request(app)
+      .post("/personas")
+      .set("Authorization", AUTH)
+      .send(validBody);
     const res = await request(app).get("/personas").set("Authorization", AUTH);
     expect(res.status).toBe(200);
     expect(res.body.personas).toHaveLength(1);
