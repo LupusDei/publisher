@@ -22,21 +22,22 @@ export default function GalleryPage(): React.ReactElement {
 
   useEffect(() => {
     let active = true;
-    fetchRuns()
-      .then((runs) =>
-        active &&
-        setState({
-          kind: "ready",
-          runs: runs.filter((r) => r.status === "published"),
-        }),
-      )
-      .catch((e: unknown) =>
-        active &&
-        setState({
-          kind: "error",
-          message: e instanceof Error ? e.message : "load failed",
-        }),
-      );
+    void (async () => {
+      try {
+        const runs = await fetchRuns();
+        if (active)
+          setState({
+            kind: "ready",
+            runs: runs.filter((r) => r.status === "published"),
+          });
+      } catch (e: unknown) {
+        if (active)
+          setState({
+            kind: "error",
+            message: e instanceof Error ? e.message : "load failed",
+          });
+      }
+    })();
     return () => {
       active = false;
     };

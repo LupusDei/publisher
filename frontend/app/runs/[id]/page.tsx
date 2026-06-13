@@ -27,11 +27,14 @@ export default function RunDetailPage(): React.ReactElement {
 
   useEffect(() => {
     let active = true;
-    fetchRun(runId)
-      .then((r) => active && setRun(r))
-      .catch((e: unknown) =>
-        active && setError(e instanceof Error ? e.message : "load failed"),
-      );
+    void (async () => {
+      try {
+        const r = await fetchRun(runId);
+        if (active) setRun(r);
+      } catch (e: unknown) {
+        if (active) setError(e instanceof Error ? e.message : "load failed");
+      }
+    })();
     return () => {
       active = false;
     };

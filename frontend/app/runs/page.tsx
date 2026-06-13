@@ -28,17 +28,25 @@ export default function RunsPage(): React.ReactElement {
 
   useEffect(() => {
     let active = true;
-    fetchPersonaSummaries()
-      .then((p) => active && setPersonas(p))
-      .catch((e: unknown) =>
-        active && setPersonasError(e instanceof Error ? e.message : "load failed"),
-      )
-      .finally(() => active && setLoadingPersonas(false));
-    fetchRuns()
-      .then((r) => active && setRuns(r))
-      .catch((e: unknown) =>
-        active && setRunsError(e instanceof Error ? e.message : "load failed"),
-      );
+    void (async () => {
+      try {
+        const p = await fetchPersonaSummaries();
+        if (active) setPersonas(p);
+      } catch (e: unknown) {
+        if (active)
+          setPersonasError(e instanceof Error ? e.message : "load failed");
+      } finally {
+        if (active) setLoadingPersonas(false);
+      }
+    })();
+    void (async () => {
+      try {
+        const r = await fetchRuns();
+        if (active) setRuns(r);
+      } catch (e: unknown) {
+        if (active) setRunsError(e instanceof Error ? e.message : "load failed");
+      }
+    })();
     return () => {
       active = false;
     };
