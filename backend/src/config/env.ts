@@ -25,6 +25,16 @@ const EnvSchema = z
      * Defaults to "" → relative `/published/:id` for local development.
      */
     PUBLIC_BASE_URL: z.string().default(""),
+    /**
+     * HS256 signing secret for bearer-token auth (Epic 85q). A baked-in dev
+     * default keeps local/test friction-free; production MUST override it, so
+     * the superRefine below fails fast if NODE_ENV=production still carries the
+     * default (a real secret leaking into git would be worse than a boot error).
+     */
+    AUTH_JWT_SECRET: z
+      .string()
+      .min(1)
+      .default("dev-insecure-jwt-secret-change-in-production"),
   })
   .superRefine((env, ctx) => {
     if (env.USE_REAL_AGENT && !env.ANTHROPIC_API_KEY) {
@@ -32,6 +42,16 @@ const EnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ["ANTHROPIC_API_KEY"],
         message: "ANTHROPIC_API_KEY is required when USE_REAL_AGENT=true",
+      });
+    }
+    if (
+      env.NODE_ENV === "production" &&
+      env.AUTH_JWT_SECRET === "dev-insecure-jwt-secret-change-in-production"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AUTH_JWT_SECRET"],
+        message: "AUTH_JWT_SECRET must be set to a real secret in production",
       });
     }
   });

@@ -6,6 +6,8 @@ describe("loadEnv", () => {
     const env = loadEnv({
       NODE_ENV: "production",
       PORT: "8080",
+      // Production requires a real JWT secret (Epic 85q fail-fast).
+      AUTH_JWT_SECRET: "a-real-rotated-secret",
     } as NodeJS.ProcessEnv);
     expect(env.NODE_ENV).toBe("production");
     expect(env.PORT).toBe(8080);
@@ -45,5 +47,26 @@ describe("loadEnv", () => {
     expect(() =>
       loadEnv({ USE_REAL_AGENT: "yes" } as NodeJS.ProcessEnv),
     ).toThrowError(/Invalid environment configuration/);
+  });
+
+  it("should apply a dev default for AUTH_JWT_SECRET outside production", () => {
+    const env = loadEnv({} as NodeJS.ProcessEnv);
+    expect(env.AUTH_JWT_SECRET).toBe(
+      "dev-insecure-jwt-secret-change-in-production",
+    );
+  });
+
+  it("should accept an explicit AUTH_JWT_SECRET in production", () => {
+    const env = loadEnv({
+      NODE_ENV: "production",
+      AUTH_JWT_SECRET: "a-real-rotated-secret",
+    } as NodeJS.ProcessEnv);
+    expect(env.AUTH_JWT_SECRET).toBe("a-real-rotated-secret");
+  });
+
+  it("should reject the dev-default AUTH_JWT_SECRET in production (fail-fast)", () => {
+    expect(() =>
+      loadEnv({ NODE_ENV: "production" } as NodeJS.ProcessEnv),
+    ).toThrowError(/AUTH_JWT_SECRET must be set/);
   });
 });
