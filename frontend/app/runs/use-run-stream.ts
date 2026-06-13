@@ -72,6 +72,14 @@ export function useRunStream(
   const lastSeqRef = useRef<number>(-1);
   lastSeqRef.current = view.lastSeq;
 
+  // Keep the (possibly inline) factory + base in refs so an unstable caller
+  // reference does not re-open the stream on every render — the effect should
+  // only re-subscribe when the run or an explicit reconnect changes.
+  const factoryRef = useRef(sourceFactory);
+  factoryRef.current = sourceFactory;
+  const baseRef = useRef(base);
+  baseRef.current = base;
+
   // Bump this to force a reconnect (effect dependency).
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const reconnect = useCallback(() => {
@@ -95,9 +103,11 @@ export function useRunStream(
     setConnection(lastSeqRef.current >= 0 ? "reconnecting" : "connecting");
 
     const factory =
-      sourceFactory ??
+      factoryRef.current ??
       ((id: string, sinceSeq: number) =>
-        eventSourceStream(streamUrl(id, sinceSeq >= 0 ? sinceSeq : undefined, base)));
+        eventSourceStream(
+          streamUrl(id, sinceSeq >= 0 ? sinceSeq : undefined, baseRef.current),
+        ));
 
     const source = factory(runId, lastSeqRef.current);
     let terminal = false;
@@ -123,7 +133,7 @@ export function useRunStream(
       source.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId, reconnectNonce, sourceFactory, base]);
+  }, [runId, reconnectNonce]);
 
   // When the folded view reaches terminal, reflect closed (covers mock sources
   // that complete without an explicit transport close).
