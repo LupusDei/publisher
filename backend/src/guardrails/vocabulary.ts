@@ -29,10 +29,21 @@ export interface TokenMarkerRule {
   match: string;
   /** Lowercased fragments — ANY of which, found in css+html, satisfies the rule. */
   markers: string[];
+  /**
+   * Optional lowercased fragments that DISQUALIFY an otherwise-matching marker
+   * occurrence. Used to keep "serif" from matching inside "sans-serif". A marker
+   * counts as found only when it appears in a context not produced solely by an
+   * antiMarker (checked by stripping antiMarkers before scanning).
+   */
+  antiMarkers?: string[];
 }
 
 export const TYPOGRAPHY_MARKERS: TokenMarkerRule[] = [
-  { match: "serif", markers: ["serif", "georgia", "times", "garamond"] },
+  {
+    match: "serif",
+    markers: ["serif", "georgia", "times", "garamond"],
+    antiMarkers: ["sans-serif"],
+  },
   {
     match: "sans",
     markers: ["sans-serif", "helvetica", "arial", "inter", "system-ui"],
