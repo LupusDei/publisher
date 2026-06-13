@@ -73,6 +73,7 @@ function RunsControlPlane(): React.ReactElement {
         <Link href="/runs/demo">Demo (mock stream)</Link>
         <Link href="/runs/gallery">Gallery</Link>
         <Link href="/personas">Personas</Link>
+        <Link href="/observability">Your usage</Link>
       </nav>
 
       <StartRunForm
