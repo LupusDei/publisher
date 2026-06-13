@@ -107,7 +107,12 @@ export interface PillarLanesProps {
 
 export function PillarLanes({ view }: PillarLanesProps): React.ReactElement {
   return (
-    <div className="pillar-grid" role="region" aria-live="polite" aria-label="Run event stream by pillar">
+    <div
+      className="pillar-grid"
+      role="region"
+      aria-live="polite"
+      aria-label="Run event stream by pillar"
+    >
       <SealedAgentBox phase={view.phase} />
       <div className="lanes">
         {PILLARS.map((p) => (

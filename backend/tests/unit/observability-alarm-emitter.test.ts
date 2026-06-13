@@ -42,7 +42,11 @@ describe("createAlarmEmitter", () => {
       const [alarm] = createAlarmEmitter().evaluate(breach);
       expect(alarm.type).toBe("HIGH_LATENCY");
       expect(alarm.severity).toBe("warning");
-      expect(alarm.context).toMatchObject({ phase: "build", observed: 1200, limit: 1000 });
+      expect(alarm.context).toMatchObject({
+        phase: "build",
+        observed: 1200,
+        limit: 1000,
+      });
     });
   });
 
@@ -69,9 +73,17 @@ describe("createAlarmEmitter", () => {
     );
 
     it("should mark an auto-correctable failure as warning and a non-correctable one as critical (severity, R5)", () => {
-      const correctable = checkpoint({ name: "voice-fidelity", autoCorrectable: true });
-      const hard = checkpoint({ name: "voice-fidelity", autoCorrectable: false });
-      expect(createAlarmEmitter().evaluate(correctable)[0].severity).toBe("warning");
+      const correctable = checkpoint({
+        name: "voice-fidelity",
+        autoCorrectable: true,
+      });
+      const hard = checkpoint({
+        name: "voice-fidelity",
+        autoCorrectable: false,
+      });
+      expect(createAlarmEmitter().evaluate(correctable)[0].severity).toBe(
+        "warning",
+      );
       expect(createAlarmEmitter().evaluate(hard)[0].severity).toBe("critical");
     });
 
@@ -94,7 +106,10 @@ describe("createAlarmEmitter", () => {
       const [alarm] = createAlarmEmitter().evaluate(err);
       expect(alarm.type).toBe("PROVIDER_ERROR");
       expect(alarm.severity).toBe("critical");
-      expect(alarm.context).toMatchObject({ phase: "build", message: "connection reset" });
+      expect(alarm.context).toMatchObject({
+        phase: "build",
+        message: "connection reset",
+      });
     });
 
     it.each([
@@ -105,7 +120,10 @@ describe("createAlarmEmitter", () => {
     ] as const)(
       "should classify agent error message %j as %s (R5)",
       (message, expectedType) => {
-        const [alarm] = createAlarmEmitter().evaluate({ phase: "build", message });
+        const [alarm] = createAlarmEmitter().evaluate({
+          phase: "build",
+          message,
+        });
         expect(alarm.type).toBe(expectedType);
         expect(() => AlarmSchema.parse(alarm)).not.toThrow();
       },

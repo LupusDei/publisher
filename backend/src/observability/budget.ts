@@ -20,7 +20,10 @@ export function totalLatencyMs(metrics: Metrics): number {
   return p.research.latencyMs + p.build.latencyMs + p.refine.latencyMs;
 }
 
-export function detectBreaches(budget: Budget, metrics: Metrics): MetricBreach[] {
+export function detectBreaches(
+  budget: Budget,
+  metrics: Metrics,
+): MetricBreach[] {
   const breaches: MetricBreach[] = [];
 
   if (budget.maxTokens !== undefined) {

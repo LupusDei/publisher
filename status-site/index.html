@@ -1,165 +1,539 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Publisher — Build Status</title>
-<style>
-  :root{
-    --bg:#0b0e14; --panel:#131824; --panel2:#1a2030; --ink:#e6ebf5; --muted:#9aa6bf;
-    --line:#26304a; --acc:#6ea8fe; --good:#3ecf8e; --warn:#f4b740; --crit:#ff6b6b;
-    --chip:#202a40; --mono:"SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);
-    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
-  a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
-  .wrap{max-width:1040px;margin:0 auto;padding:40px 24px 80px}
-  header{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:32px}
-  .kicker{color:var(--acc);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
-  h1{font-size:38px;margin:8px 0 6px;letter-spacing:-.02em}
-  h2{font-size:22px;margin:40px 0 14px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
-  h2 .n{color:var(--acc);font:700 14px/1 var(--mono);background:var(--chip);border:1px solid var(--line);
-    padding:6px 8px;border-radius:7px}
-  h3{font-size:15px;margin:18px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-  p{color:#cfd6e6}
-  .lead{font-size:18px;color:#cfd6e6;max-width:78ch}
-  .badge{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--line);
-    border-radius:999px;padding:6px 14px;font:600 13px var(--mono)}
-  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-  .dot.g{background:var(--good)} .dot.w{background:var(--warn)}
-  .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-  .grid{display:grid;gap:14px}
-  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
-  @media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
-  .card.tight{padding:14px 16px}
-  .stat{font:800 30px/1 var(--mono);letter-spacing:-.02em}
-  .stat.good{color:var(--good)}
-  .stat .u{font-size:13px;color:var(--muted);font-weight:600;margin-left:6px}
-  .label{color:var(--muted);font-size:13px;margin-top:6px}
-  ul.clean{list-style:none;padding:0;margin:10px 0}
-  ul.clean li{padding:9px 0;border-bottom:1px dashed var(--line);display:flex;gap:12px;align-items:flex-start}
-  ul.clean li:last-child{border-bottom:0}
-  .tick{color:var(--good);font-weight:800;flex:0 0 auto}
-  .todo{color:var(--warn);font-weight:800;flex:0 0 auto}
-  .pill{display:inline-block;background:var(--chip);border:1px solid var(--line);border-radius:6px;
-    padding:1px 7px;font:600 12px var(--mono);color:var(--muted)}
-  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14.5px}
-  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.07em}
-  td .s{color:var(--good);font-weight:700}
-  pre{background:#0a0d14;border:1px solid var(--line);border-radius:10px;padding:16px;overflow:auto;
-    font:13px/1.55 var(--mono);color:#cdd6ea}
-  .diagram{background:#0a0d14;border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto;
-    font:12.5px/1.5 var(--mono);color:#aeb9d4;white-space:pre}
-  .muted{color:var(--muted)}
-  .foot{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
-  .bar{height:10px;border-radius:6px;background:var(--panel2);overflow:hidden;border:1px solid var(--line)}
-  .bar > i{display:block;height:100%;background:linear-gradient(90deg,#3ecf8e,#6ea8fe)}
-  .sealed{border:1.5px dashed var(--acc);border-radius:8px;padding:2px 6px;color:var(--acc)}
-</style>
-</head>
-<body>
-<div class="wrap">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Publisher — Build Status</title>
+    <style>
+      :root {
+        --bg: #0b0e14;
+        --panel: #131824;
+        --panel2: #1a2030;
+        --ink: #e6ebf5;
+        --muted: #9aa6bf;
+        --line: #26304a;
+        --acc: #6ea8fe;
+        --good: #3ecf8e;
+        --warn: #f4b740;
+        --crit: #ff6b6b;
+        --chip: #202a40;
+        --mono: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          16px/1.6 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+      }
+      a {
+        color: var(--acc);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+      header {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 24px;
+        margin-bottom: 32px;
+      }
+      .kicker {
+        color: var(--acc);
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+      h1 {
+        font-size: 38px;
+        margin: 8px 0 6px;
+        letter-spacing: -0.02em;
+      }
+      h2 {
+        font-size: 22px;
+        margin: 40px 0 14px;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      h2 .n {
+        color: var(--acc);
+        font: 700 14px/1 var(--mono);
+        background: var(--chip);
+        border: 1px solid var(--line);
+        padding: 6px 8px;
+        border-radius: 7px;
+      }
+      h3 {
+        font-size: 15px;
+        margin: 18px 0 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      p {
+        color: #cfd6e6;
+      }
+      .lead {
+        font-size: 18px;
+        color: #cfd6e6;
+        max-width: 78ch;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font: 600 13px var(--mono);
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .dot.g {
+        background: var(--good);
+      }
+      .dot.w {
+        background: var(--warn);
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      .g2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .g3 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .g4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      @media (max-width: 760px) {
+        .g2,
+        .g3,
+        .g4 {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px;
+      }
+      .card.tight {
+        padding: 14px 16px;
+      }
+      .stat {
+        font: 800 30px/1 var(--mono);
+        letter-spacing: -0.02em;
+      }
+      .stat.good {
+        color: var(--good);
+      }
+      .stat .u {
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 600;
+        margin-left: 6px;
+      }
+      .label {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 6px;
+      }
+      ul.clean {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0;
+      }
+      ul.clean li {
+        padding: 9px 0;
+        border-bottom: 1px dashed var(--line);
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      ul.clean li:last-child {
+        border-bottom: 0;
+      }
+      .tick {
+        color: var(--good);
+        font-weight: 800;
+        flex: 0 0 auto;
+      }
+      .todo {
+        color: var(--warn);
+        font-weight: 800;
+        flex: 0 0 auto;
+      }
+      .pill {
+        display: inline-block;
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 7px;
+        font: 600 12px var(--mono);
+        color: var(--muted);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 14.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+      }
+      td .s {
+        color: var(--good);
+        font-weight: 700;
+      }
+      pre {
+        background: #0a0d14;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+        overflow: auto;
+        font: 13px/1.55 var(--mono);
+        color: #cdd6ea;
+      }
+      .diagram {
+        background: #0a0d14;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px;
+        overflow: auto;
+        font: 12.5px/1.5 var(--mono);
+        color: #aeb9d4;
+        white-space: pre;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .foot {
+        margin-top: 48px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .bar {
+        height: 10px;
+        border-radius: 6px;
+        background: var(--panel2);
+        overflow: hidden;
+        border: 1px solid var(--line);
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #3ecf8e, #6ea8fe);
+      }
+      .sealed {
+        border: 1.5px dashed var(--acc);
+        border-radius: 8px;
+        padding: 2px 6px;
+        color: var(--acc);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="kicker">Gauntlet Hackathon · Live Build Status</div>
+        <h1>Publisher — the Harness</h1>
+        <p class="lead">
+          Turn a research concept into an elegantly-designed single-page webpage
+          written in the authentic voice of <em>your</em> persona. A
+          research-and-build agent, wrapped in four separable constraint pillars
+          that guarantee voice, design, research depth, and quality — or it
+          refuses to publish and says exactly why.
+        </p>
+        <div class="row">
+          <span class="badge"
+            ><span class="dot g"></span> Code-complete · all tracks merged
+            green</span
+          >
+          <span class="badge"
+            ><span class="dot w"></span> Deploy + demo recording remain
+            (manual)</span
+          >
+          <span class="badge">branch <code>feat/bootstrap-scaffold</code></span>
+        </div>
+      </header>
 
-  <header>
-    <div class="kicker">Gauntlet Hackathon · Live Build Status</div>
-    <h1>Publisher — the Harness</h1>
-    <p class="lead">Turn a research concept into an elegantly-designed single-page webpage written in the authentic voice of <em>your</em> persona. A research-and-build agent, wrapped in four separable constraint pillars that guarantee voice, design, research depth, and quality — or it refuses to publish and says exactly why.</p>
-    <div class="row">
-      <span class="badge"><span class="dot g"></span> Code-complete · all tracks merged green</span>
-      <span class="badge"><span class="dot w"></span> Deploy + demo recording remain (manual)</span>
-      <span class="badge">branch <code>feat/bootstrap-scaffold</code></span>
-    </div>
-  </header>
+      <!-- WHERE WE ARE -->
+      <section>
+        <h2><span class="n">01</span> Where we are</h2>
+        <p>
+          The entire MVP is built, tested, and integrated. The harness runs
+          end-to-end on one command. What remains is operational: deploying for
+          judges (Vercel frontend ↔ local backend via ngrok) and recording the
+          5-minute demo.
+        </p>
+        <div class="grid g4" style="margin-top: 16px">
+          <div class="card tight">
+            <div class="stat good">71<span class="u">/ 77</span></div>
+            <div class="label">beads closed</div>
+          </div>
+          <div class="card tight">
+            <div class="stat good">489</div>
+            <div class="label">tests passing</div>
+          </div>
+          <div class="card tight">
+            <div class="stat good">0</div>
+            <div class="label">lint warnings</div>
+          </div>
+          <div class="card tight">
+            <div class="stat good">11</div>
+            <div class="label">agent tracks merged</div>
+          </div>
+        </div>
+        <div style="margin-top: 18px">
+          <div class="muted" style="font-size: 13px; margin-bottom: 6px">
+            Overall MVP progress — code 100%, operational deploy pending
+          </div>
+          <div class="bar"><i style="width: 92%"></i></div>
+        </div>
+      </section>
 
-  <!-- WHERE WE ARE -->
-  <section>
-    <h2><span class="n">01</span> Where we are</h2>
-    <p>The entire MVP is built, tested, and integrated. The harness runs end-to-end on one command. What remains is operational: deploying for judges (Vercel frontend ↔ local backend via ngrok) and recording the 5-minute demo.</p>
-    <div class="grid g4" style="margin-top:16px">
-      <div class="card tight"><div class="stat good">71<span class="u">/ 77</span></div><div class="label">beads closed</div></div>
-      <div class="card tight"><div class="stat good">489</div><div class="label">tests passing</div></div>
-      <div class="card tight"><div class="stat good">0</div><div class="label">lint warnings</div></div>
-      <div class="card tight"><div class="stat good">11</div><div class="label">agent tracks merged</div></div>
-    </div>
-    <div style="margin-top:18px">
-      <div class="muted" style="font-size:13px;margin-bottom:6px">Overall MVP progress — code 100%, operational deploy pending</div>
-      <div class="bar"><i style="width:92%"></i></div>
-    </div>
-  </section>
+      <!-- WHAT'S DONE -->
+      <section>
+        <h2><span class="n">02</span> What's done</h2>
+        <div class="grid g2">
+          <div class="card">
+            <h3>Foundation &amp; pillars</h3>
+            <ul class="clean">
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Track 0 — Barrier.</b> Frozen cross-tier contracts,
+                  reconciled Agent seam, SQLite schema + stores, router
+                  registry, and a walking-skeleton CI smoke gate.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Pillar 1 — Material Handling.</b>
+                  <span class="pill">Source.load</span> with
+                  <span class="pill">INPUT_EMPTY</span> guard; self-contained,
+                  hostable single-page <span class="pill">Sink.publish</span>.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Pillar 2 — Guardrails (Persona).</b>
+                  <span class="pill">compile()</span> → system prompt +
+                  detective validators. Declared once, enforced twice.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Pillar 3 — Checkpoints + Journal.</b> Four ordered
+                  pass/fail gates, fail-closed judges, persisted journal, replay
+                  from any checkpoint.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Pillar 4 — Observability &amp; Alarms.</b> Per-run meters
+                  (token/latency/error), budgets, structured
+                  <span class="pill">Alarm</span> emission.
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Worker, spine &amp; surface</h3>
+            <ul class="clean">
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Persona &amp; Onboarding.</b> CRUD + inline edit, guided
+                  authoring, and two voice-distinct seeded personas (The
+                  Essayist / The Builder).
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Agent worker — 3 behind one seam.</b> Deterministic
+                  <b>Mock</b>, <b>Vercel AI SDK</b>, and
+                  <b
+                    >native Anthropic + real
+                    <span class="pill">web_search</span></b
+                  >
+                  (real research). Swap = one line.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Orchestrator spine.</b> RunEngine, retry loop, SSE event
+                  stream, escalation/HITL, async live runs — with a
+                  deterministic R2 integration test.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Proof-surface UI.</b> Four pillar lanes + sealed-agent box,
+                  draft before/after diff, structured alarm cards, escalation,
+                  published preview, no-backend
+                  <span class="pill">/runs/demo</span>.
+                </div>
+              </li>
+              <li>
+                <span class="tick">✓</span>
+                <div>
+                  <b>Docs.</b> HARNESS.md (architecture), DEMO.md (5-min script
+                  + deploy), README.
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" style="margin-top: 14px">
+          <h3>Quality gates — all green</h3>
+          <div class="grid g4">
+            <div>
+              <div class="stat good">75</div>
+              <div class="label">shared tests</div>
+            </div>
+            <div>
+              <div class="stat good">300</div>
+              <div class="label">backend tests</div>
+            </div>
+            <div>
+              <div class="stat good">114</div>
+              <div class="label">frontend tests</div>
+            </div>
+            <div>
+              <div class="stat good">80/70/60</div>
+              <div class="label">coverage gate ✓</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  <!-- WHAT'S DONE -->
-  <section>
-    <h2><span class="n">02</span> What's done</h2>
-    <div class="grid g2">
-      <div class="card">
-        <h3>Foundation &amp; pillars</h3>
+      <!-- WHAT REMAINS -->
+      <section>
+        <h2><span class="n">03</span> What remains</h2>
+        <p>
+          All code is complete. The remaining items are operational and need
+          your credentials.
+        </p>
         <ul class="clean">
-          <li><span class="tick">✓</span><div><b>Track 0 — Barrier.</b> Frozen cross-tier contracts, reconciled Agent seam, SQLite schema + stores, router registry, and a walking-skeleton CI smoke gate.</div></li>
-          <li><span class="tick">✓</span><div><b>Pillar 1 — Material Handling.</b> <span class="pill">Source.load</span> with <span class="pill">INPUT_EMPTY</span> guard; self-contained, hostable single-page <span class="pill">Sink.publish</span>.</div></li>
-          <li><span class="tick">✓</span><div><b>Pillar 2 — Guardrails (Persona).</b> <span class="pill">compile()</span> → system prompt + detective validators. Declared once, enforced twice.</div></li>
-          <li><span class="tick">✓</span><div><b>Pillar 3 — Checkpoints + Journal.</b> Four ordered pass/fail gates, fail-closed judges, persisted journal, replay from any checkpoint.</div></li>
-          <li><span class="tick">✓</span><div><b>Pillar 4 — Observability &amp; Alarms.</b> Per-run meters (token/latency/error), budgets, structured <span class="pill">Alarm</span> emission.</div></li>
+          <li>
+            <span class="todo">○</span>
+            <div>
+              <b>Deploy for judges</b> <span class="pill">dp0.10.2</span> —
+              <code>ngrok http 4000</code> for the local backend, set
+              <code>CORS_ORIGIN</code> / <code>PUBLIC_BASE_URL</code> /
+              <code>NEXT_PUBLIC_API_BASE</code> to the public URLs, then
+              <code>vercel deploy --prod</code> from <code>frontend/</code>.
+              Fully scripted in DEMO.md §2.
+            </div>
+          </li>
+          <li>
+            <span class="todo">○</span>
+            <div>
+              <b>Rehearse the mid-demo worker swap</b>
+              <span class="pill">dp0.10.4</span> — Worker A (Vercel AI SDK) →
+              Worker B (native + real web search), same persona, two pages
+              side-by-side. The bonus (R11).
+            </div>
+          </li>
+          <li>
+            <span class="todo">○</span>
+            <div>
+              <b>Pick the real demo concept</b> (R6) and record the 5-minute
+              demo.
+            </div>
+          </li>
+          <li>
+            <span class="todo">○</span>
+            <div>
+              <b>Optional:</b> open a PR / merge
+              <code>feat/bootstrap-scaffold</code> → <code>main</code>.
+            </div>
+          </li>
         </ul>
-      </div>
-      <div class="card">
-        <h3>Worker, spine &amp; surface</h3>
-        <ul class="clean">
-          <li><span class="tick">✓</span><div><b>Persona &amp; Onboarding.</b> CRUD + inline edit, guided authoring, and two voice-distinct seeded personas (The Essayist / The Builder).</div></li>
-          <li><span class="tick">✓</span><div><b>Agent worker — 3 behind one seam.</b> Deterministic <b>Mock</b>, <b>Vercel AI SDK</b>, and <b>native Anthropic + real <span class="pill">web_search</span></b> (real research). Swap = one line.</div></li>
-          <li><span class="tick">✓</span><div><b>Orchestrator spine.</b> RunEngine, retry loop, SSE event stream, escalation/HITL, async live runs — with a deterministic R2 integration test.</div></li>
-          <li><span class="tick">✓</span><div><b>Proof-surface UI.</b> Four pillar lanes + sealed-agent box, draft before/after diff, structured alarm cards, escalation, published preview, no-backend <span class="pill">/runs/demo</span>.</div></li>
-          <li><span class="tick">✓</span><div><b>Docs.</b> HARNESS.md (architecture), DEMO.md (5-min script + deploy), README.</div></li>
-        </ul>
-      </div>
-    </div>
-    <div class="card" style="margin-top:14px">
-      <h3>Quality gates — all green</h3>
-      <div class="grid g4">
-        <div><div class="stat good">75</div><div class="label">shared tests</div></div>
-        <div><div class="stat good">300</div><div class="label">backend tests</div></div>
-        <div><div class="stat good">114</div><div class="label">frontend tests</div></div>
-        <div><div class="stat good">80/70/60</div><div class="label">coverage gate ✓</div></div>
-      </div>
-    </div>
-  </section>
+      </section>
 
-  <!-- WHAT REMAINS -->
-  <section>
-    <h2><span class="n">03</span> What remains</h2>
-    <p>All code is complete. The remaining items are operational and need your credentials.</p>
-    <ul class="clean">
-      <li><span class="todo">○</span><div><b>Deploy for judges</b> <span class="pill">dp0.10.2</span> — <code>ngrok http 4000</code> for the local backend, set <code>CORS_ORIGIN</code> / <code>PUBLIC_BASE_URL</code> / <code>NEXT_PUBLIC_API_BASE</code> to the public URLs, then <code>vercel deploy --prod</code> from <code>frontend/</code>. Fully scripted in DEMO.md §2.</div></li>
-      <li><span class="todo">○</span><div><b>Rehearse the mid-demo worker swap</b> <span class="pill">dp0.10.4</span> — Worker A (Vercel AI SDK) → Worker B (native + real web search), same persona, two pages side-by-side. The bonus (R11).</div></li>
-      <li><span class="todo">○</span><div><b>Pick the real demo concept</b> (R6) and record the 5-minute demo.</div></li>
-      <li><span class="todo">○</span><div><b>Optional:</b> open a PR / merge <code>feat/bootstrap-scaffold</code> → <code>main</code>.</div></li>
-    </ul>
-  </section>
+      <!-- HOW IT WORKS -->
+      <section>
+        <h2><span class="n">04</span> How it works</h2>
+        <p>
+          The hackathon grades the <b>harness</b>, not the agent. The agent
+          stays dumb — it only ever sees
+          <code>system + messages + feedback</code>. The orchestrator drives the
+          loop; the four pillars do the constraining, around a swappable worker.
+        </p>
 
-  <!-- HOW IT WORKS -->
-  <section>
-    <h2><span class="n">04</span> How it works</h2>
-    <p>The hackathon grades the <b>harness</b>, not the agent. The agent stays dumb — it only ever sees <code>system + messages + feedback</code>. The orchestrator drives the loop; the four pillars do the constraining, around a swappable worker.</p>
+        <div class="diagram">
+          ORCHESTRATOR (Run Engine) — thin sequencer, no domain logic state
+          machine · retry loop · journal · replay · escalation
+          ┌──────────┬────────────┬─────────────┬───────────────┬─────────────┐
+          │ MATERIAL │ GUARDRAILS │ CHECKPOINTS │ OBSERVABILITY │ PERSONA │ │
+          in/out │ (persona) │ (gates) │ &amp; ALARMS │ STORE │
+          └──────────┴─────┬──────┴─────────────┴──────┬────────┴─────────────┘
+          │ system + messages + feedback (only) ▼
+          ┌─────────────────────────────┐ ── critical alarm ──▶
+          HUMAN-IN-THE-LOOP │ AGENT (worker, SWAPPABLE) │ │ research → build →
+          refine │ Mock · Vercel-SDK · native+web_search
+          └─────────────────────────────┘
+        </div>
 
-    <div class="diagram">                 ORCHESTRATOR (Run Engine) — thin sequencer, no domain logic
-                 state machine · retry loop · journal · replay · escalation
-   ┌──────────┬────────────┬─────────────┬───────────────┬─────────────┐
-   │ MATERIAL │ GUARDRAILS │ CHECKPOINTS │ OBSERVABILITY │   PERSONA   │
-   │  in/out  │ (persona)  │   (gates)   │   &amp; ALARMS    │    STORE    │
-   └──────────┴─────┬──────┴─────────────┴──────┬────────┴─────────────┘
-                    │  system + messages + feedback (only)
-                    ▼
-            ┌─────────────────────────────┐      ── critical alarm ──▶  HUMAN-IN-THE-LOOP
-            │  AGENT (worker, SWAPPABLE)  │
-            │  research → build → refine  │   Mock · Vercel-SDK · native+web_search
-            └─────────────────────────────┘</div>
-
-    <div class="grid g2" style="margin-top:16px">
-      <div class="card">
-        <h3>The control loop — where behavior changes</h3>
-        <pre>persona     = PersonaStore.load(id)
+        <div class="grid g2" style="margin-top: 16px">
+          <div class="card">
+            <h3>The control loop — where behavior changes</h3>
+            <pre>
+persona     = PersonaStore.load(id)
 guardrails  = compile(persona)        // prompt + validators
 material    = Source.load(concept, persona)
 
@@ -173,51 +547,115 @@ for gate in [voice, design, quality]:
         webpage = agent.build({..., feedback})   // ◀ behavior changes
     elif CRITICAL: escalate()                    // stop &amp; ask
 
-Sink.publish(webpage)   // only voice-faithful, researched, quality pages ship</pre>
-      </div>
-      <div class="card">
-        <h3>The four pillars, mapped</h3>
-        <table>
-          <tr><th>Pillar</th><th>Guarantees</th></tr>
-          <tr><td><b>Material</b></td><td>clean in (concept + persona) / out (self-contained webpage)</td></tr>
-          <tr><td><b>Guardrails</b></td><td>output <span class="s">sounds &amp; looks</span> like the persona</td></tr>
-          <tr><td><b>Checkpoints</b></td><td>explicit pass/fail + replay; a fail is a real outcome</td></tr>
-          <tr><td><b>Observability</b></td><td>structured alarms: type · severity · context · action</td></tr>
-        </table>
-        <h3 style="margin-top:18px">Two planes</h3>
-        <p class="muted" style="font-size:14px">Control plane = Next.js UI on Vercel (onboarding · run stream · escalation · preview). Harness plane = Node/TS backend + SQLite, reached via an ngrok tunnel. The agent is just an outbound API call — local now, cloud-deployable later.</p>
-      </div>
-    </div>
+Sink.publish(webpage)   // only voice-faithful, researched, quality pages ship</pre
+            >
+          </div>
+          <div class="card">
+            <h3>The four pillars, mapped</h3>
+            <table>
+              <tr>
+                <th>Pillar</th>
+                <th>Guarantees</th>
+              </tr>
+              <tr>
+                <td><b>Material</b></td>
+                <td>
+                  clean in (concept + persona) / out (self-contained webpage)
+                </td>
+              </tr>
+              <tr>
+                <td><b>Guardrails</b></td>
+                <td>
+                  output <span class="s">sounds &amp; looks</span> like the
+                  persona
+                </td>
+              </tr>
+              <tr>
+                <td><b>Checkpoints</b></td>
+                <td>explicit pass/fail + replay; a fail is a real outcome</td>
+              </tr>
+              <tr>
+                <td><b>Observability</b></td>
+                <td>structured alarms: type · severity · context · action</td>
+              </tr>
+            </table>
+            <h3 style="margin-top: 18px">Two planes</h3>
+            <p class="muted" style="font-size: 14px">
+              Control plane = Next.js UI on Vercel (onboarding · run stream ·
+              escalation · preview). Harness plane = Node/TS backend + SQLite,
+              reached via an ngrok tunnel. The agent is just an outbound API
+              call — local now, cloud-deployable later.
+            </p>
+          </div>
+        </div>
 
-    <div class="card" style="margin-top:14px">
-      <h3>What a judge sees on screen</h3>
-      <ul class="clean">
-        <li><span class="tick">▸</span><div><b>R1 — pillars separate:</b> four labeled lanes light up around a <span class="sealed">sealed agent box</span> that only receives system + messages + feedback.</div></li>
-        <li><span class="tick">▸</span><div><b>R2 — behavior changes from feedback:</b> draft&nbsp;1 fails <span class="pill">VOICE_DRIFT 0.42</span> → structured feedback → draft&nbsp;2 passes <span class="pill">0.81</span>, shown as a before/after diff.</div></li>
-        <li><span class="tick">▸</span><div><b>R3 — declared guardrails:</b> a compiled-guardrail panel renders the exact system-prompt fragment + validators a persona produces.</div></li>
-        <li><span class="tick">▸</span><div><b>★ Two-persona proof:</b> the same concept through two personas → two visibly different pages, side by side.</div></li>
-        <li><span class="tick">▸</span><div><b>R8/R11 — swap:</b> re-run with a different worker; the harness is untouched.</div></li>
-      </ul>
-    </div>
-  </section>
+        <div class="card" style="margin-top: 14px">
+          <h3>What a judge sees on screen</h3>
+          <ul class="clean">
+            <li>
+              <span class="tick">▸</span>
+              <div>
+                <b>R1 — pillars separate:</b> four labeled lanes light up around
+                a <span class="sealed">sealed agent box</span> that only
+                receives system + messages + feedback.
+              </div>
+            </li>
+            <li>
+              <span class="tick">▸</span>
+              <div>
+                <b>R2 — behavior changes from feedback:</b> draft&nbsp;1 fails
+                <span class="pill">VOICE_DRIFT 0.42</span> → structured feedback
+                → draft&nbsp;2 passes <span class="pill">0.81</span>, shown as a
+                before/after diff.
+              </div>
+            </li>
+            <li>
+              <span class="tick">▸</span>
+              <div>
+                <b>R3 — declared guardrails:</b> a compiled-guardrail panel
+                renders the exact system-prompt fragment + validators a persona
+                produces.
+              </div>
+            </li>
+            <li>
+              <span class="tick">▸</span>
+              <div>
+                <b>★ Two-persona proof:</b> the same concept through two
+                personas → two visibly different pages, side by side.
+              </div>
+            </li>
+            <li>
+              <span class="tick">▸</span>
+              <div>
+                <b>R8/R11 — swap:</b> re-run with a different worker; the
+                harness is untouched.
+              </div>
+            </li>
+          </ul>
+        </div>
+      </section>
 
-  <section>
-    <h2><span class="n">05</span> Run it yourself</h2>
-    <pre>npm install &amp;&amp; npm run build
+      <section>
+        <h2><span class="n">05</span> Run it yourself</h2>
+        <pre>
+npm install &amp;&amp; npm run build
 npm run seed --workspace backend     # two demo personas
 npm run dev                          # backend :4000 + frontend :3000
-# Guaranteed-live, no backend:  http://localhost:3000/runs/demo</pre>
-  </section>
+# Guaranteed-live, no backend:  http://localhost:3000/runs/demo</pre
+        >
+      </section>
 
-  <div class="foot">
-    Publisher · agent harness for persona-faithful publishing. Sources: <code>HARNESS.md</code>, <code>DEMO.md</code>, <code>specs/002-publisher-mvp/OVERVIEW.md</code>. This status page is self-contained and served via ngrok.
-    <div id="ts" style="margin-top:8px"></div>
-  </div>
-
-</div>
-<script>
-  document.getElementById('ts').textContent =
-    'Snapshot generated for the live build review · branch feat/bootstrap-scaffold.';
-</script>
-</body>
+      <div class="foot">
+        Publisher · agent harness for persona-faithful publishing. Sources:
+        <code>HARNESS.md</code>, <code>DEMO.md</code>,
+        <code>specs/002-publisher-mvp/OVERVIEW.md</code>. This status page is
+        self-contained and served via ngrok.
+        <div id="ts" style="margin-top: 8px"></div>
+      </div>
+    </div>
+    <script>
+      document.getElementById("ts").textContent =
+        "Snapshot generated for the live build review · branch feat/bootstrap-scaffold.";
+    </script>
+  </body>
 </html>

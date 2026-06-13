@@ -5,7 +5,9 @@ import type { DraftAttempt } from "@/app/runs/run-state";
 import { DraftTimeline } from "@/components/DraftTimeline";
 import { wordDiff, htmlToText } from "@/app/runs/diff";
 
-function draft(over: Partial<DraftAttempt> & { attempt: number }): DraftAttempt {
+function draft(
+  over: Partial<DraftAttempt> & { attempt: number },
+): DraftAttempt {
   return {
     webpage: {
       title: "On Emergence",
@@ -74,7 +76,9 @@ describe("DraftTimeline", () => {
         ]}
       />,
     );
-    expect(screen.getByText(/Match the persona voiceSample cadence/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Match the persona voiceSample cadence/),
+    ).toBeInTheDocument();
   });
 
   it("should reveal the before/after diff on compare click (state change, R2 money shot)", async () => {
@@ -107,7 +111,9 @@ describe("DraftTimeline", () => {
         ]}
       />,
     );
-    const compareBtn = screen.getByRole("button", { name: /Compare attempt 1/ });
+    const compareBtn = screen.getByRole("button", {
+      name: /Compare attempt 1/,
+    });
     await user.click(compareBtn);
     expect(
       screen.getByLabelText(/Diff of attempt 1 versus attempt 2/),

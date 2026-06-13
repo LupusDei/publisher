@@ -63,7 +63,9 @@ export function EscalationPanel({
     try {
       await onDecide(payload ? { choice, payload } : { choice });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to submit decision");
+      setError(
+        err instanceof Error ? err.message : "Failed to submit decision",
+      );
       setSubmitting(null);
     }
   }

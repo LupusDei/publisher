@@ -15,7 +15,9 @@ const metrics: Metrics = {
 describe("MetricsMeter", () => {
   it("should show a waiting note before any metric arrives (empty state)", () => {
     render(<MetricsMeter />);
-    expect(screen.getByText(/Waiting for the first metric/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Waiting for the first metric/),
+    ).toBeInTheDocument();
   });
 
   it("should render headline totals and per-phase rows (happy path)", () => {

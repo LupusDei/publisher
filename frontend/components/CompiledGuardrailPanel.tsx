@@ -70,7 +70,9 @@ export function CompiledGuardrailPanel({
       {state.kind === "ready" && (
         <>
           <div className="compiled-block">
-            <span className="compiled-label">Preventive · system prompt fragment</span>
+            <span className="compiled-label">
+              Preventive · system prompt fragment
+            </span>
             <pre className="system-prompt">{state.view.systemPrompt}</pre>
           </div>
 

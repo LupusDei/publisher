@@ -54,11 +54,22 @@ export const TYPOGRAPHY_MARKERS: TokenMarkerRule[] = [
 export const LAYOUT_MARKERS: TokenMarkerRule[] = [
   {
     match: "grid",
-    markers: ["display:grid", "display: grid", "grid-template", "grid-template-columns"],
+    markers: [
+      "display:grid",
+      "display: grid",
+      "grid-template",
+      "grid-template-columns",
+    ],
   },
   {
     match: "single-column",
-    markers: ["max-width", "margin:0 auto", "margin: 0 auto", "flex-direction:column", "flex-direction: column"],
+    markers: [
+      "max-width",
+      "margin:0 auto",
+      "margin: 0 auto",
+      "flex-direction:column",
+      "flex-direction: column",
+    ],
   },
   {
     match: "flex",
@@ -73,7 +84,17 @@ export const PALETTE_MARKERS: TokenMarkerRule[] = [
   },
   {
     match: "warm",
-    markers: ["#f", "#e", "rgb(", "hsl(", "beige", "cream", "tan", "brown", "amber"],
+    markers: [
+      "#f",
+      "#e",
+      "rgb(",
+      "hsl(",
+      "beige",
+      "cream",
+      "tan",
+      "brown",
+      "amber",
+    ],
   },
 ];
 

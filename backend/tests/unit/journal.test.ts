@@ -23,7 +23,11 @@ function webpage(title: string): Webpage {
     html: `<main>${title}</main>`,
     css: "",
     summary: `summary of ${title}`,
-    sourcesUsed: ["https://a.example", "https://b.example", "https://c.example"],
+    sourcesUsed: [
+      "https://a.example",
+      "https://b.example",
+      "https://c.example",
+    ],
   };
 }
 
@@ -63,7 +67,13 @@ describe("Journal (over RunEventStore)", () => {
   it("loadSince returns only events strictly after the given seq (reconnect primitive)", () => {
     const j = journal();
     for (let i = 0; i < 3; i++)
-      j.append({ runId: RUN, seq: i, ts: `t${i}`, t: "phase", phase: "research" });
+      j.append({
+        runId: RUN,
+        seq: i,
+        ts: `t${i}`,
+        t: "phase",
+        phase: "research",
+      });
     expect(j.loadSince(RUN, 0).map((e) => e.seq)).toEqual([1, 2]);
   });
 
@@ -72,15 +82,29 @@ describe("Journal (over RunEventStore)", () => {
       const j = journal();
       let seq = 0;
       const emit = (body: Omit<RunEvent, "runId" | "seq" | "ts">) =>
-        j.append({ runId: RUN, seq: seq++, ts: `t${seq}`, ...body } as RunEvent);
+        j.append({
+          runId: RUN,
+          seq: seq++,
+          ts: `t${seq}`,
+          ...body,
+        } as RunEvent);
 
       emit({ t: "phase", phase: "research" });
       emit({ t: "phase", phase: "build" });
       emit({ t: "draft", attempt: 1, webpage: webpage("Draft 1") });
       // research-sufficiency + voice-fidelity pass; design-conformance FAILS.
-      emit({ t: "checkpoint", result: checkpointResult("research-sufficiency", true) });
-      emit({ t: "checkpoint", result: checkpointResult("voice-fidelity", true) });
-      emit({ t: "checkpoint", result: checkpointResult("design-conformance", false) });
+      emit({
+        t: "checkpoint",
+        result: checkpointResult("research-sufficiency", true),
+      });
+      emit({
+        t: "checkpoint",
+        result: checkpointResult("voice-fidelity", true),
+      });
+      emit({
+        t: "checkpoint",
+        result: checkpointResult("design-conformance", false),
+      });
 
       const replay = j.replayFrom(RUN);
       expect(replay.fromCheckpoint).toBe("design-conformance");
@@ -97,13 +121,37 @@ describe("Journal (over RunEventStore)", () => {
       const j = journal();
       let seq = 0;
       const emit = (body: Omit<RunEvent, "runId" | "seq" | "ts">) =>
-        j.append({ runId: RUN, seq: seq++, ts: `t${seq}`, ...body } as RunEvent);
+        j.append({
+          runId: RUN,
+          seq: seq++,
+          ts: `t${seq}`,
+          ...body,
+        } as RunEvent);
 
-      emit({ t: "checkpoint", result: checkpointResult("research-sufficiency", true) });
-      emit({ t: "draft", attempt: 1, webpage: webpage("Draft 1"), passed: false });
-      emit({ t: "checkpoint", result: checkpointResult("voice-fidelity", false) });
-      emit({ t: "draft", attempt: 2, webpage: webpage("Draft 2"), passed: true });
-      emit({ t: "checkpoint", result: checkpointResult("voice-fidelity", true) });
+      emit({
+        t: "checkpoint",
+        result: checkpointResult("research-sufficiency", true),
+      });
+      emit({
+        t: "draft",
+        attempt: 1,
+        webpage: webpage("Draft 1"),
+        passed: false,
+      });
+      emit({
+        t: "checkpoint",
+        result: checkpointResult("voice-fidelity", false),
+      });
+      emit({
+        t: "draft",
+        attempt: 2,
+        webpage: webpage("Draft 2"),
+        passed: true,
+      });
+      emit({
+        t: "checkpoint",
+        result: checkpointResult("voice-fidelity", true),
+      });
 
       const replay = j.replayFrom(RUN);
       expect(replay.priorOutputs.lastWebpage?.title).toBe("Draft 2");
@@ -125,7 +173,12 @@ describe("Journal (over RunEventStore)", () => {
       const j = journal();
       let seq = 0;
       const emit = (body: Omit<RunEvent, "runId" | "seq" | "ts">) =>
-        j.append({ runId: RUN, seq: seq++, ts: `t${seq}`, ...body } as RunEvent);
+        j.append({
+          runId: RUN,
+          seq: seq++,
+          ts: `t${seq}`,
+          ...body,
+        } as RunEvent);
       emit({ t: "draft", attempt: 1, webpage: webpage("Final") });
       for (const n of [
         "research-sufficiency",
@@ -145,8 +198,16 @@ describe("Journal (over RunEventStore)", () => {
       const j = journal();
       let seq = 0;
       const emit = (body: Omit<RunEvent, "runId" | "seq" | "ts">) =>
-        j.append({ runId: RUN, seq: seq++, ts: `t${seq}`, ...body } as RunEvent);
-      emit({ t: "checkpoint", result: checkpointResult("research-sufficiency", false) });
+        j.append({
+          runId: RUN,
+          seq: seq++,
+          ts: `t${seq}`,
+          ...body,
+        } as RunEvent);
+      emit({
+        t: "checkpoint",
+        result: checkpointResult("research-sufficiency", false),
+      });
       const replay = j.replayFrom(RUN);
       expect(replay.fromCheckpoint).toBe("research-sufficiency");
       expect(replay.priorOutputs.research).toBeUndefined();

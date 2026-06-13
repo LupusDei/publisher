@@ -25,7 +25,10 @@ function page(title: string, body: string, summary: string): Webpage {
     html: `<article><h1>${title}</h1>${body}</article>`,
     css: "article{max-width:42rem;margin:0 auto;font-family:Georgia,serif;line-height:1.6}h1{font-size:2rem}",
     summary,
-    sourcesUsed: ["https://example.org/emergence", "https://example.org/complexity"],
+    sourcesUsed: [
+      "https://example.org/emergence",
+      "https://example.org/complexity",
+    ],
   };
 }
 
@@ -41,12 +44,20 @@ const DRAFT_2 = page(
   "A voice-true meditation on emergence — measured, lyrical, exact.",
 );
 
-function metrics(researchTok: number, buildTok: number, refineTok: number): Metrics {
+function metrics(
+  researchTok: number,
+  buildTok: number,
+  refineTok: number,
+): Metrics {
   return {
     perPhase: {
       research: { tokens: researchTok, latencyMs: 820, calls: 1 },
       build: { tokens: buildTok, latencyMs: 1640, calls: 1 },
-      refine: { tokens: refineTok, latencyMs: refineTok > 0 ? 1490 : 0, calls: refineTok > 0 ? 1 : 0 },
+      refine: {
+        tokens: refineTok,
+        latencyMs: refineTok > 0 ? 1490 : 0,
+        calls: refineTok > 0 ? 1 : 0,
+      },
     },
     errorRate: 0,
   };
@@ -100,7 +111,12 @@ export function mockRunEvents(runId: string = RUN_ID): RunEvent[] {
         alarms: [],
       },
     },
-    { ...next(), pillar: "observability", t: "metric", metrics: metrics(1200, 0, 0) },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "metric",
+      metrics: metrics(1200, 0, 0),
+    },
 
     // ── Build phase — draft 1 (the drift) ───────────────────────────────
     { ...next(), t: "phase", phase: "build" },
@@ -113,7 +129,12 @@ export function mockRunEvents(runId: string = RUN_ID): RunEvent[] {
       score: 0.42,
       passed: false,
     },
-    { ...next(), pillar: "observability", t: "metric", metrics: metrics(1200, 2100, 0) },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "metric",
+      metrics: metrics(1200, 2100, 0),
+    },
     // Voice-fidelity FAILS — emits the structured alarm + the feedback string.
     {
       ...next(),
@@ -130,7 +151,8 @@ export function mockRunEvents(runId: string = RUN_ID): RunEvent[] {
         passed: false,
         score: 0.42,
         threshold: 0.75,
-        details: "Draft reads as casual/colloquial; persona voice is measured and lyrical.",
+        details:
+          "Draft reads as casual/colloquial; persona voice is measured and lyrical.",
         autoCorrectable: true,
         feedback:
           "Match the persona's voiceSample: replace colloquialisms ('like', 'pretty cool', 'honestly') with measured, lyrical prose. Anchor cadence to the sample.",
@@ -149,7 +171,12 @@ export function mockRunEvents(runId: string = RUN_ID): RunEvent[] {
       score: 0.81,
       passed: true,
     },
-    { ...next(), pillar: "observability", t: "metric", metrics: metrics(1200, 2100, 1800) },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "metric",
+      metrics: metrics(1200, 2100, 1800),
+    },
     {
       ...next(),
       pillar: "checkpoints",
@@ -209,7 +236,8 @@ const CRITICAL_ALARM: Alarm = {
 const ESCALATION: Escalation = {
   id: "esc_1",
   runId: RUN_ID,
-  reason: "Token budget exceeded after repeated voice drift — human decision required.",
+  reason:
+    "Token budget exceeded after repeated voice drift — human decision required.",
   alarm: CRITICAL_ALARM,
   options: ["enrich_persona", "approve_anyway", "abort"],
 };
@@ -231,7 +259,12 @@ export function mockEscalationEvents(runId: string = RUN_ID): RunEvent[] {
 
   return [
     { ...next(), t: "phase", phase: "research" },
-    { ...next(), pillar: "observability", t: "metric", metrics: metrics(1200, 0, 0) },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "metric",
+      metrics: metrics(1200, 0, 0),
+    },
     { ...next(), t: "phase", phase: "build" },
     {
       ...next(),
@@ -243,7 +276,12 @@ export function mockEscalationEvents(runId: string = RUN_ID): RunEvent[] {
       passed: false,
     },
     { ...next(), pillar: "observability", t: "alarm", alarm: CRITICAL_ALARM },
-    { ...next(), pillar: "observability", t: "escalation", escalation: ESCALATION },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "escalation",
+      escalation: ESCALATION,
+    },
   ];
 }
 
@@ -308,7 +346,12 @@ export function mockApprovalEvents(
         alarms: [],
       },
     },
-    { ...next(), pillar: "observability", t: "metric", metrics: metrics(1300, 0, 0) },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "metric",
+      metrics: metrics(1300, 0, 0),
+    },
     { ...next(), t: "phase", phase: "build" },
     {
       ...next(),
@@ -319,7 +362,12 @@ export function mockApprovalEvents(
       score: 0.86,
       passed: true,
     },
-    { ...next(), pillar: "observability", t: "metric", metrics: metrics(1300, 2200, 0) },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "metric",
+      metrics: metrics(1300, 2200, 0),
+    },
     {
       ...next(),
       pillar: "checkpoints",
@@ -329,7 +377,8 @@ export function mockApprovalEvents(
         passed: true,
         score: 0.82,
         threshold: 0.75,
-        details: "Cadence and diction match the persona voiceSample on the first pass.",
+        details:
+          "Cadence and diction match the persona voiceSample on the first pass.",
         autoCorrectable: false,
         alarms: [],
       },
@@ -363,8 +412,18 @@ export function mockApprovalEvents(
       },
     },
     // Passed every gate → pause at the FINAL human approval gate (info alarm).
-    { ...next(), pillar: "observability", t: "alarm", alarm: AWAITING_APPROVAL_ALARM },
-    { ...next(), pillar: "observability", t: "escalation", escalation: APPROVAL_ESCALATION },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "alarm",
+      alarm: AWAITING_APPROVAL_ALARM,
+    },
+    {
+      ...next(),
+      pillar: "observability",
+      t: "escalation",
+      escalation: APPROVAL_ESCALATION,
+    },
   ];
 
   if (resolved === "publish") {
@@ -372,7 +431,10 @@ export function mockApprovalEvents(
       {
         ...next(),
         t: "resumed",
-        decision: { escalationId: APPROVAL_ESCALATION.id, choice: "approve_anyway" },
+        decision: {
+          escalationId: APPROVAL_ESCALATION.id,
+          choice: "approve_anyway",
+        },
       },
       { ...next(), pillar: "material", t: "published", receipt: RECEIPT },
     );

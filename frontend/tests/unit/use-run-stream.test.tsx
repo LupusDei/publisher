@@ -83,8 +83,20 @@ describe("useRunStream", () => {
     );
     act(() => sources[0]!.open());
     act(() => {
-      sources[0]!.emit({ runId: "r", seq: 0, ts: "t", t: "phase", phase: "research" });
-      sources[0]!.emit({ runId: "r", seq: 1, ts: "t", t: "phase", phase: "build" });
+      sources[0]!.emit({
+        runId: "r",
+        seq: 0,
+        ts: "t",
+        t: "phase",
+        phase: "research",
+      });
+      sources[0]!.emit({
+        runId: "r",
+        seq: 1,
+        ts: "t",
+        t: "phase",
+        phase: "build",
+      });
     });
     // Drop, then reconnect — the new source must open with sinceSeq = 1.
     act(() => sources[0]!.fail());

@@ -24,13 +24,19 @@ describe("PillarLanes", () => {
     const view = applyEvents(emptyRunView("r"), mockRunEvents("r"));
     render(<PillarLanes view={view} />);
     // Checkpoints lane has the voice-fidelity entries.
-    const lane = screen.getByRole("region", { name: /Run event stream by pillar/ });
-    expect(within(lane).getAllByText(/voice-fidelity/).length).toBeGreaterThan(0);
+    const lane = screen.getByRole("region", {
+      name: /Run event stream by pillar/,
+    });
+    expect(within(lane).getAllByText(/voice-fidelity/).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("should be an aria-live region so new events are announced (accessibility)", () => {
     render(<PillarLanes view={emptyRunView("r")} />);
-    const region = screen.getByRole("region", { name: /Run event stream by pillar/ });
+    const region = screen.getByRole("region", {
+      name: /Run event stream by pillar/,
+    });
     expect(region).toHaveAttribute("aria-live", "polite");
   });
 });

@@ -21,7 +21,9 @@ vi.mock("ai", () => ({
 }));
 
 vi.mock("@anthropic-ai/sdk", () => {
-  return { default: vi.fn(() => ({ messages: { create: vi.fn(), parse: vi.fn() } })) };
+  return {
+    default: vi.fn(() => ({ messages: { create: vi.fn(), parse: vi.fn() } })),
+  };
 });
 
 import {

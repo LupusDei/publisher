@@ -55,7 +55,13 @@ describe("createCheckpoints (ordered registry)", () => {
         },
       },
       research: { text: "t", sources: ["a", "b", "c"] },
-      webpage: { title: "T", html: "<main>x</main>", css: "", summary: "s", sourcesUsed: [] },
+      webpage: {
+        title: "T",
+        html: "<main>x</main>",
+        css: "",
+        summary: "s",
+        sourcesUsed: [],
+      },
       attempt: 1,
       priorResults: [],
     };

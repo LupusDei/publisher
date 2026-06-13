@@ -46,9 +46,7 @@ describe("HomePage (landing hero)", () => {
     const beats = screen.getByRole("list", { name: /what the harness does/i });
     const items = within(beats).getAllByRole("listitem");
     expect(items).toHaveLength(4);
-    expect(
-      within(beats).getByText(/persona voice/i),
-    ).toBeInTheDocument();
+    expect(within(beats).getByText(/persona voice/i)).toBeInTheDocument();
     expect(within(beats).getByText(/live guardrails/i)).toBeInTheDocument();
     expect(
       within(beats).getByText(/self-correcting drafts/i),

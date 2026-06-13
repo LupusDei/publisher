@@ -113,7 +113,9 @@ function errorMessage(err: unknown): string {
  */
 export function errorToAlarm(err: unknown, ctx: AgentAlarmContext): Alarm {
   const message = errorMessage(err);
-  const type: AlarmType = isRateLimited(err) ? "RATE_LIMITED" : "PROVIDER_ERROR";
+  const type: AlarmType = isRateLimited(err)
+    ? "RATE_LIMITED"
+    : "PROVIDER_ERROR";
   const recommendedAction =
     type === "RATE_LIMITED"
       ? "The provider rate-limited the request. Back off and retry, or swap to a less-loaded worker."

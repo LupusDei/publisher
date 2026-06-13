@@ -135,7 +135,11 @@ export function DemoRunner({
         <Link href="/runs/gallery">Gallery</Link>
       </nav>
 
-      <div className="demo-controls" role="group" aria-label="Choose a demo narrative">
+      <div
+        className="demo-controls"
+        role="group"
+        aria-label="Choose a demo narrative"
+      >
         {(["happy", "approval", "escalation", "failure"] as const).map((n) => (
           <button
             key={n}

@@ -2,14 +2,20 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({
+    href,
+    children,
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => <a href={href}>{children}</a>,
 }));
 
 vi.mock("@/app/runs/run-api", async () => {
   const actual =
-    await vi.importActual<typeof import("@/app/runs/run-api")>("@/app/runs/run-api");
+    await vi.importActual<typeof import("@/app/runs/run-api")>(
+      "@/app/runs/run-api",
+    );
   return { ...actual, fetchRuns: vi.fn() };
 });
 
@@ -41,7 +47,9 @@ describe("GalleryPage", () => {
   it("should show an empty note when nothing is published (empty state)", async () => {
     mockRuns.mockResolvedValue([run("b", "failed")]);
     render(<GalleryPage />);
-    expect(await screen.findByText(/No published pages yet/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/No published pages yet/),
+    ).toBeInTheDocument();
   });
 
   it("should surface a load error (error handling)", async () => {

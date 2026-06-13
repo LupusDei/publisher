@@ -3,9 +3,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({
+    href,
+    children,
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => <a href={href}>{children}</a>,
 }));
 
 import { DemoRunner as DemoPage } from "@/components/DemoRunner";
@@ -16,7 +20,9 @@ describe("DemoRunner", () => {
     expect(
       screen.getByRole("button", { name: /Redraft → publish/ }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Escalation/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Escalation/ }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Refused to publish/ }),
     ).toBeInTheDocument();

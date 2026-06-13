@@ -44,7 +44,8 @@ export default function RunsPage(): React.ReactElement {
         const r = await fetchRuns();
         if (active) setRuns(r);
       } catch (e: unknown) {
-        if (active) setRunsError(e instanceof Error ? e.message : "load failed");
+        if (active)
+          setRunsError(e instanceof Error ? e.message : "load failed");
       }
     })();
     return () => {
@@ -69,7 +70,9 @@ export default function RunsPage(): React.ReactElement {
         personasError={personasError}
         onStart={async (input) => {
           const { runId } = await startRun(input);
-          router.push(`/runs/${runId}?worker=${encodeURIComponent(input.workerId)}&persona=${encodeURIComponent(input.personaId)}`);
+          router.push(
+            `/runs/${runId}?worker=${encodeURIComponent(input.workerId)}&persona=${encodeURIComponent(input.personaId)}`,
+          );
           return { runId };
         }}
       />
@@ -90,7 +93,9 @@ export default function RunsPage(): React.ReactElement {
           {runs.map((r) => (
             <li key={r.id} className="run-list-item">
               <Link href={`/runs/${r.id}`}>{r.id}</Link>
-              <span className={`run-status status-${r.status}`}>{r.status}</span>
+              <span className={`run-status status-${r.status}`}>
+                {r.status}
+              </span>
               <span style={{ color: "var(--muted)", fontSize: 13 }}>
                 {r.concept}
               </span>

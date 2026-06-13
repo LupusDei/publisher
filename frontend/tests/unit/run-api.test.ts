@@ -22,8 +22,8 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("run-api client", () => {
   it("startRun should POST persona/concept/worker and return the runId (happy path)", async () => {
-    const fetchMock = vi.fn(
-      async (_url: string, _init?: RequestInit) => jsonResponse({ runId: "run_1" }),
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse({ runId: "run_1" }),
     );
     vi.stubGlobal("fetch", fetchMock);
     const out = await startRun(
@@ -102,14 +102,11 @@ describe("run-api client", () => {
 
   it("postDecision should POST the choice and payload (happy path)", async () => {
     const fetchMock = vi.fn(
-      async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }),
+      async (_url: string, _init?: RequestInit) =>
+        new Response(null, { status: 204 }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    await postDecision(
-      "r",
-      { choice: "approve_anyway" },
-      "http://api.test",
-    );
+    await postDecision("r", { choice: "approve_anyway" }, "http://api.test");
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe("http://api.test/runs/r/decision");
     expect((init as RequestInit).method).toBe("POST");
@@ -131,7 +128,9 @@ describe("run-api client", () => {
       vi.fn(async () =>
         jsonResponse({
           systemPrompt: "You are...",
-          validators: [{ rule: "design-token", kind: "deterministic", description: "d" }],
+          validators: [
+            { rule: "design-token", kind: "deterministic", description: "d" },
+          ],
         }),
       ),
     );
@@ -150,9 +149,9 @@ describe("run-api client", () => {
   });
 
   it("publishedUrl should pass through absolute URLs and prefix relative paths", () => {
-    expect(publishedUrl("https://x.test/published/run_1", "http://api.test")).toBe(
-      "https://x.test/published/run_1",
-    );
+    expect(
+      publishedUrl("https://x.test/published/run_1", "http://api.test"),
+    ).toBe("https://x.test/published/run_1");
     expect(publishedUrl("/published/run_1", "http://api.test")).toBe(
       "http://api.test/published/run_1",
     );

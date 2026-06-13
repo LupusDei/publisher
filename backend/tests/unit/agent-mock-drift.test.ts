@@ -21,7 +21,7 @@ describe("MockAgent scripted drift→pass (R2 money shot, D12)", () => {
     expect(first.value.html.toLowerCase()).toContain("furthermore");
     expect(first.value.html).toMatch(/heretofore|aforementioned|pursuant/i);
     // It should NOT carry the on-voice marker.
-    expect(first.value.html).not.toContain("data-voice=\"on\"");
+    expect(first.value.html).not.toContain('data-voice="on"');
     expect(WebpageSchema.parse(first.value)).toBeTruthy();
   });
 
@@ -42,12 +42,15 @@ describe("MockAgent scripted drift→pass (R2 money shot, D12)", () => {
     const refined = await agent.build({
       system,
       research: r,
-      feedback: "VOICE_DRIFT: too formal — match the warm second-person sample.",
+      feedback:
+        "VOICE_DRIFT: too formal — match the warm second-person sample.",
     });
     // On-voice markers; the formal tells are gone.
-    expect(refined.value.html).toContain("data-voice=\"on\"");
+    expect(refined.value.html).toContain('data-voice="on"');
     expect(refined.value.html.toLowerCase()).not.toContain("furthermore");
-    expect(refined.value.html).not.toMatch(/heretofore|aforementioned|pursuant/i);
+    expect(refined.value.html).not.toMatch(
+      /heretofore|aforementioned|pursuant/i,
+    );
     expect(WebpageSchema.parse(refined.value)).toBeTruthy();
   });
 
@@ -67,7 +70,11 @@ describe("MockAgent scripted drift→pass (R2 money shot, D12)", () => {
   it("with-feedback content should be deterministic regardless of feedback string", async () => {
     const agent = new MockAgent();
     const r = await research(agent);
-    const a = await agent.build({ system, research: r, feedback: "fix the voice" });
+    const a = await agent.build({
+      system,
+      research: r,
+      feedback: "fix the voice",
+    });
     const b = await agent.build({
       system,
       research: r,

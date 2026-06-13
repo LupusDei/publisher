@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { Receipt } from "@publisher/shared";
-import { PublishedPreview, RefusedToPublish } from "@/components/PublishedPreview";
+import {
+  PublishedPreview,
+  RefusedToPublish,
+} from "@/components/PublishedPreview";
 
 const receipt: Receipt = {
   id: "run_1",
@@ -23,7 +26,9 @@ describe("PublishedPreview", () => {
 
 describe("RefusedToPublish", () => {
   it("should render the designed refusal screen with the reason (terminal failure)", () => {
-    render(<RefusedToPublish reason="Quality gate failed on all 3 attempts." />);
+    render(
+      <RefusedToPublish reason="Quality gate failed on all 3 attempts." />,
+    );
     expect(screen.getByText("Refused to publish")).toBeInTheDocument();
     expect(
       screen.getByText(/Quality gate failed on all 3 attempts/),

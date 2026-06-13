@@ -1,20 +1,38 @@
 import { describe, it, expect } from "vitest";
-import { MetricBreachSchema, type Metrics, type Budget } from "@publisher/shared";
+import {
+  MetricBreachSchema,
+  type Metrics,
+  type Budget,
+} from "@publisher/shared";
 import { detectBreaches } from "../../src/observability/budget.js";
 
-const metrics = (over: Partial<{
-  researchTokens: number;
-  buildTokens: number;
-  refineTokens: number;
-  researchLatency: number;
-  buildLatency: number;
-  refineLatency: number;
-  errorRate: number;
-}> = {}): Metrics => ({
+const metrics = (
+  over: Partial<{
+    researchTokens: number;
+    buildTokens: number;
+    refineTokens: number;
+    researchLatency: number;
+    buildLatency: number;
+    refineLatency: number;
+    errorRate: number;
+  }> = {},
+): Metrics => ({
   perPhase: {
-    research: { tokens: over.researchTokens ?? 0, latencyMs: over.researchLatency ?? 0, calls: 1 },
-    build: { tokens: over.buildTokens ?? 0, latencyMs: over.buildLatency ?? 0, calls: 1 },
-    refine: { tokens: over.refineTokens ?? 0, latencyMs: over.refineLatency ?? 0, calls: 1 },
+    research: {
+      tokens: over.researchTokens ?? 0,
+      latencyMs: over.researchLatency ?? 0,
+      calls: 1,
+    },
+    build: {
+      tokens: over.buildTokens ?? 0,
+      latencyMs: over.buildLatency ?? 0,
+      calls: 1,
+    },
+    refine: {
+      tokens: over.refineTokens ?? 0,
+      latencyMs: over.refineLatency ?? 0,
+      calls: 1,
+    },
   },
   errorRate: over.errorRate ?? 0,
 });
@@ -22,13 +40,21 @@ const metrics = (over: Partial<{
 describe("detectBreaches", () => {
   it("should return no breaches when totals are within budget (happy path)", () => {
     const budget: Budget = { maxTokens: 1000, maxLatencyMs: 5000 };
-    const m = metrics({ researchTokens: 100, buildTokens: 200, researchLatency: 1000 });
+    const m = metrics({
+      researchTokens: 100,
+      buildTokens: 200,
+      researchLatency: 1000,
+    });
     expect(detectBreaches(budget, m)).toEqual([]);
   });
 
   it("should deterministically flag a TOKEN breach when total tokens exceed maxTokens (D12)", () => {
     const budget: Budget = { maxTokens: 500 };
-    const m = metrics({ researchTokens: 300, buildTokens: 300, refineTokens: 100 }); // total 700
+    const m = metrics({
+      researchTokens: 300,
+      buildTokens: 300,
+      refineTokens: 100,
+    }); // total 700
     const breaches = detectBreaches(budget, m);
     expect(breaches).toHaveLength(1);
     const [b] = breaches;

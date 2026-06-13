@@ -121,11 +121,7 @@ function thinThenSufficientAgent(): Agent {
       const sources =
         researchCalls === 1
           ? ["https://only-one.example"]
-          : [
-              "https://a.example",
-              "https://b.example",
-              "https://c.example",
-            ];
+          : ["https://a.example", "https://b.example", "https://c.example"];
       return {
         value: { text: `research pass ${researchCalls}`, sources },
         usage: usage(),

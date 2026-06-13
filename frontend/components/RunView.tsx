@@ -51,11 +51,15 @@ export function RunView({
     <div className="run-view">
       <header className="run-header">
         <div className="run-header-main">
-          <span className={`run-status status-${view.status}`}>{view.status}</span>
+          <span className={`run-status status-${view.status}`}>
+            {view.status}
+          </span>
           {view.phase && <span className="run-phase">phase: {view.phase}</span>}
         </div>
         <div className="run-header-meta">
-          {persona && <span className="run-persona">persona: {persona.name}</span>}
+          {persona && (
+            <span className="run-persona">persona: {persona.name}</span>
+          )}
           {workerId && <span className="run-worker">worker: {workerId}</span>}
         </div>
       </header>

@@ -7,10 +7,6 @@
  * `persistAlarms`.
  */
 export { createMeter } from "./meter.js";
-export {
-  detectBreaches,
-  totalTokens,
-  totalLatencyMs,
-} from "./budget.js";
+export { detectBreaches, totalTokens, totalLatencyMs } from "./budget.js";
 export { createAlarmEmitter } from "./alarm-emitter.js";
 export { persistAlarms } from "./persist.js";

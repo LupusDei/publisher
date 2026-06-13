@@ -19,11 +19,17 @@ describe("AlarmCard", () => {
     expect(screen.getByText("VOICE_DRIFT")).toBeInTheDocument();
     expect(screen.getByText("Warning")).toBeInTheDocument();
     expect(screen.getByText("0.42")).toBeInTheDocument();
-    expect(screen.getByText(/Re-draft with voice anchoring/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Re-draft with voice anchoring/),
+    ).toBeInTheDocument();
   });
 
   it("should convey severity in an aria-label, not by color alone (accessibility)", () => {
-    render(<AlarmCard alarm={alarm({ severity: "critical", type: "TOKEN_BUDGET_EXCEEDED" })} />);
+    render(
+      <AlarmCard
+        alarm={alarm({ severity: "critical", type: "TOKEN_BUDGET_EXCEEDED" })}
+      />,
+    );
     expect(
       screen.getByLabelText(/Critical alarm: TOKEN_BUDGET_EXCEEDED/),
     ).toBeInTheDocument();

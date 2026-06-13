@@ -209,6 +209,8 @@ export function streamUrl(
   base: string = RUN_API_BASE,
 ): string {
   const qs =
-    typeof sinceSeq === "number" && sinceSeq >= 0 ? `?sinceSeq=${sinceSeq}` : "";
+    typeof sinceSeq === "number" && sinceSeq >= 0
+      ? `?sinceSeq=${sinceSeq}`
+      : "";
   return `${base}/runs/${runId}/stream${qs}`;
 }

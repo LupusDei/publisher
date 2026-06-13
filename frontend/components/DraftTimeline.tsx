@@ -25,7 +25,10 @@ function DiffView({ before, after }: DiffViewProps): React.ReactElement {
     htmlToText(after.webpage.html),
   );
   return (
-    <div className="draft-diff" aria-label={`Diff of attempt ${before.attempt} versus attempt ${after.attempt}`}>
+    <div
+      className="draft-diff"
+      aria-label={`Diff of attempt ${before.attempt} versus attempt ${after.attempt}`}
+    >
       <div className="diff-legend" aria-hidden="true">
         <span className="diff-removed">removed</span>
         <span className="diff-added">added</span>
@@ -54,7 +57,9 @@ export interface DraftTimelineProps {
   drafts: DraftAttempt[];
 }
 
-export function DraftTimeline({ drafts }: DraftTimelineProps): React.ReactElement {
+export function DraftTimeline({
+  drafts,
+}: DraftTimelineProps): React.ReactElement {
   // The compare selects a "from" attempt; we diff it against the next attempt.
   const [compareFrom, setCompareFrom] = useState<number | null>(null);
 
@@ -62,7 +67,9 @@ export function DraftTimeline({ drafts }: DraftTimelineProps): React.ReactElemen
     return (
       <section className="draft-timeline" aria-labelledby="draft-timeline-h">
         <h3 id="draft-timeline-h">Draft timeline</h3>
-        <p className="empty-note">No drafts yet — they appear as the agent builds.</p>
+        <p className="empty-note">
+          No drafts yet — they appear as the agent builds.
+        </p>
       </section>
     );
   }
@@ -86,7 +93,10 @@ export function DraftTimeline({ drafts }: DraftTimelineProps): React.ReactElemen
             >
               <div className="draft-card-head">
                 <span className="draft-attempt">Attempt {d.attempt}</span>
-                <span className="draft-score" aria-label={`score ${scoreLabel(d.score)}`}>
+                <span
+                  className="draft-score"
+                  aria-label={`score ${scoreLabel(d.score)}`}
+                >
                   {scoreLabel(d.score)}
                 </span>
                 <span
@@ -113,7 +123,9 @@ export function DraftTimeline({ drafts }: DraftTimelineProps): React.ReactElemen
                   className="diff-toggle"
                   aria-expanded={compareFrom === d.attempt}
                   onClick={() =>
-                    setCompareFrom((cur) => (cur === d.attempt ? null : d.attempt))
+                    setCompareFrom((cur) =>
+                      cur === d.attempt ? null : d.attempt,
+                    )
                   }
                 >
                   {compareFrom === d.attempt

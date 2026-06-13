@@ -6,9 +6,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("persona=p_1&worker=opus"),
 }));
 vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({
+    href,
+    children,
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => <a href={href}>{children}</a>,
 }));
 
 // Stub the live panel + compiled panel — this test covers the page wrapper's
@@ -28,7 +32,9 @@ vi.mock("@/components/CompiledGuardrailPanel", () => ({
 
 vi.mock("@/app/runs/run-api", async () => {
   const actual =
-    await vi.importActual<typeof import("@/app/runs/run-api")>("@/app/runs/run-api");
+    await vi.importActual<typeof import("@/app/runs/run-api")>(
+      "@/app/runs/run-api",
+    );
   return { ...actual, fetchRun: vi.fn() };
 });
 

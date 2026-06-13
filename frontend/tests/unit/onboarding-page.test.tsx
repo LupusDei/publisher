@@ -155,7 +155,9 @@ describe("OnboardingPage", () => {
     });
 
     expect(screen.getByText(/give your persona a name/i)).toBeInTheDocument();
-    expect(screen.getByText(/describe how this voice sounds/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/describe how this voice sounds/i),
+    ).toBeInTheDocument();
     expect(mockCreate).not.toHaveBeenCalled();
   });
 

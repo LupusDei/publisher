@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import { AnthropicResearchAgent } from "../../src/agent/anthropic-research-agent.js";
-import { errorToAlarm, finishReasonToAlarm } from "../../src/agent/alarm-mapping.js";
+import {
+  errorToAlarm,
+  finishReasonToAlarm,
+} from "../../src/agent/alarm-mapping.js";
 
 /**
  * Deterministic unit tests for the real-research worker. The official
@@ -97,10 +100,7 @@ function webSearchResponse() {
 }
 
 /** Build a fake Anthropic client whose `messages.create`/`parse` are stubs. */
-function fakeClient(opts: {
-  create?: unknown;
-  parse?: unknown;
-}): Anthropic {
+function fakeClient(opts: { create?: unknown; parse?: unknown }): Anthropic {
   const create = vi.fn(async () => opts.create);
   const parse = vi.fn(async () => opts.parse);
   return {
@@ -136,7 +136,7 @@ describe("AnthropicResearchAgent.research — real web_search wiring", () => {
     const agent = new AnthropicResearchAgent({ apiKey: "sk-x", client });
     await agent.research({ system, concept: "the concept" });
 
-    const createMock = (client.messages.create as unknown) as ReturnType<
+    const createMock = client.messages.create as unknown as ReturnType<
       typeof vi.fn
     >;
     expect(createMock).toHaveBeenCalledTimes(1);
@@ -308,7 +308,7 @@ describe("AnthropicResearchAgent.build — native structured output", () => {
     const agent = new AnthropicResearchAgent({ apiKey: "sk-x", client });
     const result = await agent.build({ system, research });
 
-    const parseMock = (client.messages.parse as unknown) as ReturnType<
+    const parseMock = client.messages.parse as unknown as ReturnType<
       typeof vi.fn
     >;
     expect(parseMock).toHaveBeenCalledTimes(1);
@@ -335,7 +335,7 @@ describe("AnthropicResearchAgent.build — native structured output", () => {
     const client = fakeClient({ parse: parsedWebpageResponse() });
     const agent = new AnthropicResearchAgent({ apiKey: "sk-x", client });
     await agent.build({ system, research, feedback: "be warmer" });
-    const parseMock = (client.messages.parse as unknown) as ReturnType<
+    const parseMock = client.messages.parse as unknown as ReturnType<
       typeof vi.fn
     >;
     const body = parseMock.mock.calls[0]![0] as {

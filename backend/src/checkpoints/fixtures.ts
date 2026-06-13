@@ -29,7 +29,12 @@ const persona: Persona = {
   voiceSample:
     "We build the smallest thing that proves the idea, then we thicken it. " +
     "Clarity over cleverness. Show the work; trust the reader. Ship the skeleton first.",
-  stylePoints: ["short sentences", "concrete examples", "no hype", "show the work"],
+  stylePoints: [
+    "short sentences",
+    "concrete examples",
+    "no hype",
+    "show the work",
+  ],
   keyLearnings: ["ship the skeleton first", "integrate before you thicken"],
   designElements: { tone: "calm", palette: "muted", typography: "serif" },
 };
@@ -53,7 +58,8 @@ const attempt1: Webpage = {
     "maximize stakeholder ROI across all verticals. Our revolutionary, " +
     "best-in-class platform delivers game-changing, next-gen value at scale!!!</main>",
   css: "",
-  summary: "A high-impact, results-driven overview of emergence for stakeholders.",
+  summary:
+    "A high-impact, results-driven overview of emergence for stakeholders.",
   sourcesUsed: research.sources,
 };
 

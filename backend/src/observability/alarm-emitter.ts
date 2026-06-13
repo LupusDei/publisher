@@ -89,7 +89,9 @@ function breachAlarm(breach: MetricBreach): Alarm {
 function checkpointAlarm(result: CheckpointResult): Alarm[] {
   if (result.passed) return [];
   const type = CHECKPOINT_ALARM[result.name];
-  const severity: AlarmSeverity = result.autoCorrectable ? "warning" : "critical";
+  const severity: AlarmSeverity = result.autoCorrectable
+    ? "warning"
+    : "critical";
   const action = result.feedback
     ? `Apply feedback and retry: ${result.feedback}`
     : result.autoCorrectable
@@ -114,7 +116,9 @@ function checkpointAlarm(result: CheckpointResult): Alarm[] {
 }
 
 function agentErrorAlarm(err: AgentError): Alarm {
-  const classified = AGENT_ERROR_CLASSIFIERS.find((c) => c.test.test(err.message));
+  const classified = AGENT_ERROR_CLASSIFIERS.find((c) =>
+    c.test.test(err.message),
+  );
   const type: AlarmType = classified ? classified.type : "PROVIDER_ERROR";
   return {
     type,

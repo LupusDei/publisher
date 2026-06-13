@@ -29,11 +29,19 @@ function fakeStore(): AlarmStore {
 describe("persistAlarms", () => {
   it("should insert every alarm under the run with its phase (happy path)", () => {
     const store = fakeStore();
-    const alarms = [alarm({ type: "VOICE_DRIFT" }), alarm({ type: "HIGH_LATENCY" })];
+    const alarms = [
+      alarm({ type: "VOICE_DRIFT" }),
+      alarm({ type: "HIGH_LATENCY" }),
+    ];
     const stored = persistAlarms(store, "run_1", "build", alarms);
     expect(stored).toHaveLength(2);
     expect(store.insert).toHaveBeenCalledTimes(2);
-    expect(store.insert).toHaveBeenNthCalledWith(1, "run_1", "build", alarms[0]);
+    expect(store.insert).toHaveBeenNthCalledWith(
+      1,
+      "run_1",
+      "build",
+      alarms[0],
+    );
     expect(store.listByRun("run_1")).toHaveLength(2);
   });
 
@@ -47,6 +55,10 @@ describe("persistAlarms", () => {
   it("should pass an undefined phase straight through for aggregate alarms (edge case)", () => {
     const store = fakeStore();
     persistAlarms(store, "run_1", undefined, [alarm()]);
-    expect(store.insert).toHaveBeenCalledWith("run_1", undefined, expect.any(Object));
+    expect(store.insert).toHaveBeenCalledWith(
+      "run_1",
+      undefined,
+      expect.any(Object),
+    );
   });
 });

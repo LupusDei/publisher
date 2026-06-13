@@ -12,7 +12,9 @@ export interface MetricsMeterProps {
 
 const PHASES = ["research", "build", "refine"] as const;
 
-export function MetricsMeter({ metrics }: MetricsMeterProps): React.ReactElement {
+export function MetricsMeter({
+  metrics,
+}: MetricsMeterProps): React.ReactElement {
   const tokens = totalTokens(metrics);
   const latency = totalLatencyMs(metrics);
 

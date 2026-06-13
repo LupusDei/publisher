@@ -542,8 +542,7 @@ section h3 {
 .alarm-type {
   font-weight: 800;
   font-size: 14px;
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .severity-badge {
   font-size: 12px;

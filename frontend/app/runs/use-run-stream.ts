@@ -12,7 +12,12 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { RunEvent } from "@publisher/shared";
-import { applyEvent, emptyRunView, isTerminal, type RunView } from "./run-state";
+import {
+  applyEvent,
+  emptyRunView,
+  isTerminal,
+  type RunView,
+} from "./run-state";
 import { eventSourceStream, type RunStreamSource } from "./sse";
 import { streamUrl } from "./run-api";
 
@@ -59,9 +64,7 @@ function viewReducer(view: RunView, action: ViewAction): RunView {
   }
 }
 
-export function useRunStream(
-  options: UseRunStreamOptions,
-): UseRunStreamResult {
+export function useRunStream(options: UseRunStreamOptions): UseRunStreamResult {
   const { runId, sourceFactory, base } = options;
   const [view, dispatch] = useReducer(viewReducer, undefined, () =>
     emptyRunView(runId),

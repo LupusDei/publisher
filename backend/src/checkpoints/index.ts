@@ -1,7 +1,10 @@
 import type { Checkpoint } from "../domain/index.js";
 import { researchSufficiency } from "./research-sufficiency.js";
 import { voiceFidelity } from "./voice-fidelity.js";
-import { designConformance, type ValidatorsProvider } from "./design-conformance.js";
+import {
+  designConformance,
+  type ValidatorsProvider,
+} from "./design-conformance.js";
 import { quality } from "./quality.js";
 import type { Judge } from "./judge.js";
 
@@ -37,8 +40,15 @@ export function createCheckpoints(deps: CheckpointDeps = {}): Checkpoint[] {
   ];
 }
 
-export { researchSufficiency, RESEARCH_MIN_SOURCES } from "./research-sufficiency.js";
-export { voiceFidelity, VOICE_THRESHOLD, type VoiceFidelityDeps } from "./voice-fidelity.js";
+export {
+  researchSufficiency,
+  RESEARCH_MIN_SOURCES,
+} from "./research-sufficiency.js";
+export {
+  voiceFidelity,
+  VOICE_THRESHOLD,
+  type VoiceFidelityDeps,
+} from "./voice-fidelity.js";
 export {
   designConformance,
   type DesignConformanceDeps,

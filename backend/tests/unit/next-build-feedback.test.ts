@@ -24,9 +24,17 @@ describe("nextBuildFeedback", () => {
 
   it("should compose feedback only from FAILED gates that carry feedback", () => {
     const out = nextBuildFeedback([
-      res({ name: "voice-fidelity", passed: false, feedback: "Match the voice." }),
+      res({
+        name: "voice-fidelity",
+        passed: false,
+        feedback: "Match the voice.",
+      }),
       res({ name: "quality", passed: true, feedback: "ignored (passed)" }),
-      res({ name: "design-conformance", passed: false, feedback: "Fix palette." }),
+      res({
+        name: "design-conformance",
+        passed: false,
+        feedback: "Fix palette.",
+      }),
     ]);
     expect(out).toContain("Match the voice.");
     expect(out).toContain("Fix palette.");
@@ -35,7 +43,11 @@ describe("nextBuildFeedback", () => {
 
   it("should label each piece of feedback with its gate name for the worker", () => {
     const out = nextBuildFeedback([
-      res({ name: "voice-fidelity", passed: false, feedback: "Match the voice." }),
+      res({
+        name: "voice-fidelity",
+        passed: false,
+        feedback: "Match the voice.",
+      }),
     ]);
     expect(out).toContain("voice-fidelity");
   });

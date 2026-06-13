@@ -30,7 +30,11 @@ const escalation: Escalation = {
 describe("EscalationPanel", () => {
   it("should render the reason and the triggering alarm (R10 happy path)", () => {
     render(
-      <EscalationPanel escalation={escalation} persona={persona} onDecide={vi.fn(async () => {})} />,
+      <EscalationPanel
+        escalation={escalation}
+        persona={persona}
+        onDecide={vi.fn(async () => {})}
+      />,
     );
     expect(screen.getByText("Token budget exceeded.")).toBeInTheDocument();
     expect(screen.getByText("TOKEN_BUDGET_EXCEEDED")).toBeInTheDocument();
@@ -40,7 +44,11 @@ describe("EscalationPanel", () => {
     const user = userEvent.setup();
     const onDecide = vi.fn(async () => {});
     render(
-      <EscalationPanel escalation={escalation} persona={persona} onDecide={onDecide} />,
+      <EscalationPanel
+        escalation={escalation}
+        persona={persona}
+        onDecide={onDecide}
+      />,
     );
     await user.click(screen.getByRole("button", { name: /Approve anyway/ }));
     await waitFor(() =>
@@ -52,7 +60,11 @@ describe("EscalationPanel", () => {
     const user = userEvent.setup();
     const onDecide = vi.fn(async () => {});
     render(
-      <EscalationPanel escalation={escalation} persona={persona} onDecide={onDecide} />,
+      <EscalationPanel
+        escalation={escalation}
+        persona={persona}
+        onDecide={onDecide}
+      />,
     );
     await user.click(screen.getByRole("button", { name: "Enrich persona" }));
     const sample = screen.getByLabelText("Voice sample");
@@ -62,7 +74,11 @@ describe("EscalationPanel", () => {
     await waitFor(() =>
       expect(onDecide).toHaveBeenCalledWith({
         choice: "enrich_persona",
-        payload: { persona: expect.objectContaining({ voiceSample: "A new richer sample." }) },
+        payload: {
+          persona: expect.objectContaining({
+            voiceSample: "A new richer sample.",
+          }),
+        },
       }),
     );
   });
@@ -81,16 +97,26 @@ describe("EscalationPanel", () => {
       options: ["approve_anyway", "enrich_persona", "abort"],
     };
     render(
-      <EscalationPanel escalation={approval} persona={persona} onDecide={vi.fn(async () => {})} />,
+      <EscalationPanel
+        escalation={approval}
+        persona={persona}
+        onDecide={vi.fn(async () => {})}
+      />,
     );
     // Publishing language, not alarm language.
-    expect(screen.getByRole("button", { name: "Approve & Publish" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request changes" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Approve & Publish" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Request changes" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Discard" })).toBeInTheDocument();
     expect(screen.getByText(/Draft ready/)).toBeInTheDocument();
     // It is a calm sign-off, not an alert.
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Approve anyway/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Approve anyway/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("should still POST approve_anyway when the AWAITING_APPROVAL gate is approved (wiring unchanged)", async () => {
@@ -109,7 +135,11 @@ describe("EscalationPanel", () => {
       options: ["approve_anyway", "enrich_persona", "abort"],
     };
     render(
-      <EscalationPanel escalation={approval} persona={persona} onDecide={onDecide} />,
+      <EscalationPanel
+        escalation={approval}
+        persona={persona}
+        onDecide={onDecide}
+      />,
     );
     await user.click(screen.getByRole("button", { name: "Approve & Publish" }));
     await waitFor(() =>
@@ -123,7 +153,11 @@ describe("EscalationPanel", () => {
       throw new Error("network down");
     });
     render(
-      <EscalationPanel escalation={escalation} persona={persona} onDecide={onDecide} />,
+      <EscalationPanel
+        escalation={escalation}
+        persona={persona}
+        onDecide={onDecide}
+      />,
     );
     await user.click(screen.getByRole("button", { name: /Reject \(abort\)/ }));
     expect(await screen.findByText("network down")).toBeInTheDocument();

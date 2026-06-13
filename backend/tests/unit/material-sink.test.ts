@@ -11,7 +11,7 @@ import type { Webpage } from "@publisher/shared";
 
 const page: Webpage = {
   title: "Emergence & Attention",
-  html: '<main><h1>Emergence</h1><p>Not magic — attention paid closely.</p></main>',
+  html: "<main><h1>Emergence</h1><p>Not magic — attention paid closely.</p></main>",
   css: "body{font-family:serif;color:#222} h1{font-size:2rem}",
   summary: "A short essay on emergence.",
   sourcesUsed: ["https://example.com/emergence"],

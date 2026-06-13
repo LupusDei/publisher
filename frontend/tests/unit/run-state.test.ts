@@ -15,7 +15,10 @@ import {
   mockFailureEvents,
 } from "@/app/runs/mock-stream";
 
-function env(seq: number, t = "ts"): { runId: string; seq: number; ts: string } {
+function env(
+  seq: number,
+  t = "ts",
+): { runId: string; seq: number; ts: string } {
   return { runId: "r", seq, ts: t };
 }
 

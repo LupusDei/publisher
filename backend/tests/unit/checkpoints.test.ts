@@ -43,7 +43,9 @@ function ctx(over: Partial<CheckpointContext> = {}): CheckpointContext {
     persona,
     material: { concept: "On Emergence", persona },
     research,
-    webpage: page("<main>We build the smallest thing that proves the idea.</main>"),
+    webpage: page(
+      "<main>We build the smallest thing that proves the idea.</main>",
+    ),
     attempt: 1,
     priorResults: [],
     ...over,

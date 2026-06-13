@@ -14,7 +14,8 @@ const goodEssayistPage: Webpage = {
   html: [
     "<!doctype html><html><head><title>On Emergence</title></head>",
     "<body><h1>On Emergence</h1>",
-    "<p>Attention, paid slowly, until the pattern admits itself. ".repeat(8) + "</p>",
+    "<p>Attention, paid slowly, until the pattern admits itself. ".repeat(8) +
+      "</p>",
     "<h2>The slow look</h2>",
     "<p>A concrete image anchors each turn of the argument here.</p>",
     "</body></html>",
@@ -90,14 +91,22 @@ describe("bannedPhraseValidator — persona-declared extras", () => {
   it("should FAIL when the page contains a persona-declared banned phrase", () => {
     const strict = {
       ...essayist,
-      designElements: { ...essayist.designElements, bannedPhrases: "synergy; leverage" },
+      designElements: {
+        ...essayist.designElements,
+        bannedPhrases: "synergy; leverage",
+      },
     };
     const salesy: Webpage = {
       ...goodEssayistPage,
-      html: goodEssayistPage.html.replace("</body>", "<p>Unlock synergy now.</p></body>"),
+      html: goodEssayistPage.html.replace(
+        "</body>",
+        "<p>Unlock synergy now.</p></body>",
+      ),
     };
     const findings = bannedPhraseValidator(salesy, strict);
-    expect(findings.some((f) => !f.passed && /synergy/.test(f.detail))).toBe(true);
+    expect(findings.some((f) => !f.passed && /synergy/.test(f.detail))).toBe(
+      true,
+    );
   });
 });
 

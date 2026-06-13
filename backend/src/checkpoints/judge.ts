@@ -66,9 +66,7 @@ export function deterministicVoiceJudge(input: JudgeInput): number {
 
   const sampleRef = wordSet(persona.voiceSample);
   if (sampleRef.size === 0) return 0;
-  const styleRef = wordSet(
-    `${persona.stylePoints.join(" ")} ${persona.voice}`,
-  );
+  const styleRef = wordSet(`${persona.stylePoints.join(" ")} ${persona.voice}`);
 
   const text = plainText(webpage);
   const pageWords = wordSet(text);

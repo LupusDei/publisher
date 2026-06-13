@@ -141,10 +141,7 @@ export default function OnboardingPage(): React.ReactElement {
               >
                 View it →
               </Link>
-              <Link
-                href="/personas"
-                className={buttonClass("ghost", "lg")}
-              >
+              <Link href="/personas" className={buttonClass("ghost", "lg")}>
                 All personas
               </Link>
             </div>
@@ -360,7 +357,12 @@ export default function OnboardingPage(): React.ReactElement {
         </fieldset>
 
         <div className="ob-actions" style={{ ["--i" as string]: 3 }}>
-          <Button type="submit" variant="primary" size="lg" disabled={!canSubmit}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            disabled={!canSubmit}
+          >
             {state.kind === "saving" ? "Saving…" : "Create persona"}
           </Button>
           <Link href="/personas" className={buttonClass("quiet", "lg")}>
@@ -368,7 +370,8 @@ export default function OnboardingPage(): React.ReactElement {
           </Link>
           {!canSubmit && state.kind !== "saving" ? (
             <p className="ob-actions-hint">
-              {requiredDone} of {REQUIRED_FIELDS.length} required fields complete
+              {requiredDone} of {REQUIRED_FIELDS.length} required fields
+              complete
             </p>
           ) : null}
         </div>

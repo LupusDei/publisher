@@ -9,14 +9,20 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("persona=p_1&worker=opus"),
 }));
 vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({
+    href,
+    children,
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => <a href={href}>{children}</a>,
 }));
 
 vi.mock("@/app/runs/run-api", async () => {
   const actual =
-    await vi.importActual<typeof import("@/app/runs/run-api")>("@/app/runs/run-api");
+    await vi.importActual<typeof import("@/app/runs/run-api")>(
+      "@/app/runs/run-api",
+    );
   return {
     ...actual,
     startRun: vi.fn(),
@@ -26,11 +32,7 @@ vi.mock("@/app/runs/run-api", async () => {
   };
 });
 
-import {
-  startRun,
-  fetchRuns,
-  fetchPersonaSummaries,
-} from "@/app/runs/run-api";
+import { startRun, fetchRuns, fetchPersonaSummaries } from "@/app/runs/run-api";
 import RunsPage from "@/app/runs/page";
 
 const mockStart = vi.mocked(startRun);
@@ -75,7 +77,9 @@ describe("RunsPage", () => {
     await user.type(screen.getByLabelText("Concept"), "On Emergence");
     await user.click(screen.getByRole("button", { name: "Start run" }));
     await waitFor(() =>
-      expect(push).toHaveBeenCalledWith(expect.stringContaining("/runs/run_new")),
+      expect(push).toHaveBeenCalledWith(
+        expect.stringContaining("/runs/run_new"),
+      ),
     );
   });
 

@@ -66,7 +66,12 @@ describe("createMeter", () => {
   it("should count cachedInputTokens within totalTokens via the usage total (edge case)", () => {
     const meter = createMeter();
     meter.record("refine", {
-      usage: { inputTokens: 80, outputTokens: 20, totalTokens: 100, cachedInputTokens: 40 },
+      usage: {
+        inputTokens: 80,
+        outputTokens: 20,
+        totalTokens: 100,
+        cachedInputTokens: 40,
+      },
       latencyMs: 120,
     });
     const snap = meter.snapshot();

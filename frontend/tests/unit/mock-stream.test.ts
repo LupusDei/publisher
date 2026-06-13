@@ -53,9 +53,9 @@ describe("mock-stream fixtures", () => {
     }
     const last = events[events.length - 1]!;
     expect(last.t).toBe("escalation");
-    expect(
-      last.t === "escalation" && last.escalation.alarm.type,
-    ).toBe("AWAITING_APPROVAL");
+    expect(last.t === "escalation" && last.escalation.alarm.type).toBe(
+      "AWAITING_APPROVAL",
+    );
     // No publish/failed tail while unresolved.
     expect(events.some((e) => e.t === "published")).toBe(false);
   });

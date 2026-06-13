@@ -10,7 +10,12 @@ const personas = [
 
 describe("StartRunForm", () => {
   it("should disable submit until a persona and concept are present (initial state)", () => {
-    render(<StartRunForm personas={personas} onStart={vi.fn(async () => ({ runId: "r" }))} />);
+    render(
+      <StartRunForm
+        personas={personas}
+        onStart={vi.fn(async () => ({ runId: "r" }))}
+      />,
+    );
     expect(screen.getByRole("button", { name: "Start run" })).toBeDisabled();
   });
 

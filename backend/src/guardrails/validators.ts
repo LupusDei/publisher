@@ -1,4 +1,9 @@
-import type { Persona, Validator, ValidatorFinding, Webpage } from "@publisher/shared";
+import type {
+  Persona,
+  Validator,
+  ValidatorFinding,
+  Webpage,
+} from "@publisher/shared";
 import {
   DEFAULT_BANNED_PHRASES,
   LAYOUT_MARKERS,

@@ -5,7 +5,9 @@ import { Button, buttonClass } from "@/components/ui/Button";
 
 describe("buttonClass", () => {
   it("should compose base + variant + size classes (happy path)", () => {
-    expect(buttonClass("primary", "lg")).toBe("ui-btn ui-btn-primary ui-btn-lg");
+    expect(buttonClass("primary", "lg")).toBe(
+      "ui-btn ui-btn-primary ui-btn-lg",
+    );
   });
 
   it("should default to primary/md and append extra classes (defaults + extra)", () => {

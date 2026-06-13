@@ -59,7 +59,11 @@ export function StartRunForm({
   }
 
   return (
-    <form className="start-run-form" onSubmit={(e) => void submit(e)} aria-label="Start a run">
+    <form
+      className="start-run-form"
+      onSubmit={(e) => void submit(e)}
+      aria-label="Start a run"
+    >
       <h2>Start a run</h2>
 
       {personasError && (

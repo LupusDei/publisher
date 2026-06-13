@@ -23,6 +23,9 @@ npm-debug.log*
 # Published static pages (written by the Sink at runtime)
 backend/published/
 
+# Agent worktrees (nested repo checkouts created by the harness)
+.claude/worktrees/
+
 # OS
 .DS_Store
 

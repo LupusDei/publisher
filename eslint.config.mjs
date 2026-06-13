@@ -10,6 +10,8 @@ export default tseslint.config(
       "**/coverage/**",
       "**/node_modules/**",
       "**/next-env.d.ts",
+      // Agent worktrees are nested repo checkouts — never lint/own them here.
+      ".claude/**",
     ],
   },
   js.configs.recommended,

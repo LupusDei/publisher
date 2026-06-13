@@ -5,8 +5,11 @@ import type { Webpage } from "@publisher/shared";
 
 const page: Webpage = {
   title: "Same Concept",
-  html: "<!doctype html><html><body><h1>Same Concept</h1><p>" +
-    "Body text long enough to satisfy the structure length floor comfortably here. ".repeat(4) +
+  html:
+    "<!doctype html><html><body><h1>Same Concept</h1><p>" +
+    "Body text long enough to satisfy the structure length floor comfortably here. ".repeat(
+      4,
+    ) +
     "</p></body></html>",
   css: "body{font-family:Georgia,serif;max-width:680px;margin:0 auto;}",
   summary: "s",

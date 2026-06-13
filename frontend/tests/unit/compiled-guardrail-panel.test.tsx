@@ -6,8 +6,16 @@ import type { CompiledGuardrailsView } from "@/app/runs/run-api";
 const view: CompiledGuardrailsView = {
   systemPrompt: "You are The Essayist. Write measured, lyrical prose.",
   validators: [
-    { rule: "design-token", kind: "deterministic", description: "Checks tokens." },
-    { rule: "banned-phrase", kind: "deterministic", description: "No meta phrasing." },
+    {
+      rule: "design-token",
+      kind: "deterministic",
+      description: "Checks tokens.",
+    },
+    {
+      rule: "banned-phrase",
+      kind: "deterministic",
+      description: "No meta phrasing.",
+    },
   ],
 };
 

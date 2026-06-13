@@ -5,7 +5,13 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("parseRunEvent", () => {
   it("should parse a well-formed RunEvent payload (happy path)", () => {
-    const raw = JSON.stringify({ runId: "r", seq: 2, ts: "t", t: "phase", phase: "build" });
+    const raw = JSON.stringify({
+      runId: "r",
+      seq: 2,
+      ts: "t",
+      t: "phase",
+      phase: "build",
+    });
     const parsed = parseRunEvent(raw);
     expect(parsed?.t).toBe("phase");
     expect(parsed?.seq).toBe(2);
@@ -64,7 +70,13 @@ describe("eventSourceStream", () => {
     expect(es.url).toContain("sinceSeq=3");
     es.onopen?.();
     es.onmessage?.({
-      data: JSON.stringify({ runId: "r", seq: 0, ts: "t", t: "phase", phase: "research" }),
+      data: JSON.stringify({
+        runId: "r",
+        seq: 0,
+        ts: "t",
+        t: "phase",
+        phase: "research",
+      }),
     });
     es.onmessage?.({ data: "garbage" }); // dropped, not forwarded
     es.onerror?.();
