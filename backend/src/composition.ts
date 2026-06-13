@@ -5,6 +5,7 @@ import {
   type PersonaStore,
 } from "./stores/persona.store.js";
 import { createRunStore } from "./stores/run.store.js";
+import { createResearchStore } from "./stores/research.store.js";
 import { createShareStore, type ShareStore } from "./stores/share.store.js";
 import {
   createShareService,
@@ -108,6 +109,7 @@ export function composeRunDeps(input: RunCompositionInput): RunComposition {
       }),
     personaStore,
     runStore,
+    researchStore: createResearchStore(db),
     eventStore: createRunEventStore(db),
     webpageStore: createWebpageStore(db),
     checkpointStore: createCheckpointStore(db),

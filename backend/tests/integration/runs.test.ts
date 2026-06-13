@@ -273,3 +273,75 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("POST /runs/:id/resume (publisher-kgv)", () => {
+  let db: DB;
+  let app: Express;
+  let deps: ReturnType<typeof composeRunDeps>["deps"];
+  let personaId: string;
+
+  beforeEach(() => {
+    db = openDb(":memory:");
+    runMigrations(db, loadMigrations(migrationsDir));
+    const publishDir = mkdtempSync(join(tmpdir(), "publisher-resume-int-"));
+    const sink = createFileSink({ dir: publishDir, baseUrl: "" });
+    const composed = composeRunDeps({
+      db,
+      agent: new MockAgent(),
+      sink,
+      defaultWorkerId: "mock",
+    });
+    deps = composed.deps;
+    personaId = composed.personaStore.create({
+      name: "The Essayist",
+      voice: "warm, plain, second-person",
+      voiceSample: VOICE_SAMPLE,
+      stylePoints: ["plain terms", "no jargon", "no hedging"],
+      keyLearnings: [],
+      designElements: {},
+    }).id;
+    app = createApp({
+      corsOrigin: "*",
+      version: "test",
+      routers: [{ path: "/runs", router: runsRouter(deps) }],
+    });
+  });
+
+  it("should resume an interrupted run and return 202 (success path)", async () => {
+    // Seed a run abandoned mid-build: interrupted + durable research, as the
+    // boot reconcile would leave it after a restart.
+    deps.runStore.create({
+      id: "run_resumable",
+      personaId,
+      concept: "On Emergence",
+      workerId: "mock",
+    });
+    deps.runStore.updateStatus("run_resumable", "interrupted");
+    deps.researchStore.save("run_resumable", 1, {
+      text: "durable research",
+      sources: ["https://a.example", "https://b.example", "https://c.example"],
+    });
+
+    const res = await request(app).post("/runs/run_resumable/resume");
+    expect(res.status).toBe(202);
+    expect(res.body).toMatchObject({ runId: "run_resumable", status: "running" });
+
+    // It actually advances to a terminal/paused event (it built + checked).
+    await awaitTerminal(app, "run_resumable");
+  });
+
+  it("should 404 an unknown run and 409 a run already terminal/paused (error paths)", async () => {
+    const unknown = await request(app).post("/runs/nope/resume");
+    expect(unknown.status).toBe(404);
+
+    deps.runStore.create({
+      id: "run_done",
+      personaId,
+      concept: "c",
+      workerId: "mock",
+    });
+    deps.runStore.updateStatus("run_done", "published");
+    const terminal = await request(app).post("/runs/run_done/resume");
+    expect(terminal.status).toBe(409);
+  });
+});

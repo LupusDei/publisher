@@ -5,6 +5,7 @@ import {
   createRunService,
   InputRejectedError,
   RunNotPausedError,
+  RunNotResumableError,
   type RunService,
   type RunServiceDeps,
 } from "../services/run.service.js";
@@ -245,6 +246,31 @@ export function runsRouterFrom(
       .catch((err: unknown) => {
         if (err instanceof RunNotPausedError) {
           res.status(409).json({ error: { message: err.message } });
+          return;
+        }
+        res.status(500).json({
+          error: {
+            message: err instanceof Error ? err.message : "Resume failed",
+          },
+        });
+      });
+  });
+
+  // Resume a run cut off mid-flight (publisher-kgv). Fire-and-forget like POST
+  // "/" — the engine continues from its furthest durable checkpoint and streams
+  // events; the client re-opens the SSE stream. Unknown → 404; terminal / paused
+  // (use the decision flow instead) → 409.
+  router.post("/:id/resume", (req, res) => {
+    if (!guardScope(req, res)) return;
+    service
+      .resumeRun(req.params.id)
+      .then(({ runId }) => {
+        res.status(202).json({ runId, status: "running" });
+      })
+      .catch((err: unknown) => {
+        if (err instanceof RunNotResumableError) {
+          const code = /unknown run/.test(err.detail) ? 404 : 409;
+          res.status(code).json({ error: { message: err.message } });
           return;
         }
         res.status(500).json({
