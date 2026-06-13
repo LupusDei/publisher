@@ -62,6 +62,7 @@ describe("SiteNav", () => {
       Runs: "/runs",
       Gallery: "/runs/gallery",
       Demo: "/runs/demo",
+      "Your usage": "/observability",
     };
     for (const [label, href] of Object.entries(links)) {
       expect(

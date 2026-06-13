@@ -96,6 +96,8 @@ export interface RunService {
   events(runId: string, sinceSeq?: number): RunEvent[];
   /** The run header row (status/summary), or null if unknown. */
   get(runId: string): Run | null;
+  /** All runs (newest first); with `ownerId`, only that owner's (R9). */
+  list(ownerId?: string): Run[];
   /** Apply a human escalation decision and resume the run. */
   decide(
     runId: string,
@@ -218,6 +220,10 @@ export function createRunService(deps: RunServiceDeps): RunService {
 
     get(runId) {
       return deps.runStore.get(runId);
+    },
+
+    list(ownerId) {
+      return deps.runStore.list(ownerId);
     },
 
     async decide(runId, decision) {

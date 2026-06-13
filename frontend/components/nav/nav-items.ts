@@ -29,5 +29,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Runs", href: "/runs" },
   { label: "Gallery", href: "/runs/gallery" },
   { label: "Demo", href: "/runs/demo", secondary: true },
+  { label: "Your usage", href: "/observability" },
   { label: "Admin · Telemetry", href: "/admin/telemetry", adminOnly: true },
 ];

@@ -137,6 +137,25 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
     expect(res.body.status).toBe("running");
   });
 
+  it("should return 200 + empty array from GET /runs when there are no runs", async () => {
+    // Regression (publisher-gb9.2): the frontend's fetchRuns() hits GET /runs,
+    // which had no route (only /:id) and 404'd → "Failed to load runs (HTTP 404)".
+    const res = await request(app).get("/runs");
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(0);
+  });
+
+  it("should list a started run via GET /runs", async () => {
+    const created = await request(app)
+      .post("/runs")
+      .send({ personaId, concept: "On Emergence" });
+    const runId = created.body.runId as string;
+    const res = await request(app).get("/runs");
+    expect(res.status).toBe(200);
+    expect((res.body as { id: string }[]).map((r) => r.id)).toContain(runId);
+  });
+
   it("should publish the run in the background (terminal via the journal)", async () => {
     const created = await request(app)
       .post("/runs")

@@ -111,6 +111,32 @@ textarea:focus-visible {
   border-radius: 8px;
   background: #fff;
   color: var(--ink);
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.start-run-form input:hover,
+.start-run-form select:hover,
+.enrich-form textarea:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+/* Selects: strip the native OS chrome and draw a quiet Atelier chevron so the
+ * control reads as part of the editorial form, not an OS widget. The chevron
+ * lives in a data-URI SVG (CSS vars can't cross into url()), so its stroke is
+ * the literal value of --muted (#6b6358) at rest / --accent (#b5512f) on hover. */
+.start-run-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%236b6358' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px 8px;
+}
+.start-run-form select:hover {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%23b5512f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 .start-run-form .btn {
   margin-top: 14px;

@@ -68,13 +68,6 @@ function RunsControlPlane(): React.ReactElement {
     <div className="runs-shell">
       <p className="eyebrow">Publisher · Harness</p>
       <h1>Runs</h1>
-      <nav className="runs-nav" aria-label="Runs navigation">
-        <Link href="/runs">Start</Link>
-        <Link href="/runs/demo">Demo (mock stream)</Link>
-        <Link href="/runs/gallery">Gallery</Link>
-        <Link href="/personas">Personas</Link>
-        <Link href="/observability">Your usage</Link>
-      </nav>
 
       <StartRunForm
         personas={personas}

@@ -133,6 +133,12 @@ export function runsRouterFrom(
     return true;
   }
 
+  router.get("/", (req, res) => {
+    // Owner-scoped list (85q.4): an authed caller sees only their own runs;
+    // when auth isn't wired (req.user undefined) the store returns all runs.
+    res.json(service.list(req.user?.userId));
+  });
+
   router.post("/", (req, res) => {
     const parsed = StartRunSchema.safeParse(req.body);
     if (!parsed.success) {

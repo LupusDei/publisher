@@ -75,6 +75,41 @@ describe("createRunService", () => {
     expect(service.get(runId)?.status).toBe("published");
   });
 
+  // list() — R9 / publisher-gb9.2: the runs list surface (and the missing
+  // GET /runs route) reads through here. Owner-scoped so the frontend's
+  // "Recent runs" only shows the caller's own runs.
+  it("should include a started run in list() (happy path)", async () => {
+    const { runId } = await service.start({
+      personaId,
+      concept: "On Emergence",
+    });
+    await service.waitFor(runId);
+    expect(service.list().map((r) => r.id)).toContain(runId);
+  });
+
+  it("should scope list(ownerId) to a single owner (error/isolation path)", async () => {
+    const a = await service.start({
+      personaId,
+      concept: "Owned by A",
+      userId: "user-a",
+    });
+    const b = await service.start({
+      personaId,
+      concept: "Owned by B",
+      userId: "user-b",
+    });
+    await service.waitFor(a.runId);
+    await service.waitFor(b.runId);
+    const onlyA = service.list("user-a").map((r) => r.id);
+    expect(onlyA).toContain(a.runId);
+    expect(onlyA).not.toContain(b.runId);
+  });
+
+  it("should return an empty array when no runs match (edge case)", () => {
+    expect(service.list()).toEqual([]);
+    expect(service.list("nobody-has-this-id")).toEqual([]);
+  });
+
   it("should return the runId before the run reaches a terminal status (async)", async () => {
     // The run is still in-flight the moment start resolves — get() shows a
     // non-terminal status, proving POST does not block on the engine.
