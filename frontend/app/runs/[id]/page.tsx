@@ -14,6 +14,7 @@ import { fetchRun } from "../run-api";
 import { timeAgo, absoluteTime } from "../time-ago";
 import { LiveRunPanel } from "@/components/LiveRunPanel";
 import { CompiledGuardrailPanel } from "@/components/CompiledGuardrailPanel";
+import { ShareLink } from "@/components/ShareLink";
 import { RequireAuth } from "../../auth/RequireAuth";
 import "@/components/runs-ui.css";
 
@@ -86,6 +87,14 @@ function RunDetailView(): React.ReactElement {
         <p role="alert" className="form-error">
           Could not load run header: {error} — streaming may still work.
         </p>
+      )}
+
+      {/* Once a run is published it can be shared publicly (US2). */}
+      {run?.status === "published" && (
+        <div className="run-detail-share" style={{ marginTop: 16 }}>
+          <h2 className="run-detail-share-h">Share</h2>
+          <ShareLink runId={runId} />
+        </div>
       )}
 
       <LiveRunPanel runId={runId} workerId={workerId} persona={persona} />

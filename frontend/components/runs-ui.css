@@ -986,3 +986,8 @@ section h3 {
 .share-link-error {
   margin: 0;
 }
+.run-detail-share-h {
+  font-size: 15px;
+  margin: 0 0 8px;
+  color: var(--ink);
+}
