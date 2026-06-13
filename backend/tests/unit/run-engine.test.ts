@@ -95,7 +95,7 @@ function load(db: DB, runId: string): RunEvent[] {
   return createRunEventStore(db).load(runId);
 }
 
-/** An agent whose research always returns too few sources (gate 1 fails). */
+/** An agent whose research ALWAYS returns too few sources (gate 1 keeps failing). */
 const thinResearchAgent: Agent = {
   async research(): Promise<AgentResult<ResearchResult>> {
     return {
@@ -108,6 +108,45 @@ const thinResearchAgent: Agent = {
     throw new Error("build should never be called when research is thin");
   },
 };
+
+/**
+ * An agent whose FIRST research returns too few sources but whose SECOND
+ * (re-research) clears the bar — exercises the one-retry-then-proceed path.
+ */
+function thinThenSufficientAgent(): Agent {
+  let researchCalls = 0;
+  return {
+    async research(): Promise<AgentResult<ResearchResult>> {
+      researchCalls += 1;
+      const sources =
+        researchCalls === 1
+          ? ["https://only-one.example"]
+          : [
+              "https://a.example",
+              "https://b.example",
+              "https://c.example",
+            ];
+      return {
+        value: { text: `research pass ${researchCalls}`, sources },
+        usage: usage(),
+        finishReason: "stop",
+      };
+    },
+    async build(): Promise<AgentResult<Webpage>> {
+      return {
+        value: {
+          title: "Built",
+          html: "<main><h1>Built</h1><p>body</p></main>",
+          css: "",
+          summary: "s",
+          sourcesUsed: ["a", "b", "c"],
+        },
+        usage: usage(),
+        finishReason: "stop",
+      };
+    },
+  };
+}
 
 /** An agent that always builds off-voice (voice gate never passes). */
 function alwaysOffVoiceAgent(): Agent {
@@ -171,7 +210,7 @@ describe("RunEngine.start", () => {
     expect(events.some((e) => e.t === "metric")).toBe(true);
   });
 
-  it("should escalate (not publish) when research is insufficient (error path)", async () => {
+  it("should re-research once, then escalate research-light when still insufficient", async () => {
     const engine = makeEngine(db, thinResearchAgent);
     const outcome = await engine.start({
       runId: "run_2",
@@ -179,10 +218,41 @@ describe("RunEngine.start", () => {
       workerId: "mock",
     });
     expect(outcome.status).toBe("escalated");
+    if (outcome.status === "escalated") {
+      expect(outcome.escalation.reason.toLowerCase()).toContain(
+        "research-light",
+      );
+      expect(outcome.escalation.alarm.type).toBe("INSUFFICIENT_RESEARCH");
+    }
     const events = load(db, "run_2");
+    // Re-researched exactly ONCE → two research-sufficiency checks, both failed.
+    const rs = events.filter(
+      (e) => e.t === "checkpoint" && e.result.name === "research-sufficiency",
+    );
+    expect(rs.length).toBe(2);
     expect(events.some((e) => e.t === "escalation")).toBe(true);
     // The build phase never ran (no draft event).
     expect(events.some((e) => e.t === "draft")).toBe(false);
+  });
+
+  it("should re-research once and proceed to build when the retry clears the bar", async () => {
+    const engine = makeEngine(db, thinThenSufficientAgent());
+    const outcome = await engine.start({
+      runId: "run_2b",
+      material,
+      workerId: "mock",
+    });
+    const events = load(db, "run_2b");
+    const rs = events.filter(
+      (e) => e.t === "checkpoint" && e.result.name === "research-sufficiency",
+    );
+    // Two research checks: first FAILED, second PASSED → proceed to build.
+    expect(rs.length).toBe(2);
+    expect(rs[0]?.t === "checkpoint" && rs[0].result.passed).toBe(false);
+    expect(rs[1]?.t === "checkpoint" && rs[1].result.passed).toBe(true);
+    // Build ran (at least one draft emitted) and it did NOT escalate as research-light.
+    expect(events.some((e) => e.t === "draft")).toBe(true);
+    expect(outcome.status).not.toBe("failed");
   });
 
   it("should escalate after exhausting attempts when the voice gate keeps failing (edge)", async () => {

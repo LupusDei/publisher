@@ -35,6 +35,7 @@ import { detectBreaches } from "../observability/budget.js";
 import { createAlarmEmitter } from "../observability/alarm-emitter.js";
 import { persistAlarms } from "../observability/persist.js";
 import { nextBuildFeedback } from "../checkpoints/next-build-feedback.js";
+import { RESEARCH_MIN_SOURCES } from "../checkpoints/research-sufficiency.js";
 import { errorToAlarm } from "../agent/alarm-mapping.js";
 
 /**
@@ -53,6 +54,12 @@ import { errorToAlarm } from "../agent/alarm-mapping.js";
 
 /** Default cap on build attempts before a refusal escalates (R2 loop bound). */
 export const MAX_ATTEMPTS = 2;
+
+/**
+ * Cap on research attempts before alerting the user a topic is research-light.
+ * 2 = the initial pass + exactly ONE re-research. Never loops forever.
+ */
+export const MAX_RESEARCH_ATTEMPTS = 2;
 
 /** The canonical post-build gate order (research gate runs before build). */
 const BUILD_GATES = [
@@ -81,6 +88,8 @@ export interface RunEngineDeps {
   budget?: Budget;
   /** Override the build-attempt cap (tests use this to force escalation). */
   maxAttempts?: number;
+  /** Override the research-attempt cap (default 2 = initial + one re-research). */
+  maxResearchAttempts?: number;
   newId?: () => string;
   now?: () => string;
 }
@@ -131,6 +140,8 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
   const now = deps.now ?? (() => new Date().toISOString());
   const newId = deps.newId ?? (() => randomUUID());
   const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
+  const maxResearchAttempts =
+    deps.maxResearchAttempts ?? MAX_RESEARCH_ATTEMPTS;
 
   /** Paused contexts awaiting a human decision (single-process demo, D11). */
   const pending = new Map<string, RunContext>();
@@ -398,39 +409,57 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
         seq: 0,
       };
 
-      // RESEARCH
-      deps.runStore.updateStatus(runId, "researching");
-      emit(ctx, { t: "phase", phase: "research" });
-      let research: ResearchResult;
-      try {
-        research = await metered(ctx, "research", () =>
-          deps.agent.research({
-            system: ctx.system,
-            concept: material.concept,
-          }),
-        );
-      } catch (err) {
-        return failRun(
-          ctx,
-          err instanceof AgentFault ? err.message : String(err),
-        );
-      }
-      ctx.research = research;
-      recordMetrics(ctx);
+      // RESEARCH — with at most ONE re-research on insufficiency, then alert.
+      // Research is not refine-correctable, so rather than escalating on the
+      // first thin result we re-run research once with the gate's guidance; if
+      // it still can't clear the bar the topic is "research-light" → stop and
+      // ask the human (R10/D19). Bounded by maxResearchAttempts (default 2).
+      let researchAttempt = 1;
+      let researchGuidance: string | undefined;
+      for (;;) {
+        deps.runStore.updateStatus(runId, "researching");
+        emit(ctx, { t: "phase", phase: "research" });
+        try {
+          ctx.research = await metered(ctx, "research", () =>
+            deps.agent.research({
+              system: ctx.system,
+              concept: researchGuidance
+                ? `${material.concept}\n\n[Research guidance — go broader/deeper]: ${researchGuidance}`
+                : material.concept,
+            }),
+          );
+        } catch (err) {
+          return failRun(
+            ctx,
+            err instanceof AgentFault ? err.message : String(err),
+          );
+        }
+        recordMetrics(ctx);
 
-      // GATE 1 — research sufficiency (before build).
-      const researchResult = await gate(ctx, "research-sufficiency").evaluate(
-        checkpointContext(ctx),
-      );
-      recordCheckpoint(ctx, researchResult);
-      if (!researchResult.passed) {
-        // Not auto-correctable by a refine — escalate (R10/D19: enrich).
-        return escalate(
-          ctx,
-          "Research did not clear the sufficiency bar.",
-          hardAlarm(researchResult),
+        // GATE 1 — research sufficiency (deterministic, before any build).
+        const researchResult = await gate(ctx, "research-sufficiency").evaluate(
+          checkpointContext(ctx),
         );
+        recordCheckpoint(ctx, researchResult);
+        if (researchResult.passed) break;
+
+        // Insufficient. Re-research ONCE; once the retry is spent, alert the
+        // user the topic is research-light instead of looping forever.
+        if (researchAttempt >= maxResearchAttempts) {
+          const found = researchResult.score ?? 0;
+          const need = researchResult.threshold ?? RESEARCH_MIN_SOURCES;
+          return escalate(
+            ctx,
+            `Topic appears research-light: only ${found} credible source(s) after a re-research pass (need >= ${need}). Enrich the concept or persona, or approve anyway.`,
+            hardAlarm(researchResult),
+          );
+        }
+        researchAttempt += 1;
+        researchGuidance = researchResult.feedback;
+        // Keep build-phase priorResults clean (research verdicts are journaled).
+        ctx.priorResults = [];
       }
+      ctx.priorResults = [];
 
       return buildAndCheck(ctx, undefined);
     },
