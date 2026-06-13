@@ -10,6 +10,7 @@ import {
   streamUrl,
   AVAILABLE_WORKERS,
 } from "@/app/runs/run-api";
+import { writeToken, clearToken } from "@/app/auth/auth-api";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -165,12 +166,29 @@ describe("run-api client", () => {
   });
 
   it("streamUrl should append sinceSeq when given and omit it otherwise (edge case)", () => {
+    clearToken();
     expect(streamUrl("r", 4, "http://api.test")).toBe(
       "http://api.test/runs/r/stream?sinceSeq=4",
     );
     expect(streamUrl("r", undefined, "http://api.test")).toBe(
       "http://api.test/runs/r/stream",
     );
+  });
+
+  it("streamUrl should append the stored JWT as ?token= for header-free SSE auth (publisher-2aa)", () => {
+    writeToken("jwt-abc");
+    try {
+      // EventSource can't set Authorization, so the token rides in the query.
+      expect(streamUrl("r", undefined, "http://api.test")).toBe(
+        "http://api.test/runs/r/stream?token=jwt-abc",
+      );
+      // ...alongside the reconnect cursor when both are present.
+      expect(streamUrl("r", 4, "http://api.test")).toBe(
+        "http://api.test/runs/r/stream?sinceSeq=4&token=jwt-abc",
+      );
+    } finally {
+      clearToken();
+    }
   });
 
   it("AVAILABLE_WORKERS should expose at least two swappable workers (R11)", () => {

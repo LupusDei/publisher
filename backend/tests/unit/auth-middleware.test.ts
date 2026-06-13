@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Request, Response, NextFunction } from "express";
 import { createJwt } from "../../src/auth/jwt.js";
-import { requireAuth, requireAdmin } from "../../src/auth/middleware.js";
+import {
+  requireAuth,
+  requireAdmin,
+  requireAuthAllowingQueryToken,
+} from "../../src/auth/middleware.js";
 
 const SECRET = "mw-test-secret";
 const jwt = createJwt(SECRET);
@@ -24,7 +28,14 @@ function mockRes(): Response & { statusCode: number; body: unknown } {
 }
 
 function reqWith(headers: Record<string, string> = {}): Request {
-  return { headers } as unknown as Request;
+  return { headers, query: {} } as unknown as Request;
+}
+
+function reqWithQuery(
+  query: Record<string, unknown> = {},
+  headers: Record<string, string> = {},
+): Request {
+  return { headers, query } as unknown as Request;
 }
 
 describe("requireAuth", () => {
@@ -71,6 +82,72 @@ describe("requireAuth", () => {
     const next = vi.fn();
 
     requireAuth(SECRET)(req, res, next as unknown as NextFunction);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(401);
+  });
+});
+
+describe("requireAuthAllowingQueryToken", () => {
+  it("should populate req.user and call next() for a valid ?token= query param", () => {
+    const token = jwt.sign({ userId: "u_q", role: "user" });
+    const req = reqWithQuery({ token });
+    const res = mockRes();
+    const next = vi.fn();
+
+    requireAuthAllowingQueryToken(SECRET)(
+      req,
+      res,
+      next as unknown as NextFunction,
+    );
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(req.user).toEqual({ userId: "u_q", role: "user" });
+    expect(res.statusCode).toBe(0);
+  });
+
+  it("should still accept a valid Authorization header when no query token is present", () => {
+    const token = jwt.sign({ userId: "u_h", role: "user" });
+    const req = reqWithQuery({}, { authorization: `Bearer ${token}` });
+    const res = mockRes();
+    const next = vi.fn();
+
+    requireAuthAllowingQueryToken(SECRET)(
+      req,
+      res,
+      next as unknown as NextFunction,
+    );
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(req.user).toEqual({ userId: "u_h", role: "user" });
+  });
+
+  it("should return a 401 when neither a header nor a query token is present", () => {
+    const req = reqWithQuery({});
+    const res = mockRes();
+    const next = vi.fn();
+
+    requireAuthAllowingQueryToken(SECRET)(
+      req,
+      res,
+      next as unknown as NextFunction,
+    );
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(401);
+    expect((res.body as { error?: unknown }).error).toBeDefined();
+  });
+
+  it("should return a 401 for an invalid query token (edge case)", () => {
+    const req = reqWithQuery({ token: "not.a.jwt" });
+    const res = mockRes();
+    const next = vi.fn();
+
+    requireAuthAllowingQueryToken(SECRET)(
+      req,
+      res,
+      next as unknown as NextFunction,
+    );
 
     expect(next).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(401);
