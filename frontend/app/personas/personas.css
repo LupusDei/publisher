@@ -86,7 +86,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
   gap: var(--space-5);
 }
 .persona-skeleton {
@@ -180,12 +180,10 @@
   font-family: var(--font-display);
   font-style: italic;
   font-size: var(--step-0);
+  line-height: 1.5;
   color: var(--ink);
-  /* Clamp to keep cards even without truncating mid-word jarringly. */
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /* Show the full voice sample — it's the most evocative part of the card and
+   * truncating it mid-thought reads as broken. Cards size to their content. */
 }
 
 /* Design entries as compact inline tags that wrap — de-emphasised, never
@@ -203,15 +201,20 @@
   color: var(--muted);
   background: var(--bg-sunk);
   border: 1px solid var(--line);
-  border-radius: var(--r-pill);
-  padding: 0 var(--space-2);
-  line-height: 1.7;
-  white-space: nowrap;
+  /* A soft rounded rectangle (not a pill) so a long value can wrap to a second
+   * line without clipping or a stretched stadium shape. */
+  border-radius: var(--r-md);
+  padding: var(--space-1) var(--space-3);
+  line-height: 1.5;
+  /* Let long phrase values wrap inside the tag instead of overflowing the card
+   * (which clipped them — "times new rom…"). */
+  overflow-wrap: anywhere;
 }
 .persona-tag-key {
   text-transform: capitalize;
   color: var(--ink);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* Actions row — the single vermillion accent lives here (primary CTA). */
