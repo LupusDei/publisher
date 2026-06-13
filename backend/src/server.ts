@@ -29,6 +29,18 @@ import {
 const VERSION = process.env["npm_package_version"] ?? "0.1.0";
 
 /* c8 ignore start -- boot/listen wiring is exercised by integration tests, not unit-covered */
+// Load backend/.env into process.env BEFORE reading config. Native (Node's
+// process.loadEnvFile — no dependency); resolved relative to this module so it
+// works from any cwd. A missing file or an older Node without the API is
+// harmless: production injects real env vars directly.
+try {
+  process.loadEnvFile(
+    join(dirname(fileURLToPath(import.meta.url)), "..", ".env"),
+  );
+} catch {
+  // No .env (or unsupported runtime) — fall back to the ambient environment.
+}
+
 const env = loadEnv();
 
 // OTel must start BEFORE the app so auto-instrumentation can wrap http. No-op
