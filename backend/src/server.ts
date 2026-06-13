@@ -8,6 +8,7 @@ import { createAgentForWorker } from "./agent/index.js";
 import { createFileSink } from "./material/sink.js";
 import { selectVoiceJudge } from "./checkpoints/voice-fidelity.js";
 import { composeRunDeps } from "./composition.js";
+import { reconcileInterruptedRuns } from "./orchestrator/reconcile.js";
 import { runsRouter, publishedRouter } from "./routes/runs.js";
 import { shareRouter, publicShareRouter } from "./routes/share.js";
 import { personasRouter } from "./routes/personas.js";
@@ -109,6 +110,16 @@ const {
 // shareStore is exposed for future route wiring (revoke/list); the mint route
 // only needs the service + run-owner lookup today.
 void shareStore;
+
+// Boot reconcile (publisher-kgv): the engine is in-memory, so any run still
+// marked with an active status was orphaned by the process that died. Flip them
+// to `interrupted` so they read as resumable instead of "researching" forever.
+const interrupted = reconcileInterruptedRuns(runsDeps.runStore);
+if (interrupted.length > 0) {
+  console.log(
+    `[publisher] reconciled ${interrupted.length} interrupted run(s): ${interrupted.join(", ")}`,
+  );
+}
 
 // Auth composition root (85q.3): one UserStore + JWT bound to AUTH_JWT_SECRET.
 const authService = createAuthService({

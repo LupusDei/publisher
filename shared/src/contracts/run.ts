@@ -21,6 +21,10 @@ export const RunStatusSchema = z.enum([
   "building",
   "checking",
   "refining",
+  // An active run whose engine was lost to a process restart (publisher-kgv).
+  // Non-terminal and RESUMABLE: the run can pick up from its furthest durable
+  // checkpoint. Set by the boot reconcile; cleared when a resume re-enters.
+  "interrupted",
   "escalated",
   // Passed every gate; the finished draft is paused for the FINAL human
   // approval gate (HITL) and publishes only on the user's sign-off.
