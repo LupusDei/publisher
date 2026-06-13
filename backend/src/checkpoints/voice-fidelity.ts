@@ -4,7 +4,12 @@ import type {
   CheckpointResult,
 } from "@publisher/shared";
 import type { Checkpoint } from "../domain/index.js";
-import { deterministicVoiceJudge, runJudge, type Judge } from "./judge.js";
+import {
+  createRealVoiceJudge,
+  deterministicVoiceJudge,
+  runJudge,
+  type Judge,
+} from "./judge.js";
 
 /**
  * Gate 2 — VOICE FIDELITY (judge). Measures the built page against the persona's
@@ -19,6 +24,32 @@ import { deterministicVoiceJudge, runJudge, type Judge } from "./judge.js";
 
 /** Explicit threshold: a page scoring below this is off-voice and rejected. */
 export const VOICE_THRESHOLD = 0.75;
+
+/** Inputs to mode-gated voice-judge selection (rrt.4.1). */
+export interface VoiceJudgeSelection {
+  USE_REAL_AGENT: boolean;
+  ANTHROPIC_API_KEY?: string | undefined;
+  /** Judge model override; defaults inside the real judge to opus. */
+  model?: string | undefined;
+}
+
+/**
+ * Choose the voice judge for the run (rrt.4.1). The REAL Claude-backed judge is
+ * used ONLY when `USE_REAL_AGENT` is set AND a key is present; otherwise the
+ * token-free deterministic judge is returned so mock/test/demo runs need no
+ * network or key. This is the single seam the composition root uses to wire the
+ * real judge into the voice-fidelity gate — keeping fail-closed behavior intact
+ * (a faulting real judge still fails the gate via `runJudge`).
+ */
+export function selectVoiceJudge(env: VoiceJudgeSelection): Judge {
+  if (env.USE_REAL_AGENT && env.ANTHROPIC_API_KEY) {
+    return createRealVoiceJudge({
+      apiKey: env.ANTHROPIC_API_KEY,
+      ...(env.model ? { model: env.model } : {}),
+    });
+  }
+  return deterministicVoiceJudge;
+}
 
 export interface VoiceFidelityDeps {
   /** Injectable judge; defaults to the deterministic offline judge. */
