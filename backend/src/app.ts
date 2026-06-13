@@ -18,6 +18,12 @@ export interface AppDeps {
    * file — killing the one guaranteed multi-track merge conflict.
    */
   routers?: RouterEntry[];
+  /**
+   * Optional per-request duration hook (ms). server.ts wires this to the
+   * telemetry aggregator so /admin/telemetry can report system latency without
+   * coupling this factory to OpenTelemetry. No-op when omitted.
+   */
+  onHttpDuration?: (ms: number) => void;
 }
 
 /**
@@ -31,6 +37,19 @@ export function createApp(deps: AppDeps): Express {
 
   app.use(cors({ origin: deps.corsOrigin }));
   app.use(express.json());
+
+  // Time every request and feed the curated telemetry snapshot (system latency).
+  const { onHttpDuration } = deps;
+  if (onHttpDuration) {
+    app.use((_req, res, next) => {
+      const start = process.hrtime.bigint();
+      res.on("finish", () => {
+        const ms = Number(process.hrtime.bigint() - start) / 1_000_000;
+        onHttpDuration(ms);
+      });
+      next();
+    });
+  }
 
   const health = createHealthService({
     uptime: () => process.uptime(),

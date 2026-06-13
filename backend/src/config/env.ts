@@ -20,6 +20,21 @@ const EnvSchema = z
       .transform((v) => v === "true"),
     CORS_ORIGIN: z.string().min(1).default("http://localhost:3000"),
     /**
+     * Master switch for OpenTelemetry SDK bootstrap (specs/003-observability-otel).
+     * When false (default), otel.ts is a no-op and the app behaves identically;
+     * the api instruments in metrics.ts stay no-ops with no global provider.
+     */
+    OTEL_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+    /**
+     * Optional OTLP/HTTP traces endpoint. When set (and OTEL_ENABLED=true) the
+     * SDK additionally exports spans to this collector; otherwise traces are
+     * registered but not exported off-box.
+     */
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).optional(),
+    /**
      * Absolute base URL the Sink prepends to Receipt URLs so the Vercel
      * frontend can iframe published pages through the ngrok tunnel (D11).
      * Defaults to "" → relative `/published/:id` for local development.

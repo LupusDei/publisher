@@ -22,6 +22,7 @@ import type { CheckpointStore } from "../stores/checkpoint.store.js";
 import type { AlarmStore } from "../stores/alarm.store.js";
 import type { MetricStore } from "../stores/metric.store.js";
 import type { EscalationStore } from "../stores/escalation.store.js";
+import type { Telemetry } from "../telemetry/metrics.js";
 import { createJournal } from "../journal/index.js";
 import {
   createRunEngine,
@@ -63,6 +64,8 @@ export interface RunServiceDeps {
   /** Default worker id for runs that don't pick one. */
   defaultWorkerId?: string;
   newRunId?: () => string;
+  /** Optional telemetry sink (Pillar 4 system layer). No-op default in the engine. */
+  telemetry?: Telemetry;
 }
 
 export interface RunService {
@@ -167,6 +170,7 @@ export function createRunService(deps: RunServiceDeps): RunService {
     alarmStore: deps.alarmStore,
     metricStore: deps.metricStore,
     escalationStore: deps.escalationStore,
+    ...(deps.telemetry ? { telemetry: deps.telemetry } : {}),
   });
 
   return {

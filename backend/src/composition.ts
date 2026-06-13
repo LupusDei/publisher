@@ -17,6 +17,7 @@ import { createGuardrailEngine } from "./guardrails/index.js";
 import { createCheckpoints } from "./checkpoints/index.js";
 import { createEventBus } from "./orchestrator/event-bus.js";
 import type { RunServiceDeps } from "./services/run.service.js";
+import type { Telemetry } from "./telemetry/metrics.js";
 
 /**
  * Composition root for a run (Track G keystone). Wires ALL the real pillars into
@@ -33,6 +34,8 @@ export interface RunCompositionInput {
   /** Reuse one PersonaStore so personas authored via /personas are visible. */
   personaStore?: PersonaStore;
   defaultWorkerId?: string;
+  /** Optional telemetry sink threaded into the run engine (Pillar 4 system layer). */
+  telemetry?: Telemetry;
 }
 
 export interface RunComposition {
@@ -66,6 +69,7 @@ export function composeRunDeps(input: RunCompositionInput): RunComposition {
     ...(input.defaultWorkerId
       ? { defaultWorkerId: input.defaultWorkerId }
       : {}),
+    ...(input.telemetry ? { telemetry: input.telemetry } : {}),
   };
 
   return { deps, personaStore };

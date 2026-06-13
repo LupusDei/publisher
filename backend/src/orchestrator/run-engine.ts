@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
+  AgentResult,
   Alarm,
   Budget,
   CheckpointContext,
@@ -37,6 +38,11 @@ import { persistAlarms } from "../observability/persist.js";
 import { nextBuildFeedback } from "../checkpoints/next-build-feedback.js";
 import { RESEARCH_MIN_SOURCES } from "../checkpoints/research-sufficiency.js";
 import { errorToAlarm } from "../agent/alarm-mapping.js";
+import {
+  createNoopTelemetry,
+  type Telemetry,
+  type Span,
+} from "../telemetry/metrics.js";
 
 /**
  * The RunEngine — the SPINE (Track G, R2/R10). A THIN sequencer (Constitution
@@ -92,6 +98,8 @@ export interface RunEngineDeps {
   maxResearchAttempts?: number;
   newId?: () => string;
   now?: () => string;
+  /** Injected metrics/tracing facade; defaults to a no-op (zero behavior change). */
+  telemetry?: Telemetry;
 }
 
 export interface StartInput {
@@ -125,6 +133,10 @@ interface RunContext {
   meter: Meter;
   alarmEmitter: AlarmEmitter;
   seq: number;
+  /** Telemetry run span (Pillar 4); ends at every terminal transition. */
+  runSpan: Span;
+  /** Wall-clock start (ms epoch) for run-duration telemetry. */
+  startedAt: number;
 }
 
 // Distribute Omit across the union so each variant keeps its own field set.
@@ -143,8 +155,8 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
   const now = deps.now ?? (() => new Date().toISOString());
   const newId = deps.newId ?? (() => randomUUID());
   const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
-  const maxResearchAttempts =
-    deps.maxResearchAttempts ?? MAX_RESEARCH_ATTEMPTS;
+  const maxResearchAttempts = deps.maxResearchAttempts ?? MAX_RESEARCH_ATTEMPTS;
+  const telemetry = deps.telemetry ?? createNoopTelemetry();
 
   /** Paused contexts awaiting a human decision (single-process demo, D11). */
   const pending = new Map<string, RunContext>();
@@ -198,23 +210,30 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
   async function metered<T>(
     ctx: RunContext,
     phase: Phase,
-    call: () => Promise<{
-      value: T;
-      usage: { totalTokens: number; inputTokens: number; outputTokens: number };
-      finishReason: string;
-    }>,
+    call: () => Promise<AgentResult<T>>,
   ): Promise<T> {
     const startedAt = Date.now();
     try {
       const result = await call();
+      const latencyMs = Date.now() - startedAt;
       ctx.meter.record(phase, {
         usage: result.usage,
-        latencyMs: Date.now() - startedAt,
+        latencyMs,
       });
+      // Mirror per-phase latency + token usage into Pillar-4 telemetry.
+      telemetry.recordPhaseDuration(phase, latencyMs);
+      telemetry.recordTokens(
+        phase,
+        ctx.workerId,
+        result.usage.totalTokens,
+        result.usage.cachedInputTokens,
+      );
       return result.value;
     } catch (err) {
       ctx.meter.record(phase, { latencyMs: Date.now() - startedAt });
       const alarm = errorToAlarm(err, { phase, workerId: ctx.workerId });
+      telemetry.recordError(alarm.type, ctx.workerId);
+      ctx.runSpan.recordException(err);
       forwardAlarms(ctx, phase, [alarm]);
       throw new AgentFault(
         err instanceof Error ? err.message : String(err),
@@ -241,6 +260,9 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
   function recordCheckpoint(ctx: RunContext, result: CheckpointResult): void {
     deps.checkpointStore.insert(ctx.runId, ctx.attempt, result);
     emit(ctx, { t: "checkpoint", pillar: "checkpoints", result });
+    if (!result.passed) telemetry.recordCheckpointFailure(result.name);
+    if (result.score !== undefined)
+      telemetry.recordCheckpointScore(result.name, result.score);
     forwardAlarms(ctx, undefined, result.alarms);
     ctx.priorResults.push(result);
     if (result.passed) ctx.passedGates.add(result.name);
@@ -279,6 +301,10 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     emit(ctx, { t: "published", pillar: "material", receipt });
     deps.runStore.updateStatus(ctx.runId, "published");
     pending.delete(ctx.runId);
+    telemetry.recordOutcome("published");
+    telemetry.recordRunDuration(Date.now() - ctx.startedAt);
+    ctx.runSpan.end();
+    telemetry.runEnded();
     return { status: "published" };
   }
 
@@ -286,6 +312,10 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     emit(ctx, { t: "failed", reason });
     deps.runStore.updateStatus(ctx.runId, "failed");
     pending.delete(ctx.runId);
+    telemetry.recordOutcome("failed");
+    telemetry.recordRunDuration(Date.now() - ctx.startedAt);
+    ctx.runSpan.end();
+    telemetry.runEnded();
     return { status: "failed", reason };
   }
 
@@ -301,6 +331,10 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     emit(ctx, { t: "escalation", escalation });
     deps.runStore.updateStatus(ctx.runId, "escalated");
     pending.set(ctx.runId, ctx);
+    telemetry.recordOutcome("escalated");
+    telemetry.recordRunDuration(Date.now() - ctx.startedAt);
+    ctx.runSpan.end();
+    telemetry.runEnded();
     return { status: "escalated", escalation };
   }
 
@@ -332,6 +366,12 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     emit(ctx, { t: "escalation", escalation });
     deps.runStore.updateStatus(ctx.runId, "awaiting_approval");
     pending.set(ctx.runId, ctx);
+    telemetry.recordOutcome("awaiting_approval");
+    telemetry.recordRunDuration(Date.now() - ctx.startedAt);
+    ctx.runSpan.end();
+    // NOTE: the run is still HELD active awaiting the human gate, so we do NOT
+    // call telemetry.runEnded() here — runsActive stays incremented until a
+    // later terminal transition (publish/failRun/escalate) in resume().
     return { status: "awaiting_approval", escalation };
   }
 
@@ -390,17 +430,20 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     if (failures.length === 0) {
       // Cleared every gate → pause at the final human approval gate, do NOT
       // auto-publish. Publishing happens on the user's approval in resume().
+      telemetry.recordRunAttempts("refine", ctx.attempt);
       return awaitApproval(ctx, webpage);
     }
 
     // A hard (non-auto-correctable) failure escalates immediately (R10).
     const hard = failures.find((f) => !f.autoCorrectable);
     if (hard) {
+      telemetry.recordRunAttempts("refine", ctx.attempt);
       return escalate(ctx, `Hard gate failed: ${hard.name}`, hardAlarm(hard));
     }
 
     // Auto-correctable: refine if we have attempts left, else escalate.
     if (ctx.attempt >= maxAttempts) {
+      telemetry.recordRunAttempts("refine", ctx.attempt);
       return escalate(
         ctx,
         `Exhausted ${maxAttempts} attempts; gates still failing: ${failures
@@ -426,6 +469,9 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
         workerId,
       });
 
+      telemetry.runStarted();
+      const runSpan = telemetry.startRunSpan(runId);
+
       const compiled = deps.guardrailEngine.compile(material.persona);
       const ctx: RunContext = {
         runId,
@@ -443,6 +489,8 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
           ? createAlarmEmitter(deps.budget)
           : createAlarmEmitter(),
         seq: 0,
+        runSpan,
+        startedAt: Date.now(),
       };
 
       // RESEARCH — with at most ONE re-research on insufficiency, then alert.
@@ -477,11 +525,15 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
           checkpointContext(ctx),
         );
         recordCheckpoint(ctx, researchResult);
-        if (researchResult.passed) break;
+        if (researchResult.passed) {
+          telemetry.recordRunAttempts("research", researchAttempt);
+          break;
+        }
 
         // Insufficient. Re-research ONCE; once the retry is spent, alert the
         // user the topic is research-light instead of looping forever.
         if (researchAttempt >= maxResearchAttempts) {
+          telemetry.recordRunAttempts("research", researchAttempt);
           const found = researchResult.score ?? 0;
           const need = researchResult.threshold ?? RESEARCH_MIN_SOURCES;
           return escalate(
