@@ -38,8 +38,8 @@ export const AVAILABLE_WORKERS: readonly WorkerOption[] = [
   { id: "sonnet", label: "Claude Sonnet 4.6", model: "claude-sonnet-4-6" },
   {
     id: "anthropic-research",
-    label: "Claude Opus 4.8 · real web research",
-    model: "claude-opus-4-8",
+    label: "Claude Sonnet 4.6 · real web research",
+    model: "claude-sonnet-4-6",
   },
 ] as const;
 

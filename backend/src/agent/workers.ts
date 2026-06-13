@@ -49,8 +49,8 @@ export const AVAILABLE_WORKERS: readonly WorkerDescriptor[] = [
   },
   {
     id: "anthropic-research",
-    label: "Claude Opus 4.8 (real web research)",
-    model: "claude-opus-4-8",
+    label: "Claude Sonnet 4.6 (real web research)",
+    model: "claude-sonnet-4-6",
     impl: "anthropic-research",
   },
 ] as const;
