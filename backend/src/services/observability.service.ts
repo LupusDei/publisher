@@ -43,8 +43,12 @@ export interface AdminObservability {
   rejectedCount: number;
   /** rejectedCount / totalRuns; 0 when there are no runs. */
   rejectedRatio: number;
-  /** The OTel curated snapshot (latency, phase durations, errors-by-type, …). */
-  telemetry: TelemetrySnapshot;
+  /** Avg + p95 system latency (ms) — from the OTel snapshot. */
+  latency: { avgMs: number; p95Ms: number };
+  /** Avg duration (ms) per phase — from the OTel snapshot. */
+  phaseDurations: { research: number; build: number; refine: number };
+  /** Error counts by type — from the OTel snapshot (admin error tracking). */
+  errorsByType: Record<string, number>;
 }
 
 /** Structural deps so the service stays decoupled from concrete stores. */
@@ -178,12 +182,19 @@ export function createObservabilityService(
       const rejectedRatio =
         runs.length === 0 ? 0 : rejectedCount / runs.length;
 
+      const snap = telemetrySnapshot();
       return {
         tokenTotals,
         publishedCount,
         rejectedCount,
         rejectedRatio,
-        telemetry: telemetrySnapshot(),
+        latency: { avgMs: snap.http.avg, p95Ms: snap.http.p95 },
+        phaseDurations: {
+          research: snap.phaseDurations.research.avg,
+          build: snap.phaseDurations.build.avg,
+          refine: snap.phaseDurations.refine.avg,
+        },
+        errorsByType: snap.errorsByType,
       };
     },
   };

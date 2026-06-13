@@ -174,7 +174,14 @@ describe("observability routes", () => {
       expect(res.body.publishedCount).toBe(1);
       expect(res.body.rejectedCount).toBe(1);
       expect(res.body.rejectedRatio).toBeCloseTo(0.5, 5);
-      expect(res.body.telemetry).toEqual(stubSnapshot());
+      // Flattened from the OTel snapshot for the admin page contract.
+      expect(res.body.latency).toEqual({ avgMs: 100, p95Ms: 100 });
+      expect(res.body.phaseDurations).toEqual({
+        research: 1500,
+        build: 2500,
+        refine: 0,
+      });
+      expect(res.body.errorsByType).toEqual({ timeout: 1 });
     });
   });
 });

@@ -200,9 +200,14 @@ describe("ObservabilityService", () => {
     it("should compose the injected OTel curated snapshot (composition)", () => {
       const svc = seedTwoUsers();
       const out = svc.adminObservability();
-      expect(out.telemetry).toEqual(stubSnapshot());
-      expect(out.telemetry.errorsByType).toEqual({ timeout: 2, refusal: 1 });
-      expect(out.telemetry.http.p95).toBe(300);
+      // Flattened from the OTel snapshot for the admin page contract.
+      expect(out.latency).toEqual({ avgMs: 120, p95Ms: 300 });
+      expect(out.phaseDurations).toEqual({
+        research: 1500,
+        build: 2500,
+        refine: 800,
+      });
+      expect(out.errorsByType).toEqual({ timeout: 2, refusal: 1 });
     });
 
     it("should report a zero rejected ratio when there are no runs (edge case)", () => {
