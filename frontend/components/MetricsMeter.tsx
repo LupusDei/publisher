@@ -7,7 +7,7 @@ import type { Metrics } from "@publisher/shared";
 import { totalTokens, totalLatencyMs } from "@/app/runs/run-state";
 
 export interface MetricsMeterProps {
-  metrics?: Metrics;
+  metrics?: Metrics | undefined;
 }
 
 const PHASES = ["research", "build", "refine"] as const;

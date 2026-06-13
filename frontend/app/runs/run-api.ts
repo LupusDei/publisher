@@ -142,6 +142,30 @@ export async function postDecision(
   }
 }
 
+/** Minimal persona shape the start-run picker needs (id + name + voice). */
+export interface PersonaSummary {
+  id: string;
+  name: string;
+  voice?: string;
+  voiceSample?: string;
+}
+
+/**
+ * GET /personas → persona summaries for the start-run picker (R1 input). Kept
+ * here (not imported from Track A's persona-api) so the runs tree stays
+ * self-contained; the backend wraps the list as `{ personas }`.
+ */
+export async function fetchPersonaSummaries(
+  base: string = RUN_API_BASE,
+): Promise<PersonaSummary[]> {
+  const res = await fetch(`${base}/personas`);
+  if (!res.ok) {
+    throw new Error(`Failed to load personas (HTTP ${res.status})`);
+  }
+  const body = (await res.json()) as { personas: PersonaSummary[] };
+  return body.personas;
+}
+
 /** A validator rendered as inspectable data (mirror of the backend view). */
 export interface ValidatorDescription {
   rule: string;

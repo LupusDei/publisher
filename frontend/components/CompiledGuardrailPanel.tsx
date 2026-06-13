@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import {
   fetchCompiledGuardrails,
   type CompiledGuardrailsView,
-} from "@/app/runs/run-api.js";
+} from "@/app/runs/run-api";
 
 type LoadState =
   | { kind: "loading" }
@@ -23,7 +23,7 @@ type LoadState =
 export interface CompiledGuardrailPanelProps {
   personaId: string;
   /** Injectable loader for tests; defaults to the real API client. */
-  load?: (personaId: string) => Promise<CompiledGuardrailsView>;
+  load?: ((personaId: string) => Promise<CompiledGuardrailsView>) | undefined;
 }
 
 export function CompiledGuardrailPanel({

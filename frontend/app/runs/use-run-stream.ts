@@ -12,9 +12,9 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { RunEvent } from "@publisher/shared";
-import { applyEvent, emptyRunView, isTerminal, type RunView } from "./run-state.js";
-import { eventSourceStream, type RunStreamSource } from "./sse.js";
-import { streamUrl } from "./run-api.js";
+import { applyEvent, emptyRunView, isTerminal, type RunView } from "./run-state";
+import { eventSourceStream, type RunStreamSource } from "./sse";
+import { streamUrl } from "./run-api";
 
 /** The connection's user-visible lifecycle state. */
 export type ConnectionState =
@@ -27,14 +27,16 @@ export type ConnectionState =
 
 export interface UseRunStreamOptions {
   /** The run to stream. When undefined the hook stays idle (no run started). */
-  runId?: string;
+  runId?: string | undefined;
   /**
    * Factory that builds a stream source for a given (runId, sinceSeq). Defaults
    * to a real EventSource; tests/dev inject a mock-backed source.
    */
-  sourceFactory?: (runId: string, sinceSeq: number) => RunStreamSource;
+  sourceFactory?:
+    | ((runId: string, sinceSeq: number) => RunStreamSource)
+    | undefined;
   /** Override the API base (mostly for tests). */
-  base?: string;
+  base?: string | undefined;
 }
 
 export interface UseRunStreamResult {
@@ -46,7 +48,7 @@ export interface UseRunStreamResult {
 
 type ViewAction =
   | { kind: "event"; event: RunEvent }
-  | { kind: "reset"; runId?: string };
+  | { kind: "reset"; runId?: string | undefined };
 
 function viewReducer(view: RunView, action: ViewAction): RunView {
   switch (action.kind) {

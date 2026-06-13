@@ -6,12 +6,12 @@
  * worth showing.
  */
 import type { Receipt } from "@publisher/shared";
-import { publishedUrl } from "@/app/runs/run-api.js";
+import { publishedUrl } from "@/app/runs/run-api";
 
 export interface PublishedPreviewProps {
   receipt: Receipt;
   /** API base so a relative receipt URL resolves to the serving backend. */
-  base?: string;
+  base?: string | undefined;
 }
 
 export function PublishedPreview({

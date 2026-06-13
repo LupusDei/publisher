@@ -76,7 +76,11 @@ function Lane({
 }
 
 /** The agent as a sealed box: it only ever receives system + messages + feedback. */
-function SealedAgentBox({ phase }: { phase?: string }): React.ReactElement {
+function SealedAgentBox({
+  phase,
+}: {
+  phase?: string | undefined;
+}): React.ReactElement {
   return (
     <aside className="sealed-agent" aria-label="Agent (sealed worker)">
       <div className="sealed-head">

@@ -22,7 +22,9 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("run-api client", () => {
   it("startRun should POST persona/concept/worker and return the runId (happy path)", async () => {
-    const fetchMock = vi.fn(async () => jsonResponse({ runId: "run_1" }));
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => jsonResponse({ runId: "run_1" }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const out = await startRun(
       { personaId: "p_1", concept: "c", workerId: "sonnet" },
@@ -99,7 +101,9 @@ describe("run-api client", () => {
   });
 
   it("postDecision should POST the choice and payload (happy path)", async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     await postDecision(
       "r",

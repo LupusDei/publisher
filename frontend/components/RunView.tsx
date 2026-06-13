@@ -14,26 +14,28 @@ import type { Persona, EscalationOption } from "@publisher/shared";
 import type { RunView as RunViewModel } from "@/app/runs/run-state";
 import { isTerminal } from "@/app/runs/run-state";
 import type { ConnectionState } from "@/app/runs/use-run-stream";
-import { PillarLanes } from "./PillarLanes.js";
-import { MetricsMeter } from "./MetricsMeter.js";
-import { DraftTimeline } from "./DraftTimeline.js";
-import { AlarmCard } from "./AlarmCard.js";
-import { EscalationPanel } from "./EscalationPanel.js";
-import { PublishedPreview, RefusedToPublish } from "./PublishedPreview.js";
-import { ConnectionBanner } from "./ConnectionBanner.js";
+import { PillarLanes } from "./PillarLanes";
+import { MetricsMeter } from "./MetricsMeter";
+import { DraftTimeline } from "./DraftTimeline";
+import { AlarmCard } from "./AlarmCard";
+import { EscalationPanel } from "./EscalationPanel";
+import { PublishedPreview, RefusedToPublish } from "./PublishedPreview";
+import { ConnectionBanner } from "./ConnectionBanner";
 
 export interface RunViewProps {
   view: RunViewModel;
   connection: ConnectionState;
   /** The persona under the run (for the header label + enrich starting point). */
-  persona?: Persona;
-  workerId?: string;
-  onReconnect?: () => void;
-  onDecide?: (decision: {
-    choice: EscalationOption;
-    payload?: { persona?: Persona };
-  }) => Promise<void>;
-  base?: string;
+  persona?: Persona | undefined;
+  workerId?: string | undefined;
+  onReconnect?: (() => void) | undefined;
+  onDecide?:
+    | ((decision: {
+        choice: EscalationOption;
+        payload?: { persona?: Persona };
+      }) => Promise<void>)
+    | undefined;
+  base?: string | undefined;
 }
 
 export function RunView({

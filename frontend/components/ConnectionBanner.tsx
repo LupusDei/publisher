@@ -17,7 +17,7 @@ const LABEL: Record<ConnectionState, string> = {
 
 export interface ConnectionBannerProps {
   connection: ConnectionState;
-  onReconnect?: () => void;
+  onReconnect?: (() => void) | undefined;
 }
 
 export function ConnectionBanner({

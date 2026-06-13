@@ -1,0 +1,95 @@
+"use client";
+
+/**
+ * /runs — the run control plane. Loads personas for the start-run form, starts
+ * a run (POST /runs) then routes to the live run view, and lists prior runs for
+ * replay (R9). First-class loading/error/empty states throughout.
+ */
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { Run } from "@publisher/shared";
+import {
+  startRun,
+  fetchRuns,
+  fetchPersonaSummaries,
+  type PersonaSummary,
+} from "./run-api";
+import { StartRunForm } from "@/components/StartRunForm";
+import "@/components/runs-ui.css";
+
+export default function RunsPage(): React.ReactElement {
+  const router = useRouter();
+  const [personas, setPersonas] = useState<PersonaSummary[]>([]);
+  const [personasError, setPersonasError] = useState<string | undefined>();
+  const [loadingPersonas, setLoadingPersonas] = useState(true);
+  const [runs, setRuns] = useState<Run[]>([]);
+  const [runsError, setRunsError] = useState<string | undefined>();
+
+  useEffect(() => {
+    let active = true;
+    fetchPersonaSummaries()
+      .then((p) => active && setPersonas(p))
+      .catch((e: unknown) =>
+        active && setPersonasError(e instanceof Error ? e.message : "load failed"),
+      )
+      .finally(() => active && setLoadingPersonas(false));
+    fetchRuns()
+      .then((r) => active && setRuns(r))
+      .catch((e: unknown) =>
+        active && setRunsError(e instanceof Error ? e.message : "load failed"),
+      );
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <div className="runs-shell">
+      <p className="eyebrow">Publisher · Harness</p>
+      <h1>Runs</h1>
+      <nav className="runs-nav" aria-label="Runs navigation">
+        <Link href="/runs">Start</Link>
+        <Link href="/runs/demo">Demo (mock stream)</Link>
+        <Link href="/runs/gallery">Gallery</Link>
+        <Link href="/personas">Personas</Link>
+      </nav>
+
+      <StartRunForm
+        personas={personas}
+        loadingPersonas={loadingPersonas}
+        personasError={personasError}
+        onStart={async (input) => {
+          const { runId } = await startRun(input);
+          router.push(`/runs/${runId}?worker=${encodeURIComponent(input.workerId)}&persona=${encodeURIComponent(input.personaId)}`);
+          return { runId };
+        }}
+      />
+
+      <section style={{ marginTop: 36 }} aria-labelledby="runs-list-h">
+        <h2 id="runs-list-h" style={{ fontSize: 20 }}>
+          Recent runs
+        </h2>
+        {runsError && (
+          <p role="alert" className="form-error">
+            {runsError}
+          </p>
+        )}
+        {!runsError && runs.length === 0 && (
+          <p className="empty-note">No runs yet — start one above.</p>
+        )}
+        <ul className="runs-list">
+          {runs.map((r) => (
+            <li key={r.id} className="run-list-item">
+              <Link href={`/runs/${r.id}`}>{r.id}</Link>
+              <span className={`run-status status-${r.status}`}>{r.status}</span>
+              <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                {r.concept}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}

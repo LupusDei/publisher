@@ -25,10 +25,10 @@ import type {
 export interface DraftAttempt {
   attempt: number;
   webpage: Webpage;
-  score?: number;
-  passed?: boolean;
+  score?: number | undefined;
+  passed?: boolean | undefined;
   /** The feedback that PRODUCED the NEXT attempt (drives the diff narrative). */
-  feedbackToNext?: string;
+  feedbackToNext?: string | undefined;
   ts: string;
 }
 
@@ -56,10 +56,10 @@ export const PILLAR_LABELS: Record<Pillar, string> = {
 
 /** The fully-derived view-model the components render. */
 export interface RunView {
-  runId?: string;
+  runId?: string | undefined;
   status: RunStatus;
   /** The current/last phase the worker is in (header chip). */
-  phase?: Phase;
+  phase?: Phase | undefined;
   /** Highest seq folded so far — the reconnect cursor (D5). */
   lastSeq: number;
   /** Events bucketed by pillar lane, in arrival order. */
@@ -73,19 +73,19 @@ export interface RunView {
   /** Every alarm raised, in order (R5 cards). */
   alarms: Alarm[];
   /** The latest metrics snapshot (live token/latency meter). */
-  metrics?: Metrics;
+  metrics?: Metrics | undefined;
   /** A pending escalation awaiting a human decision (R10). */
-  escalation?: Escalation;
+  escalation?: Escalation | undefined;
   /** The decision that resumed a run, if any. */
-  lastDecision?: EscalationDecision;
+  lastDecision?: EscalationDecision | undefined;
   /** The publish receipt on success. */
-  receipt?: Receipt;
+  receipt?: Receipt | undefined;
   /** The failure reason on a terminal failure ("refused to publish"). */
-  failureReason?: string;
+  failureReason?: string | undefined;
 }
 
 /** The empty starting view before any event has arrived. */
-export function emptyRunView(runId?: string): RunView {
+export function emptyRunView(runId?: string | undefined): RunView {
   return {
     runId,
     status: "created",

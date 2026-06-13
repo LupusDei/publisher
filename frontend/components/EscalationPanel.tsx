@@ -11,12 +11,12 @@
 
 import { useState } from "react";
 import type { Escalation, EscalationOption, Persona } from "@publisher/shared";
-import { AlarmCard } from "./AlarmCard.js";
+import { AlarmCard } from "./AlarmCard";
 
 export interface EscalationPanelProps {
   escalation: Escalation;
   /** The persona under the run, so enrich starts from its current voice. */
-  persona?: Persona;
+  persona?: Persona | undefined;
   /** Submit a decision; resolves when the POST completes. */
   onDecide: (decision: {
     choice: EscalationOption;
@@ -49,7 +49,7 @@ export function EscalationPanel({
     setSubmitting(choice);
     setError(null);
     try {
-      await onDecide({ choice, payload });
+      await onDecide(payload ? { choice, payload } : { choice });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to submit decision");
       setSubmitting(null);

@@ -7,7 +7,7 @@
 "use client";
 
 import { useState } from "react";
-import { AVAILABLE_WORKERS, DEFAULT_WORKER_ID } from "@/app/runs/run-api.js";
+import { AVAILABLE_WORKERS, DEFAULT_WORKER_ID } from "@/app/runs/run-api";
 
 /** Minimal persona shape the picker needs (id + name). */
 export interface PersonaOption {
@@ -24,9 +24,9 @@ export interface StartRunFormProps {
     workerId: string;
   }) => Promise<{ runId: string }>;
   /** Whether the personas list is still loading (disables the form). */
-  loadingPersonas?: boolean;
+  loadingPersonas?: boolean | undefined;
   /** An error loading personas, shown above the form. */
-  personasError?: string;
+  personasError?: string | undefined;
 }
 
 export function StartRunForm({
