@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 import {
   fetchPersona,
   updatePersona,
@@ -161,12 +161,20 @@ export default function PersonaDetail({
           <h1 className="persona-detail-title">{persona.name}</h1>
         </div>
         {!editing && (
-          <Button
-            variant="ghost"
-            onClick={() => setSave({ kind: "editing" })}
-          >
-            Edit
-          </Button>
+          <div className="persona-actions">
+            <Link
+              href={`/runs?persona=${id}`}
+              className={buttonClass("primary", "md")}
+            >
+              Draft a Post
+            </Link>
+            <Button
+              variant="ghost"
+              onClick={() => setSave({ kind: "editing" })}
+            >
+              Edit
+            </Button>
+          </div>
         )}
       </header>
 

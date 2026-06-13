@@ -52,6 +52,29 @@ describe("PersonasPage (gallery)", () => {
     expect(screen.getByText("The Analyst")).toBeInTheDocument();
   });
 
+  it("should render the persona name, voice and sample on each card (state change)", async () => {
+    mockFetch.mockResolvedValue([persona]);
+    render(<PersonasPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The Essayist")).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Measured, first-person.")).toBeInTheDocument();
+    // The sample is rendered with typographic quotes around it.
+    expect(
+      screen.getByText(/Emergence is not magic\./),
+    ).toBeInTheDocument();
+  });
+
+  it("should render the voice text off the vermillion accent (Atelier one-accent rule)", async () => {
+    mockFetch.mockResolvedValue([persona]);
+    render(<PersonasPage />);
+    const voice = await screen.findByText("Measured, first-person.");
+    // The voice copy must NOT carry the accent class — the single vermillion
+    // accent is reserved for the primary action (pdp.2).
+    expect(voice).toHaveClass("persona-card-voice");
+    expect(voice.className).not.toMatch(/accent/);
+  });
+
   it("should render an empty state inviting the first persona (edge case)", async () => {
     mockFetch.mockResolvedValue([]);
     render(<PersonasPage />);
@@ -79,7 +102,7 @@ describe("PersonasPage (gallery)", () => {
     expect(cta).toHaveAttribute("href", "/onboarding");
   });
 
-  it("should render design-token chips with their key and value (state change)", async () => {
+  it("should render compact inline design tags with their key and value (state change)", async () => {
     mockFetch.mockResolvedValue([
       {
         ...persona,
@@ -91,12 +114,13 @@ describe("PersonasPage (gallery)", () => {
       expect(screen.getByText("palette")).toBeInTheDocument(),
     );
     expect(screen.getByText("tone")).toBeInTheDocument();
-    // The key has its own emphasized span; the value sits beside it in the chip.
-    const paletteChip = screen.getByText("palette").closest(".persona-chip");
-    expect(paletteChip).toHaveTextContent("palette: warm neutrals");
+    // The key has its own emphasized span; the value sits beside it in the tag.
+    const paletteTag = screen.getByText("palette").closest(".persona-tag");
+    expect(paletteTag).not.toBeNull();
+    expect(paletteTag).toHaveTextContent("palette: warm neutrals");
   });
 
-  it("should omit the chip row entirely when a persona has no design tokens (edge case)", async () => {
+  it("should omit the tag row entirely when a persona has no design tokens (edge case)", async () => {
     mockFetch.mockResolvedValue([{ ...persona, designElements: {} }]);
     render(<PersonasPage />);
     await waitFor(() =>
@@ -105,5 +129,21 @@ describe("PersonasPage (gallery)", () => {
     // The voice sample still renders; no token key from the fixed vocabulary leaks in.
     expect(screen.queryByText("palette")).not.toBeInTheDocument();
     expect(screen.queryByText("typography")).not.toBeInTheDocument();
+  });
+
+  it("should offer a 'Draft a Post' CTA per card linking to /runs with the persona preselected (pdp.2)", async () => {
+    mockFetch.mockResolvedValue([persona]);
+    render(<PersonasPage />);
+    const cta = await screen.findByRole("link", { name: /draft a post/i });
+    expect(cta).toHaveAttribute("href", "/runs?persona=p_1");
+  });
+
+  it("should keep a link to the persona detail for the card body (pdp.2 no nested links)", async () => {
+    mockFetch.mockResolvedValue([persona]);
+    render(<PersonasPage />);
+    const detailLink = await screen.findByRole("link", {
+      name: /the essayist/i,
+    });
+    expect(detailLink).toHaveAttribute("href", "/personas/p_1");
   });
 });

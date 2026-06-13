@@ -59,4 +59,27 @@ describe("StartRunForm", () => {
     expect(screen.getByText("could not load personas")).toBeInTheDocument();
     expect(screen.getByText("No personas yet")).toBeInTheDocument();
   });
+
+  it("should preselect the persona from initialPersonaId (pdp.2 deep-link)", () => {
+    render(
+      <StartRunForm
+        personas={personas}
+        initialPersonaId="p_2"
+        onStart={vi.fn(async () => ({ runId: "r" }))}
+      />,
+    );
+    const select = screen.getByLabelText("Persona") as HTMLSelectElement;
+    expect(select.value).toBe("p_2");
+  });
+
+  it("should default to no persona selected when initialPersonaId is omitted (edge case)", () => {
+    render(
+      <StartRunForm
+        personas={personas}
+        onStart={vi.fn(async () => ({ runId: "r" }))}
+      />,
+    );
+    const select = screen.getByLabelText("Persona") as HTMLSelectElement;
+    expect(select.value).toBe("");
+  });
 });

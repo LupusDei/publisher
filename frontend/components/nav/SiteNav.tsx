@@ -49,7 +49,11 @@ export function SiteNav(): React.ReactElement {
         <ul className="site-nav-links">
           {items.map((item) => (
             <li key={item.href} className="site-nav-item">
-              <NavLink href={item.href} className="site-nav-link">
+              <NavLink
+                href={item.href}
+                className="site-nav-link"
+                secondary={item.secondary}
+              >
                 {item.label}
               </NavLink>
             </li>

@@ -50,6 +50,13 @@ describe("PersonaDetail", () => {
     expect(screen.getByText("warm neutrals")).toBeInTheDocument();
   });
 
+  it("should offer a 'Draft a Post' CTA linking to /runs with the persona preselected (pdp.2)", async () => {
+    mockFetch.mockResolvedValue(persona);
+    render(<PersonaDetail id="p_1" />);
+    const cta = await screen.findByRole("link", { name: /draft a post/i });
+    expect(cta).toHaveAttribute("href", "/runs?persona=p_1");
+  });
+
   it("should show an error state when the persona cannot be loaded (error handling)", async () => {
     mockFetch.mockRejectedValue(new Error("Failed to load persona (HTTP 404)"));
     render(<PersonaDetail id="missing" />);

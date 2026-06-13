@@ -64,6 +64,10 @@
   --shadow-3:
     0 8px 24px rgba(31, 29, 26, 0.1), 0 24px 60px rgba(31, 29, 26, 0.14);
 
+  /* ── Effects ────────────────────────────────────────────────────────── */
+  --blur-bar: 8px; /* backdrop blur for translucent sticky bars */
+  --rule-thickness: 2px; /* the accent underline rule (active wayfinding) */
+
   /* ── Motion ─────────────────────────────────────────────────────────── */
   --dur-1: 120ms;
   --dur-2: 220ms;

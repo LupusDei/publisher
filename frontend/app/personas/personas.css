@@ -132,12 +132,18 @@
   transform: scaleY(1);
 }
 
+/* The card is a column: the detail link grows to fill, the actions row pins
+ * to the bottom so every card's CTA aligns on a shared baseline. */
+.persona-card {
+  display: flex;
+  flex-direction: column;
+}
 .persona-card-link {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  height: 100%;
-  padding: var(--space-5);
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  padding: var(--space-5) var(--space-5) var(--space-4);
   color: inherit;
   text-decoration: none;
 }
@@ -158,45 +164,62 @@
   line-height: 1.1;
   color: var(--ink);
 }
+/* Voice: a quiet descriptor in ink/muted — NOT the accent. The single
+ * vermillion accent is reserved for the primary "Draft a Post" action. */
 .persona-card-voice {
   margin: 0;
   font-size: var(--step--1);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--accent-strong);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--muted);
 }
 .persona-card-sample {
-  margin: 0;
+  margin: var(--space-2) 0 0;
   padding-left: var(--space-3);
   border-left: 2px solid var(--line);
   font-family: var(--font-display);
   font-style: italic;
   font-size: var(--step-0);
-  color: var(--muted);
+  color: var(--ink);
   /* Clamp to keep cards even without truncating mid-word jarringly. */
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.persona-card-chips {
+
+/* Design entries as compact inline tags that wrap — de-emphasised, never
+ * full-width rows. They sit beneath the sample, pinned to the bottom of the
+ * link body so the card reads calm and editorial. */
+.persona-card-tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: auto;
+  margin-top: var(--space-4);
 }
-.persona-chip {
+.persona-tag {
   font-size: var(--step--1);
   font-family: var(--font-body);
-  background: var(--bg-sunk);
   color: var(--muted);
+  background: var(--bg-sunk);
+  border: 1px solid var(--line);
   border-radius: var(--r-pill);
-  padding: var(--space-1) var(--space-3);
+  padding: 0 var(--space-2);
+  line-height: 1.7;
+  white-space: nowrap;
 }
-.persona-chip-key {
+.persona-tag-key {
   text-transform: capitalize;
   color: var(--ink);
   font-weight: 600;
+}
+
+/* Actions row — the single vermillion accent lives here (primary CTA). */
+.persona-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0 var(--space-5) var(--space-5);
 }
 
 /* ── Empty state — an invitation, set like a press colophon ──────────── */
