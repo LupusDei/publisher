@@ -131,7 +131,51 @@ receipt = Sink.publish(webpage)                                // only persona-f
 
 ---
 
-## 9. Repository map
+## 9. Running real agents
+
+By default the harness uses a deterministic, token-free `MockAgent` — no key required, no network calls.
+To run real Anthropic-backed jobs you need two things in `backend/.env`:
+
+```env
+USE_REAL_AGENT=true
+ANTHROPIC_API_KEY=sk-ant-...   # never commit a real key
+```
+
+The backend validates both at boot and fails fast with a readable error if `USE_REAL_AGENT=true` but the key is missing.
+
+### The three workers
+
+| Worker id | Label | Underlying model | Implementation | Notes |
+|---|---|---|---|---|
+| `opus` *(default)* | Claude Opus 4.8 | `claude-opus-4-8` | Vercel AI SDK (`@ai-sdk/anthropic`) | No web tools; `sources[]` is always empty |
+| `sonnet` | Claude Sonnet 4.6 | `claude-sonnet-4-6` | Vercel AI SDK (`@ai-sdk/anthropic`) | Faster/cheaper alternative; same empty-sources caveat |
+| `anthropic-research` | Claude Opus 4.8 (real web research) | `claude-opus-4-8` | Official Anthropic SDK (`@anthropic-ai/sdk`) with server-side `web_search` + `web_fetch` tools | Returns real `sources[]` (discovered URLs) |
+
+Select a worker in the UI's worker picker when starting a run. Unknown worker ids degrade silently to `opus`.
+
+### Real voice judge
+
+When `USE_REAL_AGENT=true` is set, the voice-fidelity checkpoint automatically switches from the deterministic heuristic judge to a live Claude-backed judge (`createRealVoiceJudge` in `backend/src/checkpoints/judge.ts`, selected by `selectVoiceJudge` in `backend/src/checkpoints/voice-fidelity.ts`). The judge calls `generateObject` with a structured `VoiceVerdictSchema` and returns a score in [0,1]. The fail-closed guarantee is unchanged — any judge fault produces `{ ok:false }` → critical `CHECKPOINT_ERROR` → the gate fails.
+
+### Research-sufficiency and real sources
+
+The research-sufficiency checkpoint requires at least 3 distinct source URLs (`RESEARCH_MIN_SOURCES = 3`). The `opus` and `sonnet` workers produce no sources (they use the Vercel AI SDK without web tools), so a run on either worker will always fail research-sufficiency. To pass research-sufficiency and publish a page in real mode, **use the `anthropic-research` worker**. It fires server-side `web_search`/`web_fetch` during the research phase and surfaces real source URLs in `sources[]`.
+
+### Quick operator checklist
+
+1. Copy `backend/.env.example` → `backend/.env`
+2. Set `USE_REAL_AGENT=true` and fill in `ANTHROPIC_API_KEY`
+3. Start the stack: `npm run dev`
+4. Create a persona (onboarding), then start a run and select the **`anthropic-research`** worker
+5. Watch the run stream — you should see research-sufficiency pass (score ≥ 3 sources) followed by the build + checkpoint gates
+
+See `backend/.env.example` for all environment variables, `docs/agent-integration.md` for the agent seam detail, and `backend/scripts/verify-real-agent.ts` for a lightweight env-gated smoke check.
+
+> **Roadmap note (rrt.6, not yet built):** a future refinement will split the research and build models — research will always use the web-research agent, and the selected worker will only control which model *builds* the page. The UI will relabel the picker to "Builder model." Document here reflects today's behavior.
+
+---
+
+## 10. Repository map
 
 ```
 shared/      cross-tier Zod contracts (the frozen seams)
@@ -142,4 +186,4 @@ docs/        architecture-defense, agent-integration, design brief
 specs/002-publisher-mvp/   the MVP plan (OVERVIEW.md), decisions (ASSUMPTIONS.md), per-track specs
 ```
 
-Run: `npm install && npm run dev`. The agent defaults to a deterministic, token-free `MockAgent`; the real Anthropic worker is env-gated (`USE_REAL_AGENT=true` + `ANTHROPIC_API_KEY`).
+Run: `npm install && npm run dev`. The agent defaults to a deterministic, token-free `MockAgent`; the real Anthropic worker is env-gated (`USE_REAL_AGENT=true` + `ANTHROPIC_API_KEY`). See [Section 9](#9-running-real-agents) for the full operator setup guide.
