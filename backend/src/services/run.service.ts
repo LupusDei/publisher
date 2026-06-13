@@ -67,14 +67,26 @@ export interface RunServiceDeps {
 
 export interface RunService {
   /**
-   * Start a run. Loads + validates input (Source, INPUT_EMPTY → reject), then
-   * drives the engine to a terminal outcome. Returns the runId and the outcome.
+   * Start a run, FIRE-AND-FORGET (dp0.11 / D10). Loads + validates input
+   * synchronously (Source, INPUT_EMPTY → reject BEFORE returning), mints the
+   * runId, then kicks the engine WITHOUT awaiting and returns `{ runId }`
+   * immediately so the UI can open the SSE stream and watch the four pillar
+   * lanes fill live. The engine keeps streaming every RunEvent to the journal +
+   * bus as it runs; terminal/paused outcomes surface via the stream (and via
+   * `waitFor` for deterministic consumers).
    */
   start(input: {
     personaId: string;
     concept: string;
     workerId?: string;
-  }): Promise<{ runId: string; outcome: RunOutcome }>;
+  }): Promise<{ runId: string }>;
+  /**
+   * Await a run's current outcome without racing the journal — resolves from
+   * the captured engine promise (the latest of `start`/`resume`). Lets tests and
+   * consumers wait for terminal/paused deterministically. Rejects if `runId` is
+   * unknown.
+   */
+  waitFor(runId: string): Promise<RunOutcome>;
   /** The ordered journal for a run; `sinceSeq` returns only seq > sinceSeq. */
   events(runId: string, sinceSeq?: number): RunEvent[];
   /** The run header row (status/summary), or null if unknown. */
@@ -100,6 +112,48 @@ export function createRunService(deps: RunServiceDeps): RunService {
   const defaultWorkerId = deps.defaultWorkerId ?? "mock";
   const journal = createJournal(deps.eventStore);
 
+  // The current in-flight (or settled) engine promise per run. `start` seeds it
+  // fire-and-forget; `resume` replaces it with the post-decision continuation.
+  // `waitFor` resolves from here so consumers never race the journal. Every
+  // stored promise has its rejection already absorbed (→ `failed`), so it can be
+  // awaited any number of times without risking an unhandled rejection (D10).
+  const outcomes = new Map<string, Promise<RunOutcome>>();
+
+  /**
+   * Wrap an engine promise so a thrown true-fault (one the engine could not
+   * journal itself) never escapes as an unhandled rejection: log it and resolve
+   * to a terminal `failed` so `waitFor` (and the run status) stay coherent.
+   *
+   * A `RunNotPausedError` is NOT a run fault — it's a caller error (resume on a
+   * not-paused run). We re-throw it so `decide`/the route can map it to a 409,
+   * and we keep the run's prior captured outcome intact (don't mark it failed).
+   */
+  function guard(runId: string, p: Promise<RunOutcome>): Promise<RunOutcome> {
+    const prior = outcomes.get(runId);
+    const guarded = p.catch((err: unknown): RunOutcome => {
+      if (err instanceof RunNotPausedError) {
+        // Preserve whatever outcome the run already settled to; surface for 409.
+        if (prior) outcomes.set(runId, prior);
+        throw err;
+      }
+      const reason = err instanceof Error ? err.message : String(err);
+      // The engine journals its own handled faults; this is the last-resort net.
+      console.error(`[run ${runId}] engine failed:`, reason);
+      try {
+        deps.runStore.updateStatus(runId, "failed");
+      } catch {
+        // Status update is best-effort here; the log above is the record.
+      }
+      return { status: "failed", reason };
+    });
+    // The guarded promise may reject (RunNotPausedError) — attach a no-op catch
+    // so simply CAPTURING it never trips an unhandled-rejection warning; the
+    // real awaiter (`decide`) still observes the throw.
+    void guarded.catch(() => undefined);
+    outcomes.set(runId, guarded);
+    return guarded;
+  }
+
   const engine: RunEngine = createRunEngine({
     agent: deps.agent,
     sink: deps.sink,
@@ -120,18 +174,33 @@ export function createRunService(deps: RunServiceDeps): RunService {
 
     async start({ personaId, concept, workerId }) {
       // INPUT loading via Material Source — INPUT_EMPTY is returned, not thrown
-      // (D7); reject the request before any agent call.
+      // (D7); reject the request before any agent call AND before minting an id.
       const { material, alarms } = await deps.source.load(concept, personaId);
       if (!material) {
         throw new InputRejectedError(alarms);
       }
       const runId = newRunId();
-      const outcome = await engine.start({
+      // FIRE-AND-FORGET: kick the engine WITHOUT awaiting so the route can hand
+      // back the runId immediately. The engine streams every RunEvent to the
+      // journal + bus as it runs (D5/D10); `guard` captures the promise and
+      // neutralizes any unhandled rejection.
+      guard(
         runId,
-        material,
-        workerId: workerId ?? defaultWorkerId,
-      });
-      return { runId, outcome };
+        engine.start({
+          runId,
+          material,
+          workerId: workerId ?? defaultWorkerId,
+        }),
+      );
+      return { runId };
+    },
+
+    waitFor(runId) {
+      const p = outcomes.get(runId);
+      if (!p) {
+        return Promise.reject(new Error(`Unknown run ${runId}`));
+      }
+      return p;
     },
 
     events(runId, sinceSeq) {
@@ -145,7 +214,13 @@ export function createRunService(deps: RunServiceDeps): RunService {
     },
 
     async decide(runId, decision) {
-      const outcome = await engine.resume(runId, decision);
+      // Resume the paused run. Capture the continuation as the run's current
+      // outcome promise so a later `waitFor` sees the post-decision terminal,
+      // but AWAIT the raw resume here so a RunNotPausedError still propagates to
+      // the route (→ 409) instead of being absorbed into a `failed` outcome.
+      const resumed = engine.resume(runId, decision);
+      guard(runId, resumed);
+      const outcome = await resumed;
       return { outcome };
     },
   };

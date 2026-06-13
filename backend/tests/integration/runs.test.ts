@@ -23,6 +23,26 @@ const migrationsDir = join(
   "migrations",
 );
 
+/** Terminal/paused event types that mean the run has stopped advancing. */
+const TERMINAL = new Set(["published", "failed", "escalation"]);
+
+/**
+ * dp0.11: POST /runs is now fire-and-forget (202 → {runId}). The run advances in
+ * the background, so an integration test must wait for a terminal/paused event
+ * to land in the journal before asserting on it. We poll GET /runs/:id/events
+ * (the authoritative log, D5) until a published/failed/escalation event appears
+ * — no racing the engine, no fixed sleeps. Returns the full journal.
+ */
+async function awaitTerminal(app: Express, runId: string): Promise<RunEvent[]> {
+  for (let i = 0; i < 200; i += 1) {
+    const res = await request(app).get(`/runs/${runId}/events`);
+    const events = res.body.events as RunEvent[];
+    if (events.some((e) => TERMINAL.has(e.t))) return events;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error(`Run ${runId} did not reach a terminal event in time`);
+}
+
 /**
  * The voiceSample is chosen so the deterministic voice judge clears the
  * MockAgent's ON-voice draft (attempt 2) and rejects its OFF-voice draft
@@ -72,13 +92,26 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
     });
   });
 
-  it("should publish a run and return runId + published status", async () => {
+  it("should accept a run async and return 202 + runId + running status", async () => {
     const res = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
-    expect(res.status).toBe(201);
+    // dp0.11: POST returns immediately (202) so the UI can open the SSE stream;
+    // the terminal outcome arrives over the stream, not the POST response.
+    expect(res.status).toBe(202);
     expect(typeof res.body.runId).toBe("string");
-    expect(res.body.status).toBe("published");
+    expect(res.body.status).toBe("running");
+  });
+
+  it("should publish the run in the background (terminal via the journal)", async () => {
+    const created = await request(app)
+      .post("/runs")
+      .send({ personaId, concept: "On Emergence" });
+    const runId = created.body.runId as string;
+    const events = await awaitTerminal(app, runId);
+    expect(events[events.length - 1]?.t).toBe("published");
+    const run = await request(app).get(`/runs/${runId}`);
+    expect(run.body.status).toBe("published");
   });
 
   it("should drive the R2 loop: two drafts, failing then passing voice gate, then published", async () => {
@@ -87,8 +120,7 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
       .send({ personaId, concept: "On Emergence" });
     const runId = created.body.runId as string;
 
-    const res = await request(app).get(`/runs/${runId}/events`);
-    const events = res.body.events as RunEvent[];
+    const events = await awaitTerminal(app, runId);
 
     // Two build attempts → `draft` events for both attempts (R2).
     const drafts = events.filter((e) => e.t === "draft");
@@ -119,8 +151,8 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
     const created = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
-    const res = await request(app).get(`/runs/${created.body.runId}/events`);
-    const events = res.body.events as RunEvent[];
+    const runId = created.body.runId as string;
+    const events = await awaitTerminal(app, runId);
     expect(events.map((e) => e.seq)).toEqual(events.map((_e, i) => i));
   });
 
@@ -128,7 +160,9 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
     const created = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
-    const res = await request(app).get(`/published/${created.body.runId}`);
+    const runId = created.body.runId as string;
+    await awaitTerminal(app, runId);
+    const res = await request(app).get(`/published/${runId}`);
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toContain("text/html");
     expect(res.text).toContain("<!doctype html>");
@@ -138,7 +172,9 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
     const created = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
-    const res = await request(app).get(`/runs/${created.body.runId}`);
+    const runId = created.body.runId as string;
+    await awaitTerminal(app, runId);
+    const res = await request(app).get(`/runs/${runId}`);
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("published");
     expect(res.body.concept).toBe("On Emergence");
@@ -149,6 +185,7 @@ describe("RunEngine — POST /runs end-to-end (R2 spine proof)", () => {
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
     const runId = created.body.runId as string;
+    await awaitTerminal(app, runId);
     const all = (await request(app).get(`/runs/${runId}/events`)).body
       .events as RunEvent[];
     const since = (await request(app).get(`/runs/${runId}/events?sinceSeq=2`))
