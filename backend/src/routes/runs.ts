@@ -30,7 +30,7 @@ function badRequest(res: Response, message: string, issues?: unknown): void {
 
 /**
  * Runs route (Track G). The spine's HTTP surface:
- *   POST   /runs               → start a run, returns {runId, status, escalation?}
+ *   POST   /runs               → start a run async, returns 202 {runId, status:"running"}
  *   GET    /runs/:id           → run status/summary
  *   GET    /runs/:id/events    → ordered journal (catch-up/replay; ?sinceSeq=N)
  *   GET    /runs/:id/stream    → SSE live RunEvents (replay then tail; D5)
@@ -63,10 +63,14 @@ export function runsRouterFrom(service: RunService): Router {
       return;
     }
     const { personaId, concept, workerId } = parsed.data;
+    // dp0.11 — fire-and-forget: input is validated synchronously (INPUT_EMPTY →
+    // 400) but the engine runs in the background. Return 202 with the runId so
+    // the client can immediately open the SSE stream and watch the run live;
+    // terminal/paused outcomes (including escalation) arrive over the stream.
     service
       .start({ personaId, concept, ...(workerId ? { workerId } : {}) })
-      .then(({ runId, outcome }) => {
-        res.status(201).json({ runId, ...outcome });
+      .then(({ runId }) => {
+        res.status(202).json({ runId, status: "running" });
       })
       .catch((err: unknown) => {
         if (err instanceof InputRejectedError) {

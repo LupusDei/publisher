@@ -8,6 +8,7 @@ import type {
   AgentResult,
   Persona,
   ResearchResult,
+  RunEvent,
   Webpage,
 } from "@publisher/shared";
 import { createApp } from "../../src/app.js";
@@ -29,6 +30,26 @@ const migrationsDir = join(
 
 const VOICE_SAMPLE =
   "Here's the idea, plainly. You already feel this. In plain terms — no jargon, no hedging.";
+
+/**
+ * dp0.11: POST /runs is fire-and-forget. Poll the journal until an event of one
+ * of the given types appears (escalation surfaces via the stream/journal now,
+ * not the POST response). Returns the matched event's full journal.
+ */
+async function awaitEvent(
+  app: Express,
+  runId: string,
+  types: readonly string[],
+): Promise<RunEvent[]> {
+  const want = new Set(types);
+  for (let i = 0; i < 200; i += 1) {
+    const res = await request(app).get(`/runs/${runId}/events`);
+    const events = res.body.events as RunEvent[];
+    if (events.some((e) => want.has(e.t))) return events;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error(`Run ${runId} did not emit ${types.join("/")} in time`);
+}
 
 /** Always off-voice so the run escalates (drives the decision endpoint). */
 function offVoiceAgent(): Agent {
@@ -163,14 +184,21 @@ describe("GET /runs/:id/stream (SSE)", () => {
 });
 
 describe("POST /runs/:id/decision (HITL resume)", () => {
-  it("should resume an escalated run with approve_anyway and publish", async () => {
+  it("should start async, surface escalation over the journal, then resume with approve_anyway and publish", async () => {
     const { app, personaId } = buildApp(offVoiceAgent());
     const created = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
-    expect(created.body.status).toBe("escalated");
+    // dp0.11: POST is async — escalation is NOT in the POST response anymore; it
+    // arrives via the stream/journal. The backgrounded paused run is still
+    // resumable via the decision endpoint (the engine's pending map sees it).
+    expect(created.status).toBe(202);
+    expect(created.body.status).toBe("running");
 
     const runId = created.body.runId as string;
+    const events = await awaitEvent(app, runId, ["escalation"]);
+    expect(events.some((e) => e.t === "escalation")).toBe(true);
+
     const res = await request(app)
       .post(`/runs/${runId}/decision`)
       .send({ choice: "approve_anyway" });
@@ -186,9 +214,11 @@ describe("POST /runs/:id/decision (HITL resume)", () => {
     const created = await request(app)
       .post("/runs")
       .send({ personaId, concept: "On Emergence" });
-    // This run published outright — no escalation to decide.
+    const runId = created.body.runId as string;
+    // This run publishes outright — wait for it, then there is no escalation.
+    await awaitEvent(app, runId, ["published", "failed"]);
     const res = await request(app)
-      .post(`/runs/${created.body.runId}/decision`)
+      .post(`/runs/${runId}/decision`)
       .send({ choice: "approve_anyway" });
     expect(res.status).toBe(409);
   });
