@@ -14,6 +14,13 @@ import type { AgentResult, ResearchResult, Webpage } from "@publisher/shared";
 export type { ResearchResult } from "@publisher/shared";
 
 export interface Agent {
+  /**
+   * Stable id of the worker behind this seam (R8/R11). Lets the orchestrator/UI
+   * label which worker produced an output without knowing the concrete class.
+   */
+  readonly workerId: string;
+  /** The underlying model id (e.g. "claude-opus-4-8", or "mock"). */
+  readonly model: string;
   /** RESEARCH phase: gather credible depth on a concept, under the compiled system. */
   research(input: {
     system: string;
