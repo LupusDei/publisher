@@ -90,3 +90,10 @@ export {
   type Pillar,
   type RunEvent,
 } from "./contracts/run.js";
+
+export {
+  ShareSchema,
+  ShareLinkSchema,
+  type Share,
+  type ShareLink,
+} from "./contracts/share.js";
