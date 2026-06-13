@@ -172,8 +172,14 @@ export async function fetchPersonaSummaries(
   if (!res.ok) {
     throw new Error(`Failed to load personas (HTTP ${res.status})`);
   }
-  const body = (await res.json()) as { personas: PersonaSummary[] };
-  return body.personas;
+  // Tolerate both the {personas} envelope (the real backend shape) and a bare
+  // array, always resolving to an array so the picker never sees `undefined`
+  // (mirrors fetchRuns — publisher-runsenv).
+  const body = (await res.json()) as
+    | PersonaSummary[]
+    | { personas?: PersonaSummary[] };
+  if (Array.isArray(body)) return body;
+  return body.personas ?? [];
 }
 
 /** A validator rendered as inspectable data (mirror of the backend view). */

@@ -3,6 +3,7 @@ import {
   startRun,
   fetchRun,
   fetchRuns,
+  fetchPersonaSummaries,
   fetchRunEvents,
   postDecision,
   fetchCompiledGuardrails,
@@ -84,6 +85,26 @@ describe("run-api client", () => {
       vi.fn(async () => jsonResponse({ runs: [{ id: "x" }] })),
     );
     expect(await fetchRuns("http://api.test")).toHaveLength(1);
+  });
+
+  it("fetchPersonaSummaries should unwrap the {personas} envelope (real shape)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ personas: [{ id: "p1", name: "A" }] })),
+    );
+    const personas = await fetchPersonaSummaries("http://api.test");
+    expect(personas).toHaveLength(1);
+    expect(personas[0]?.id).toBe("p1");
+  });
+
+  it("fetchPersonaSummaries should tolerate a bare array and never return undefined (regression)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse([{ id: "p2", name: "B" }])),
+    );
+    expect(await fetchPersonaSummaries("http://api.test")).toHaveLength(1);
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({})));
+    expect(await fetchPersonaSummaries("http://api.test")).toEqual([]);
   });
 
   it("fetchRunEvents should append sinceSeq for catch-up and unwrap events (edge case)", async () => {
