@@ -4,8 +4,9 @@ import { createApp } from "./app.js";
 import { loadEnv } from "./config/env.js";
 import { openDb } from "./stores/db.js";
 import { loadMigrations, runMigrations } from "./stores/migrate.js";
-import { createAgent } from "./agent/index.js";
+import { createAgentForWorker } from "./agent/index.js";
 import { createFileSink } from "./material/sink.js";
+import { selectVoiceJudge } from "./checkpoints/voice-fidelity.js";
 import { composeRunDeps } from "./composition.js";
 import { runsRouter, publishedRouter } from "./routes/runs.js";
 import { personasRouter } from "./routes/personas.js";
@@ -68,7 +69,20 @@ if (applied.length > 0) {
 const publishDir = join(here, "..", "published");
 const sink = createFileSink({ dir: publishDir, baseUrl: env.PUBLIC_BASE_URL });
 
-const agent = createAgent({
+// PER-RUN worker selection (rrt.2.1/2.2). Instead of one startup agent (whose
+// model ignored the run's workerId — the cosmetic R11 swap), thread a factory
+// so each run builds the agent for ITS OWN workerId. When USE_REAL_AGENT is off
+// (or no key) the factory returns the token-free MockAgent regardless of worker.
+const agentFactory = (workerId: string) =>
+  createAgentForWorker({
+    USE_REAL_AGENT: env.USE_REAL_AGENT,
+    ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
+    workerId,
+  });
+
+// Real LLM voice judge (rrt.4.1) — only the Claude-backed judge in real mode
+// with a key; otherwise the deterministic judge keeps the demo/tests offline.
+const voiceJudge = selectVoiceJudge({
   USE_REAL_AGENT: env.USE_REAL_AGENT,
   ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
 });
@@ -76,9 +90,10 @@ const agent = createAgent({
 // One shared PersonaStore + the full run-deps graph (composition root).
 const { deps: runsDeps, personaStore } = composeRunDeps({
   db,
-  agent,
+  agentFactory,
   sink,
   telemetry,
+  voiceJudge,
   ...(env.USE_REAL_AGENT ? {} : { defaultWorkerId: "mock" }),
 });
 

@@ -1,3 +1,6 @@
+import { generateObject } from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { z } from "zod";
 import type { Persona, Webpage } from "@publisher/shared";
 
 /**
@@ -120,6 +123,80 @@ export function deterministicQualityJudge(input: JudgeInput): number {
   // Weighted: content dominates, a real summary lifts it over threshold.
   return clamp01(contentScore * 0.7 + summaryScore * 0.3);
 }
+
+/**
+ * The model's structured verdict (rrt.4.1). `score` ∈ [0,1]; `rationale` is a
+ * short justification kept for debugging/telemetry. `generateObject` constrains
+ * the model to exactly this shape so we never parse free-text.
+ */
+const VoiceVerdictSchema = z.object({
+  score: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("Voice-fidelity score in [0,1]: 1 = perfectly on-voice."),
+  rationale: z
+    .string()
+    .describe("One sentence justifying the score against the voice sample."),
+});
+
+export interface RealVoiceJudgeOptions {
+  apiKey: string;
+  /** Judge model; defaults to the most capable Opus (matches the worker default). */
+  model?: string;
+}
+
+/**
+ * The REAL, Claude-backed voice judge (rrt.4.1). Returns an injectable `Judge`
+ * that scores a built page against the persona's voice profile + `voiceSample`
+ * via a single `generateObject` call (ai@6) constrained to `VoiceVerdictSchema`,
+ * yielding a [0,1] score. It NEVER throws on a missing page (returns 0 so the
+ * fail-closed wrapper fails the gate); a provider/parse fault propagates so
+ * `runJudge` catches it → `{ ok:false }` → critical CHECKPOINT_ERROR + fail.
+ *
+ * Env-gated at the composition root: only selected when USE_REAL_AGENT + a key
+ * are present (see `selectVoiceJudge`); the deterministic judge stays the
+ * default for mock/tests so the harness needs no network or key.
+ */
+/* c8 ignore start -- network-gated real judge; the SDK-mocked unit test covers the logic, the live call is not run in CI (D20). */
+export function createRealVoiceJudge(opts: RealVoiceJudgeOptions): Judge {
+  const provider = createAnthropic({ apiKey: opts.apiKey });
+  const languageModel = provider(opts.model ?? "claude-opus-4-8");
+
+  return async ({ persona, webpage }: JudgeInput): Promise<number> => {
+    // No page → nothing to score. Return 0 so the gate fails closed (a draft
+    // that produced no webpage must never pass the voice check).
+    if (!webpage) return 0;
+
+    const system =
+      "You are a strict voice-fidelity judge. Score how faithfully the page " +
+      "below matches the target persona's authentic writing voice. Reward " +
+      "diction, tone, and rhythm that match the voice sample; penalize off-voice " +
+      "register (e.g. corporate hype, academic stiffness) the persona avoids. " +
+      "Return ONLY the structured verdict.";
+
+    const prompt =
+      `PERSONA: ${persona.name}\n` +
+      `VOICE: ${persona.voice}\n` +
+      `STYLE POINTS: ${persona.stylePoints.join("; ")}\n` +
+      `VOICE SAMPLE (the gold standard):\n"""${persona.voiceSample}"""\n\n` +
+      `PAGE UNDER REVIEW:\n` +
+      `Title: ${webpage.title}\n` +
+      `Summary: ${webpage.summary}\n` +
+      `Body (text): ${plainText(webpage)}\n\n` +
+      `Score 0..1 how on-voice this page is for ${persona.name}.`;
+
+    const { object } = await generateObject({
+      model: languageModel,
+      schema: VoiceVerdictSchema,
+      system,
+      prompt,
+    });
+    // clamp01 in runJudge also guards, but normalize here too.
+    return clamp01(object.score);
+  };
+}
+/* c8 ignore stop */
 
 /**
  * Run a judge FAIL-CLOSED. Any throw/rejection becomes `{ ok:false, score:0 }`

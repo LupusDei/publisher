@@ -26,8 +26,10 @@ vi.mock("ai", () => ({
 
 import {
   createAgent,
+  createAgentForWorker,
   MockAgent,
   AnthropicAgent,
+  AnthropicResearchAgent,
 } from "../../src/agent/index.js";
 
 describe("createAgent factory", () => {
@@ -50,6 +52,74 @@ describe("createAgent factory", () => {
       ANTHROPIC_API_KEY: "sk-x",
     });
     expect(agent).toBeInstanceOf(AnthropicAgent);
+  });
+});
+
+// rrt.2.1 — per-run worker selection. The factory resolves a run's workerId to
+// the correct concrete Agent + model behind the single `Agent` seam, so a run
+// labelled "sonnet" actually builds on claude-sonnet-4-6 (not the cosmetic
+// opus default). Real mode off → MockAgent regardless of workerId.
+describe("createAgentForWorker (per-run worker selection)", () => {
+  const KEY = "sk-x";
+
+  it("should build the opus worker on claude-opus-4-8 (happy path)", () => {
+    const agent = createAgentForWorker({
+      USE_REAL_AGENT: true,
+      ANTHROPIC_API_KEY: KEY,
+      workerId: "opus",
+    });
+    expect(agent).toBeInstanceOf(AnthropicAgent);
+    expect(agent.workerId).toBe("opus");
+    expect(agent.model).toBe("claude-opus-4-8");
+  });
+
+  it("should build the sonnet worker on claude-sonnet-4-6 (the swap is real, not cosmetic)", () => {
+    const agent = createAgentForWorker({
+      USE_REAL_AGENT: true,
+      ANTHROPIC_API_KEY: KEY,
+      workerId: "sonnet",
+    });
+    expect(agent).toBeInstanceOf(AnthropicAgent);
+    expect(agent.workerId).toBe("sonnet");
+    expect(agent.model).toBe("claude-sonnet-4-6");
+  });
+
+  it("should build the AnthropicResearchAgent for the anthropic-research worker (D13)", () => {
+    const agent = createAgentForWorker({
+      USE_REAL_AGENT: true,
+      ANTHROPIC_API_KEY: KEY,
+      workerId: "anthropic-research",
+    });
+    expect(agent).toBeInstanceOf(AnthropicResearchAgent);
+    expect(agent.workerId).toBe("anthropic-research");
+  });
+
+  it("should degrade an unknown workerId to the default worker (edge case)", () => {
+    const agent = createAgentForWorker({
+      USE_REAL_AGENT: true,
+      ANTHROPIC_API_KEY: KEY,
+      workerId: "does-not-exist",
+    });
+    expect(agent).toBeInstanceOf(AnthropicAgent);
+    expect(agent.workerId).toBe("opus");
+    expect(agent.model).toBe("claude-opus-4-8");
+  });
+
+  it("should return MockAgent when real mode is off, regardless of workerId (error/offline path)", () => {
+    const agent = createAgentForWorker({
+      USE_REAL_AGENT: false,
+      ANTHROPIC_API_KEY: KEY,
+      workerId: "sonnet",
+    });
+    expect(agent).toBeInstanceOf(MockAgent);
+  });
+
+  it("should return MockAgent when real is requested but no key is present (edge)", () => {
+    const agent = createAgentForWorker({
+      USE_REAL_AGENT: true,
+      workerId: "opus",
+    });
+    expect(agent).toBeInstanceOf(MockAgent);
   });
 });
 
