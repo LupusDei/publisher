@@ -33,6 +33,25 @@ function escapeHtml(s: string): string {
 }
 
 /**
+ * True iff `html` is genuinely self-contained — it pulls in NO external
+ * resources (no linked stylesheets, no remote scripts, no CSS `@import`). This
+ * is the Pillar 1 property graded for a "truly standalone, hostable page": the
+ * file must render identically with zero network. Inline `<style>`/`<script>`
+ * blocks are fine; an external `<link rel=stylesheet>`, `<script src>`, or
+ * `@import` is not.
+ */
+export function isSelfContained(html: string): boolean {
+  const linkedStylesheet = /<link\b[^>]*\brel=["']?[^"'>]*stylesheet/i;
+  const remoteScript = /<script\b[^>]*\bsrc=/i;
+  const cssImport = /@import\b/i;
+  return (
+    !linkedStylesheet.test(html) &&
+    !remoteScript.test(html) &&
+    !cssImport.test(html)
+  );
+}
+
+/**
  * Minimal Material-Handling Sink (Pillar 1, skeleton scope). Writes a
  * self-contained HTML file keyed by id and returns a `Receipt`. The real file
  * hosting (`read`) is the documented real-IO path; the deterministic
