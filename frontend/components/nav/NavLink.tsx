@@ -30,7 +30,7 @@ export interface NavLinkProps {
   /** Extra class names composed onto the anchor. */
   className?: string;
   /** De-emphasise the link (e.g. the Demo item); exposed via `data-secondary`. */
-  secondary?: boolean;
+  secondary?: boolean | undefined;
 }
 
 /** True when `pathname` matches the section rooted at `href` (exact or nested). */
