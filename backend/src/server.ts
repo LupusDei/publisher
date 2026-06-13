@@ -10,6 +10,10 @@ import { composeRunDeps } from "./composition.js";
 import { runsRouter, publishedRouter } from "./routes/runs.js";
 import { personasRouter } from "./routes/personas.js";
 import { guardrailsRouter } from "./routes/guardrails.js";
+import { authRouter } from "./routes/auth.js";
+import { createUserStore } from "./stores/user.store.js";
+import { createJwt } from "./auth/jwt.js";
+import { createAuthService } from "./services/auth.service.js";
 
 const VERSION = process.env["npm_package_version"] ?? "0.1.0";
 
@@ -40,10 +44,17 @@ const { deps: runsDeps, personaStore } = composeRunDeps({
   ...(env.USE_REAL_AGENT ? {} : { defaultWorkerId: "mock" }),
 });
 
+// Auth composition root (85q.3): one UserStore + JWT bound to AUTH_JWT_SECRET.
+const authService = createAuthService({
+  userStore: createUserStore(db),
+  jwt: createJwt(env.AUTH_JWT_SECRET),
+});
+
 const app = createApp({
   corsOrigin: env.CORS_ORIGIN,
   version: VERSION,
   routers: [
+    { path: "/auth", router: authRouter({ auth: authService, jwtSecret: env.AUTH_JWT_SECRET }) },
     // /personas hosts BOTH persona CRUD and the compiled-guardrail inspection
     // route (GET /personas/:id/compiled) — same mount path, two routers.
     { path: "/personas", router: personasRouter({ personaStore }) },
