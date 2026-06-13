@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Providers } from "./auth/Providers";
-import { AppNav } from "@/components/shell/AppNav";
+import { AppShell } from "@/components/nav/AppShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,8 +19,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Providers>
-          <AppNav />
-          {children}
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>
