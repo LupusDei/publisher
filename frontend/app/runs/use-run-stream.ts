@@ -134,7 +134,6 @@ export function useRunStream(
     return () => {
       source.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId, reconnectNonce]);
 
   // When the folded view reaches terminal, reflect closed (covers mock sources

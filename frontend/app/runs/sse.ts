@@ -46,7 +46,7 @@ export function parseRunEvent(raw: string): RunEvent | null {
  * use the mock source instead.
  */
 export function eventSourceStream(url: string): RunStreamSource {
-  let handlers = {
+  const handlers = {
     event: (_e: RunEvent): void => {},
     open: (): void => {},
     error: (): void => {},
