@@ -79,6 +79,8 @@ export interface RunService {
     personaId: string;
     concept: string;
     workerId?: string;
+    /** Owning user (85q.4) — stamped onto the run row so list/get can scope. */
+    userId?: string;
   }): Promise<{ runId: string }>;
   /**
    * Await a run's current outcome without racing the journal — resolves from
@@ -172,7 +174,7 @@ export function createRunService(deps: RunServiceDeps): RunService {
   return {
     bus: deps.eventBus,
 
-    async start({ personaId, concept, workerId }) {
+    async start({ personaId, concept, workerId, userId }) {
       // INPUT loading via Material Source — INPUT_EMPTY is returned, not thrown
       // (D7); reject the request before any agent call AND before minting an id.
       const { material, alarms } = await deps.source.load(concept, personaId);
@@ -190,6 +192,7 @@ export function createRunService(deps: RunServiceDeps): RunService {
           runId,
           material,
           workerId: workerId ?? defaultWorkerId,
+          ...(userId ? { userId } : {}),
         }),
       );
       return { runId };

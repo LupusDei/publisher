@@ -14,9 +14,16 @@ export type PersonaPatch = Partial<NewPersona>;
 /** Data-access contract for personas. Callers depend on this interface, not on
  * the SQLite implementation (Constitution Rule 4). */
 export interface PersonaStore {
-  create(input: NewPersona): Persona;
+  /** Create a persona, optionally stamping the owning user (85q.4). `ownerId`
+   * is null for un-owned seed data; new authoring writes always pass it. */
+  create(input: NewPersona, ownerId?: string | null): Persona;
   getById(id: string): Persona | null;
-  list(): Persona[];
+  /** List personas; with `ownerId`, only that owner's (the route passes the
+   * viewer's id for non-admins, and nothing for admins → all). */
+  list(ownerId?: string): Persona[];
+  /** The owning user id for a persona, or null (un-owned OR unknown id). The
+   * route distinguishes the two via getById before consulting ownerOf. */
+  ownerOf(id: string): string | null;
   /** Apply a partial patch to an existing persona; returns the updated record,
    * or null if no persona with that id exists (D19 — enrich on escalation). */
   update(id: string, patch: PersonaPatch): Persona | null;
@@ -53,13 +60,17 @@ export function createPersonaStore(
 ): PersonaStore {
   const insertStmt = db.prepare(
     `INSERT INTO personas
-       (id, name, voice, voice_sample, style_points, key_learnings, design_elements, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, name, voice, voice_sample, style_points, key_learnings, design_elements, created_at, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const getStmt = db.prepare(`SELECT * FROM personas WHERE id = ?`);
   const listStmt = db.prepare(
     `SELECT * FROM personas ORDER BY created_at ASC, id ASC`,
   );
+  const listByOwnerStmt = db.prepare(
+    `SELECT * FROM personas WHERE user_id = ? ORDER BY created_at ASC, id ASC`,
+  );
+  const ownerStmt = db.prepare(`SELECT user_id FROM personas WHERE id = ?`);
   const updateStmt = db.prepare(
     `UPDATE personas
         SET name = ?, voice = ?, voice_sample = ?,
@@ -68,7 +79,7 @@ export function createPersonaStore(
   );
 
   const store: PersonaStore = {
-    create(input) {
+    create(input, ownerId = null) {
       const id = newId();
       insertStmt.run(
         id,
@@ -79,6 +90,7 @@ export function createPersonaStore(
         JSON.stringify(input.keyLearnings),
         JSON.stringify(input.designElements),
         now(),
+        ownerId,
       );
       const created = store.getById(id);
       if (!created) {
@@ -94,9 +106,16 @@ export function createPersonaStore(
       return row ? rowToPersona(row) : null;
     },
 
-    list() {
-      const rows = listStmt.all() as PersonaRow[];
+    list(ownerId) {
+      const rows = (
+        ownerId === undefined ? listStmt.all() : listByOwnerStmt.all(ownerId)
+      ) as PersonaRow[];
       return rows.map(rowToPersona);
+    },
+
+    ownerOf(id) {
+      const row = ownerStmt.get(id) as { user_id: string | null } | undefined;
+      return row?.user_id ?? null;
     },
 
     update(id, patch) {

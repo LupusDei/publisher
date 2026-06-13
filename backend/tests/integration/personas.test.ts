@@ -8,6 +8,7 @@ import { openDb, type DB } from "../../src/stores/db.js";
 import { loadMigrations, runMigrations } from "../../src/stores/migrate.js";
 import { createPersonaStore } from "../../src/stores/persona.store.js";
 import { personasRouter } from "../../src/routes/personas.js";
+import { createJwt } from "../../src/auth/jwt.js";
 import type { NewPersona } from "@publisher/shared";
 
 const migrationsDir = join(
@@ -16,6 +17,10 @@ const migrationsDir = join(
   "..",
   "migrations",
 );
+
+// Persona routes are behind requireAuth (85q.4); these tests act as one owner.
+const SECRET = "personas-test-secret";
+const AUTH = `Bearer ${createJwt(SECRET).sign({ userId: "u_owner", role: "user" })}`;
 
 const validBody: NewPersona = {
   name: "The Essayist",
@@ -38,14 +43,20 @@ describe("personas routes", () => {
       corsOrigin: "*",
       version: "test",
       routers: [
-        { path: "/personas", router: personasRouter({ personaStore }) },
+        {
+          path: "/personas",
+          router: personasRouter({ personaStore, jwtSecret: SECRET }),
+        },
       ],
     });
   });
 
   // ── POST /personas ──────────────────────────────────────────────────────
   it("POST /personas should create a persona and return 201 with the record", async () => {
-    const res = await request(app).post("/personas").send(validBody);
+    const res = await request(app)
+      .post("/personas")
+      .set("Authorization", AUTH)
+      .send(validBody);
     expect(res.status).toBe(201);
     expect(typeof res.body.id).toBe("string");
     expect(res.body.name).toBe(validBody.name);
@@ -55,6 +66,7 @@ describe("personas routes", () => {
   it("POST /personas should return a structured 400 for invalid input", async () => {
     const res = await request(app)
       .post("/personas")
+      .set("Authorization", AUTH)
       .send({ ...validBody, voiceSample: "" });
     expect(res.status).toBe(400);
     expect(res.body.error).toBeDefined();
@@ -63,38 +75,49 @@ describe("personas routes", () => {
 
   // ── GET /personas ─────────────────────────────────────────────────────────
   it("GET /personas should return the list of personas", async () => {
-    await request(app).post("/personas").send(validBody);
-    const res = await request(app).get("/personas");
+    await request(app).post("/personas").set("Authorization", AUTH).send(validBody);
+    const res = await request(app).get("/personas").set("Authorization", AUTH);
     expect(res.status).toBe(200);
     expect(res.body.personas).toHaveLength(1);
     expect(res.body.personas[0].name).toBe(validBody.name);
   });
 
   it("GET /personas should return an empty list when none exist", async () => {
-    const res = await request(app).get("/personas");
+    const res = await request(app).get("/personas").set("Authorization", AUTH);
     expect(res.status).toBe(200);
     expect(res.body.personas).toEqual([]);
   });
 
   // ── GET /personas/:id ──────────────────────────────────────────────────────
   it("GET /personas/:id should return the persona for a known id", async () => {
-    const created = await request(app).post("/personas").send(validBody);
-    const res = await request(app).get(`/personas/${created.body.id}`);
+    const created = await request(app)
+      .post("/personas")
+      .set("Authorization", AUTH)
+      .send(validBody);
+    const res = await request(app)
+      .get(`/personas/${created.body.id}`)
+      .set("Authorization", AUTH);
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(created.body.id);
   });
 
   it("GET /personas/:id should return a structured 404 for an unknown id", async () => {
-    const res = await request(app).get("/personas/nope");
+    const res = await request(app)
+      .get("/personas/nope")
+      .set("Authorization", AUTH);
     expect(res.status).toBe(404);
     expect(res.body.error).toBeDefined();
   });
 
   // ── PATCH /personas/:id ────────────────────────────────────────────────────
   it("PATCH /personas/:id should apply a patch and return the updated persona", async () => {
-    const created = await request(app).post("/personas").send(validBody);
+    const created = await request(app)
+      .post("/personas")
+      .set("Authorization", AUTH)
+      .send(validBody);
     const res = await request(app)
       .patch(`/personas/${created.body.id}`)
+      .set("Authorization", AUTH)
       .send({ voice: "Sharper, more direct." });
     expect(res.status).toBe(200);
     expect(res.body.voice).toBe("Sharper, more direct.");
@@ -102,15 +125,22 @@ describe("personas routes", () => {
   });
 
   it("PATCH /personas/:id should return a structured 404 for an unknown id", async () => {
-    const res = await request(app).patch("/personas/nope").send({ voice: "x" });
+    const res = await request(app)
+      .patch("/personas/nope")
+      .set("Authorization", AUTH)
+      .send({ voice: "x" });
     expect(res.status).toBe(404);
     expect(res.body.error).toBeDefined();
   });
 
   it("PATCH /personas/:id should return a structured 400 when the patch breaks the contract", async () => {
-    const created = await request(app).post("/personas").send(validBody);
+    const created = await request(app)
+      .post("/personas")
+      .set("Authorization", AUTH)
+      .send(validBody);
     const res = await request(app)
       .patch(`/personas/${created.body.id}`)
+      .set("Authorization", AUTH)
       .send({ voiceSample: "" });
     expect(res.status).toBe(400);
     expect(res.body.error).toBeDefined();

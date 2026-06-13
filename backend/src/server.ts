@@ -56,10 +56,15 @@ const app = createApp({
   routers: [
     { path: "/auth", router: authRouter({ auth: authService, jwtSecret: env.AUTH_JWT_SECRET }) },
     // /personas hosts BOTH persona CRUD and the compiled-guardrail inspection
-    // route (GET /personas/:id/compiled) — same mount path, two routers.
-    { path: "/personas", router: personasRouter({ personaStore }) },
+    // route (GET /personas/:id/compiled) — same mount path, two routers. The
+    // CRUD router is gated + owner-scoped (85q.4); the compiled-guardrail
+    // inspection route stays open (read-only describe of a stored persona).
+    {
+      path: "/personas",
+      router: personasRouter({ personaStore, jwtSecret: env.AUTH_JWT_SECRET }),
+    },
     { path: "/personas", router: guardrailsRouter({ personaStore }) },
-    { path: "/runs", router: runsRouter(runsDeps) },
+    { path: "/runs", router: runsRouter(runsDeps, { jwtSecret: env.AUTH_JWT_SECRET }) },
     { path: "/published", router: publishedRouter(sink) },
   ],
 });
