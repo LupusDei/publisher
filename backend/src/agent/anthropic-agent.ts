@@ -1,5 +1,11 @@
-import { generateText, generateObject, stepCountIs } from "ai";
+import {
+  generateText,
+  generateObject,
+  stepCountIs,
+  type LanguageModel,
+} from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGateway } from "@ai-sdk/gateway";
 import {
   WebpageSchema,
   type AgentResult,
@@ -14,6 +20,15 @@ export interface AnthropicAgentOptions {
   apiKey: string;
   /** Default research/build model. Swap for the portability bonus. */
   model?: string;
+  /** Stable worker id (R8/R11) — labels which worker produced the output. */
+  workerId?: string;
+}
+
+export interface GatewayAgentOptions {
+  /** Vercel AI Gateway key (AI_GATEWAY_API_KEY) — one key, every provider. */
+  apiKey: string;
+  /** Gateway model slug, e.g. "openai/gpt-5" or "anthropic/claude-opus-4-8". */
+  model: string;
   /** Stable worker id (R8/R11) — labels which worker produced the output. */
   workerId?: string;
 }
@@ -56,30 +71,35 @@ function toFinishReason(r: string | undefined): FinishReason {
 }
 
 /**
- * Real Agent implementation over the Vercel AI SDK (`ai` + `@ai-sdk/anthropic`).
- * Env-gated; never selected unless USE_REAL_AGENT=true and a key is present, so
- * it is not exercised in CI (a contract-shape test covers construction).
+ * Real Agent over the Vercel AI SDK (`ai`). The research/build bodies are
+ * provider-blind — they only touch a `LanguageModel` — so the SAME logic backs
+ * every provider; concrete subclasses differ ONLY in how they construct that
+ * model (the direct Anthropic provider vs the Vercel AI Gateway, model-agnostic
+ * — R8/R11). Env-gated; never selected unless USE_REAL_AGENT=true and a key is
+ * present, so it is not exercised in CI (contract-shape tests cover construction
+ * with the `ai` module mocked).
  *
- * KNOWN GAP (`@ai-sdk/anthropic@^3`): no server-side web_search/web_fetch wired
- * here, so research() returns empty sources (ASSUMPTIONS D13; web tools land in
- * rrt.3 via the official-SDK worker). On `ai@^6` the multi-step loop is bounded
- * with `stopWhen: stepCountIs(N)` (the v4 `maxSteps` knob was removed). The
- * agent receives a compiled `system` string and returns `AgentResult<T>` with
+ * KNOWN GAP: no server-side web_search/web_fetch is wired here, so research()
+ * returns empty sources (ASSUMPTIONS D13; real web tools live in the
+ * official-SDK research worker). On `ai@^6` the multi-step loop is bounded with
+ * `stopWhen: stepCountIs(N)` (the v4 `maxSteps` knob was removed). The agent
+ * receives a compiled `system` string and returns `AgentResult<T>` with
  * usage/finishReason (D2). No `temperature` is sent — opus-4-8 rejects it.
  */
-export class AnthropicAgent implements Agent {
+export abstract class AiSdkAgent implements Agent {
   /** The worker identity surfaced through the seam (R8/R11). */
   readonly workerId: string;
   readonly model: string;
-  private readonly languageModel: ReturnType<
-    ReturnType<typeof createAnthropic>
-  >;
+  protected readonly languageModel: LanguageModel;
 
-  constructor(opts: AnthropicAgentOptions) {
-    const provider = createAnthropic({ apiKey: opts.apiKey });
-    this.model = opts.model ?? "claude-opus-4-8";
-    this.workerId = opts.workerId ?? "opus";
-    this.languageModel = provider(this.model);
+  protected constructor(
+    languageModel: LanguageModel,
+    model: string,
+    workerId: string,
+  ) {
+    this.languageModel = languageModel;
+    this.model = model;
+    this.workerId = workerId;
   }
 
   async research(input: {
@@ -120,6 +140,31 @@ export class AnthropicAgent implements Agent {
       usage: toUsage(usage as SdkUsage),
       finishReason: toFinishReason(finishReason),
     };
+  }
+}
+
+/**
+ * Direct-Anthropic build worker (`@ai-sdk/anthropic`). The original real worker;
+ * model ids are bare Anthropic strings (e.g. "claude-opus-4-8").
+ */
+export class AnthropicAgent extends AiSdkAgent {
+  constructor(opts: AnthropicAgentOptions) {
+    const model = opts.model ?? "claude-opus-4-8";
+    const provider = createAnthropic({ apiKey: opts.apiKey });
+    super(provider(model), model, opts.workerId ?? "opus");
+  }
+}
+
+/**
+ * Multi-provider build worker over the Vercel AI Gateway (`@ai-sdk/gateway`).
+ * ONE key (AI_GATEWAY_API_KEY) reaches every provider the gateway serves —
+ * model ids are `provider/model` slugs (e.g. "openai/gpt-5"). This is the
+ * model-agnostic seam realised: no per-provider SDK or wrapper class.
+ */
+export class GatewayAgent extends AiSdkAgent {
+  constructor(opts: GatewayAgentOptions) {
+    const provider = createGateway({ apiKey: opts.apiKey });
+    super(provider(opts.model), opts.model, opts.workerId ?? opts.model);
   }
 }
 /* c8 ignore stop */

@@ -78,6 +78,7 @@ const agentFactory = (workerId: string) =>
   createAgentForWorker({
     USE_REAL_AGENT: env.USE_REAL_AGENT,
     ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
+    AI_GATEWAY_API_KEY: env.AI_GATEWAY_API_KEY,
     workerId,
   });
 
