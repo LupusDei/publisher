@@ -20,6 +20,9 @@ coverage/
 *.log
 npm-debug.log*
 
+# Published static pages (written by the Sink at runtime)
+backend/published/
+
 # OS
 .DS_Store
 
