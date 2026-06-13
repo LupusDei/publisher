@@ -44,7 +44,18 @@ export class InputRejectedError extends Error {
 export { RunNotPausedError };
 
 export interface RunServiceDeps {
-  agent: Agent;
+  /**
+   * Legacy single-agent injection. Optional now that runs can pick their own
+   * worker via `agentFactory` (rrt.2.1). Supply one or the other; when both are
+   * present the per-run factory wins in the engine.
+   */
+  agent?: Agent;
+  /**
+   * PER-RUN worker selection (rrt.2.1). The composition root threads this in so
+   * each run builds the agent for ITS OWN `workerId`. Passed straight to the
+   * RunEngine, which resolves it in `start()`.
+   */
+  agentFactory?: (workerId: string) => Agent;
   sink: Sink;
   source: Source;
   guardrailEngine: GuardrailEngine;
@@ -162,7 +173,10 @@ export function createRunService(deps: RunServiceDeps): RunService {
   }
 
   const engine: RunEngine = createRunEngine({
-    agent: deps.agent,
+    // Prefer the per-run factory (rrt.2.1); fall back to a single injected agent
+    // for the legacy/test path. The engine asserts at least one is present.
+    ...(deps.agentFactory ? { agentFactory: deps.agentFactory } : {}),
+    ...(deps.agent ? { agent: deps.agent } : {}),
     sink: deps.sink,
     guardrailEngine: deps.guardrailEngine,
     buildCheckpoints: deps.buildCheckpoints,

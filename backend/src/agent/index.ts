@@ -71,3 +71,21 @@ export function createAgent(env: AgentSelection): Agent {
   }
   return new MockAgent();
 }
+
+/**
+ * PER-RUN worker selection (rrt.2.1). Same env-gating and worker resolution as
+ * `createAgent`, but the run's `workerId` is the FIRST-CLASS input — this is the
+ * factory the composition root threads into the orchestrator so that each run
+ * builds the agent for ITS OWN `workerId` (the R11 swap stops being cosmetic).
+ * Real mode off / no key → token-free MockAgent regardless of `workerId`; an
+ * unknown id quietly degrades to the default worker (never throws).
+ *
+ * Kept as a thin alias of `createAgent` so there is exactly ONE place that maps
+ * a workerId to a concrete Agent + model — the orchestrator stays provider-blind
+ * and only ever sees the `Agent` seam.
+ */
+export type AgentFactory = (workerId: string | undefined) => Agent;
+
+export function createAgentForWorker(env: AgentSelection): Agent {
+  return createAgent(env);
+}

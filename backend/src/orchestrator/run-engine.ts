@@ -75,7 +75,18 @@ const BUILD_GATES = [
 ] as const;
 
 export interface RunEngineDeps {
-  agent: Agent;
+  /**
+   * Legacy single-agent injection. Used when no `agentFactory` is supplied (the
+   * orchestrator/unit-test path that pins one agent). When BOTH are given, the
+   * per-run factory wins so each run resolves its own `workerId`.
+   */
+  agent?: Agent;
+  /**
+   * PER-RUN worker selection (rrt.2.1). Builds the agent for a run's `workerId`
+   * in `start()` so the R11 swap is real, not cosmetic. The composition root
+   * threads this in; the engine stays provider-blind (it only sees `Agent`).
+   */
+  agentFactory?: (workerId: string) => Agent;
   sink: Sink;
   guardrailEngine: GuardrailEngine;
   /** Builds the ordered checkpoint list for a run, given a validators provider. */
@@ -123,6 +134,13 @@ export type RunOutcome =
 interface RunContext {
   runId: string;
   workerId: string;
+  /**
+   * The agent built FOR THIS RUN's worker (rrt.2.1). Resolved once in `start()`
+   * (from the per-run factory, or the legacy single injected agent) and reused
+   * across the build/refine loop and resume so every agent call in a run goes
+   * to the same worker the run is labelled with.
+   */
+  agent: Agent;
   persona: Persona;
   material: Material;
   system: string;
@@ -159,6 +177,19 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
   const maxAttempts = deps.maxAttempts ?? MAX_ATTEMPTS;
   const maxResearchAttempts = deps.maxResearchAttempts ?? MAX_RESEARCH_ATTEMPTS;
   const telemetry = deps.telemetry ?? createNoopTelemetry();
+
+  /**
+   * Resolve the agent for a run's worker (rrt.2.1). Prefer the per-run factory
+   * (so the run's `workerId` actually selects the model); fall back to the
+   * legacy single injected agent. One of the two MUST be configured.
+   */
+  function agentForWorker(workerId: string): Agent {
+    if (deps.agentFactory) return deps.agentFactory(workerId);
+    if (deps.agent) return deps.agent;
+    throw new Error(
+      "RunEngine requires either `agentFactory` or `agent` in its deps.",
+    );
+  }
 
   /** Paused contexts awaiting a human decision (single-process demo, D11). */
   const pending = new Map<string, RunContext>();
@@ -392,7 +423,7 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
     let webpage: Webpage;
     try {
       webpage = await metered(ctx, phase, () =>
-        deps.agent.build({
+        ctx.agent.build({
           system: ctx.system,
           research: ctx.research,
           ...(feedback ? { feedback } : {}),
@@ -479,6 +510,8 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
       const ctx: RunContext = {
         runId,
         workerId,
+        // Build the agent for THIS run's worker once, up front (rrt.2.1).
+        agent: agentForWorker(workerId),
         persona: material.persona,
         material,
         system: compiled.systemPrompt,
@@ -508,7 +541,7 @@ export function createRunEngine(deps: RunEngineDeps): RunEngine {
         emit(ctx, { t: "phase", phase: "research" });
         try {
           ctx.research = await metered(ctx, "research", () =>
-            deps.agent.research({
+            ctx.agent.research({
               system: ctx.system,
               concept: researchGuidance
                 ? `${material.concept}\n\n[Research guidance — go broader/deeper]: ${researchGuidance}`
