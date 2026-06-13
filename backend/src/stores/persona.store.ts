@@ -18,6 +18,7 @@ interface PersonaRow {
   id: string;
   name: string;
   voice: string;
+  voice_sample: string;
   style_points: string;
   key_learnings: string;
   design_elements: string;
@@ -30,6 +31,7 @@ function rowToPersona(row: PersonaRow): Persona {
     id: row.id,
     name: row.name,
     voice: row.voice,
+    voiceSample: row.voice_sample,
     stylePoints: JSON.parse(row.style_points) as unknown,
     keyLearnings: JSON.parse(row.key_learnings) as unknown,
     designElements: JSON.parse(row.design_elements) as unknown,
@@ -43,8 +45,8 @@ export function createPersonaStore(
 ): PersonaStore {
   const insertStmt = db.prepare(
     `INSERT INTO personas
-       (id, name, voice, style_points, key_learnings, design_elements, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (id, name, voice, voice_sample, style_points, key_learnings, design_elements, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const getStmt = db.prepare(`SELECT * FROM personas WHERE id = ?`);
   const listStmt = db.prepare(
@@ -58,6 +60,7 @@ export function createPersonaStore(
         id,
         input.name,
         input.voice,
+        input.voiceSample,
         JSON.stringify(input.stylePoints),
         JSON.stringify(input.keyLearnings),
         JSON.stringify(input.designElements),

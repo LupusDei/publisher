@@ -2,7 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 
 // Mock the AI SDK so constructing/exercising the real agent never hits the network.
 vi.mock("ai", () => ({
-  generateText: vi.fn(async () => ({ text: "researched text" })),
+  generateText: vi.fn(async () => ({
+    text: "researched text",
+    usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
+    finishReason: "stop",
+  })),
   generateObject: vi.fn(async () => ({
     object: {
       title: "T",
@@ -11,6 +15,8 @@ vi.mock("ai", () => ({
       summary: "s",
       sourcesUsed: [],
     },
+    usage: { promptTokens: 5, completionTokens: 15, totalTokens: 20 },
+    finishReason: "stop",
   })),
 }));
 
@@ -19,16 +25,6 @@ import {
   MockAgent,
   AnthropicAgent,
 } from "../../src/agent/index.js";
-import type { Persona } from "@publisher/shared";
-
-const persona: Persona = {
-  id: "p_1",
-  name: "X",
-  voice: "v",
-  stylePoints: [],
-  keyLearnings: [],
-  designElements: {},
-};
 
 describe("createAgent factory", () => {
   it("should default to MockAgent when USE_REAL_AGENT is false", () => {
@@ -53,22 +49,28 @@ describe("createAgent factory", () => {
   });
 });
 
-describe("AnthropicAgent (AI SDK mocked)", () => {
-  it("research should return the generated text via the SDK", async () => {
+describe("AnthropicAgent (AI SDK mocked) — contract-shape only (D20)", () => {
+  const system = 'You write in the authentic voice of "X".';
+
+  it("research should return an AgentResult with text, usage and finishReason", async () => {
     const agent = new AnthropicAgent({ apiKey: "sk-x" });
-    const result = await agent.research(persona, "concept");
-    expect(result.text).toBe("researched text");
-    expect(result.sources).toEqual([]);
+    const result = await agent.research({ system, concept: "concept" });
+    expect(result.value.text).toBe("researched text");
+    expect(result.value.sources).toEqual([]);
+    expect(result.usage.totalTokens).toBe(30);
+    expect(result.finishReason).toBe("stop");
   });
 
-  it("build should return the structured Webpage object via the SDK", async () => {
+  it("build should return an AgentResult wrapping the structured Webpage", async () => {
     const agent = new AnthropicAgent({ apiKey: "sk-x" });
-    const webpage = await agent.build(
-      persona,
-      { text: "r", sources: [] },
-      "be less formal",
-    );
-    expect(webpage.title).toBe("T");
-    expect(webpage.html).toContain("<main>");
+    const result = await agent.build({
+      system,
+      research: { text: "r", sources: [] },
+      feedback: "be less formal",
+    });
+    expect(result.value.title).toBe("T");
+    expect(result.value.html).toContain("<main>");
+    expect(result.usage.totalTokens).toBe(20);
+    expect(result.finishReason).toBe("stop");
   });
 });

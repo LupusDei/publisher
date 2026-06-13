@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS personas (
   id              TEXT PRIMARY KEY,
   name            TEXT NOT NULL,
   voice           TEXT NOT NULL,
+  voice_sample    TEXT NOT NULL DEFAULT '', -- short writing sample (ASSUMPTIONS D3)
   style_points    TEXT NOT NULL, -- JSON array of strings
   key_learnings   TEXT NOT NULL, -- JSON array of strings
   design_elements TEXT NOT NULL, -- JSON object of string -> string

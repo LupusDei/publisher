@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compilePersonaSystem } from "../../src/agent/agent.js";
+import { compilePersonaSystem } from "../../src/guardrails/compile.js";
 import type { Persona } from "@publisher/shared";
 
 describe("compilePersonaSystem", () => {
@@ -8,6 +8,7 @@ describe("compilePersonaSystem", () => {
       id: "p_1",
       name: "The Essayist",
       voice: "Measured, first-person.",
+      voiceSample: "Emergence is not magic — only attention.",
       stylePoints: ["short paragraphs", "one image per section"],
       keyLearnings: ["emergence is not magic"],
       designElements: { palette: "warm neutrals", typography: "serif" },
@@ -15,6 +16,7 @@ describe("compilePersonaSystem", () => {
     const out = compilePersonaSystem(persona);
     expect(out).toContain("The Essayist");
     expect(out).toContain("Voice: Measured");
+    expect(out).toContain("Voice sample to match: Emergence is not magic");
     expect(out).toContain(
       "Style points: short paragraphs; one image per section",
     );
@@ -22,17 +24,19 @@ describe("compilePersonaSystem", () => {
     expect(out).toContain("palette=warm neutrals");
   });
 
-  it("should omit empty sections for a thin persona (edge case)", () => {
+  it("should omit empty optional sections for a thin persona (edge case)", () => {
     const thin: Persona = {
       id: "p_2",
       name: "Bare",
       voice: "",
+      voiceSample: "a sample",
       stylePoints: [],
       keyLearnings: [],
       designElements: {},
     };
     const out = compilePersonaSystem(thin);
-    expect(out).toBe('You write in the authentic voice of "Bare".');
+    expect(out).toContain('You write in the authentic voice of "Bare".');
+    expect(out).toContain("Voice sample to match: a sample");
     expect(out).not.toContain("Style points");
     expect(out).not.toContain("Design elements");
   });
