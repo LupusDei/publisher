@@ -210,6 +210,35 @@ textarea:focus-visible {
   }
 }
 
+/* The whole banner breathes while the link is being (re)established, so an
+   unsettled connection reads as alive rather than stuck. Collapses under the
+   global prefers-reduced-motion guard (iteration-count forced to 1). */
+.conn-connecting,
+.conn-reconnecting {
+  animation: runs-breathe 2.4s var(--ease-out) infinite;
+}
+
+/* ── Motion — streaming "aliveness" (token-driven, reduced-motion safe) ──
+   The runs surface should feel like events are settling onto paper. Entrances
+   reuse the global ink-rise feel via a runs-scoped keyframe so we can apply it
+   to list items on mount without per-item JS. A gentle breathe marks whatever
+   is actively working. All durations/easings come from the Atelier tokens. */
+@keyframes runs-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes runs-breathe {
+  50% {
+    opacity: 0.62;
+  }
+}
+
 /* ── Pillar lanes (the HERO) ─────────────────────────────────────────── */
 .pillar-grid {
   display: grid;
@@ -219,6 +248,7 @@ textarea:focus-visible {
   border: 2px dashed var(--accent);
   border-radius: 12px;
   padding: 14px 18px;
+  transition: border-color var(--dur-2) var(--ease-out);
   background: repeating-linear-gradient(
     45deg,
     color-mix(in srgb, var(--accent) 5%, var(--panel)),
@@ -236,6 +266,12 @@ textarea:focus-visible {
 }
 .sealed-lock {
   color: var(--accent);
+  display: inline-block;
+}
+/* While the worker is mid-run (a phase is set), the lock breathes so the
+   sealed box reads as actively churning behind its seal. */
+.sealed-agent.sealed-working .sealed-lock {
+  animation: runs-breathe 2.2s var(--ease-out) infinite;
 }
 .sealed-note {
   margin: 6px 0;
@@ -289,6 +325,8 @@ textarea:focus-visible {
   border-radius: 999px;
   font-size: 12px;
   padding: 1px 8px;
+  /* The tally eases as new events land, so the count never snaps. */
+  transition: background var(--dur-2) var(--ease-out);
 }
 .lane-empty {
   color: var(--line);
@@ -310,6 +348,9 @@ textarea:focus-visible {
   border-radius: 7px;
   background: #faf7f1;
   border-left: 3px solid var(--line);
+  /* Each streamed event settles onto the lane as it arrives. `both` holds the
+     start frame so there is no flash before the animation runs. */
+  animation: runs-rise var(--dur-3) var(--ease-out) both;
 }
 .lane-entry.ok {
   border-left-color: var(--good);
@@ -368,6 +409,14 @@ section h3 {
   font-size: 26px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  /* Counter color eases on update so a fresh metric reads as a settle, not a
+     jump. The per-render pop is carried by the wrapping .meter-live class. */
+  transition: color var(--dur-2) var(--ease-out);
+}
+/* The whole headline group fades to full ink each time a metric lands — a
+   quiet "tick". Keyed in MetricsMeter by the metrics snapshot. */
+.meter-live {
+  animation: runs-rise var(--dur-2) var(--ease-out) both;
 }
 .meter-label {
   font-size: 12px;
@@ -404,6 +453,10 @@ section h3 {
   border-radius: 10px;
   padding: 12px;
   border-left: 4px solid var(--line);
+  /* New attempts settle in smoothly; the verdict border eases as pass/fail
+     resolves on the same card. */
+  animation: runs-rise var(--dur-3) var(--ease-out) both;
+  transition: border-left-color var(--dur-2) var(--ease-out);
 }
 .draft-card.draft-fail {
   border-left-color: var(--crit);
@@ -484,6 +537,8 @@ section h3 {
   border-radius: 10px;
   padding: 12px;
   background: #fbfaf7;
+  /* The before/after comparison eases open on the compare click. */
+  animation: runs-rise var(--dur-2) var(--ease-out) both;
 }
 .diff-legend {
   display: flex;

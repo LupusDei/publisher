@@ -71,4 +71,39 @@ describe("PersonasPage (gallery)", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/HTTP 500/),
     );
   });
+
+  it("should always offer a header CTA linking to onboarding (new persona)", () => {
+    mockFetch.mockReturnValue(new Promise(() => {}));
+    render(<PersonasPage />);
+    const cta = screen.getByRole("link", { name: /new persona/i });
+    expect(cta).toHaveAttribute("href", "/onboarding");
+  });
+
+  it("should render design-token chips with their key and value (state change)", async () => {
+    mockFetch.mockResolvedValue([
+      {
+        ...persona,
+        designElements: { palette: "warm neutrals", tone: "calm" },
+      },
+    ]);
+    render(<PersonasPage />);
+    await waitFor(() =>
+      expect(screen.getByText("palette")).toBeInTheDocument(),
+    );
+    expect(screen.getByText("tone")).toBeInTheDocument();
+    // The key has its own emphasized span; the value sits beside it in the chip.
+    const paletteChip = screen.getByText("palette").closest(".persona-chip");
+    expect(paletteChip).toHaveTextContent("palette: warm neutrals");
+  });
+
+  it("should omit the chip row entirely when a persona has no design tokens (edge case)", async () => {
+    mockFetch.mockResolvedValue([{ ...persona, designElements: {} }]);
+    render(<PersonasPage />);
+    await waitFor(() =>
+      expect(screen.getByText("The Essayist")).toBeInTheDocument(),
+    );
+    // The voice sample still renders; no token key from the fixed vocabulary leaks in.
+    expect(screen.queryByText("palette")).not.toBeInTheDocument();
+    expect(screen.queryByText("typography")).not.toBeInTheDocument();
+  });
 });

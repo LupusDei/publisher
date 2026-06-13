@@ -198,10 +198,24 @@ fieldset.ob-section {
   box-shadow: 0 0 0 1px var(--accent) inset;
   outline: none;
 }
-/* Invalid (touched + empty required) state. */
+/*
+ * Invalid (touched + empty required) state. The control is programmatically
+ * marked aria-invalid="true" by the Field component, so we drive the visual
+ * treatment off that attribute directly — the input reads invalid on its own,
+ * not just via the wrapping .ob-field[data-invalid]. The wrapper selector is
+ * kept as a belt-and-suspenders fallback for any control that isn't linked.
+ */
 .ob-field[data-invalid="true"] .ob-input,
-.ob-field[data-invalid="true"] .ob-textarea {
+.ob-field[data-invalid="true"] .ob-textarea,
+.ob-input[aria-invalid="true"],
+.ob-textarea[aria-invalid="true"] {
   border-color: var(--crit);
+}
+/* Keep the error border legible while focused (focus would otherwise win). */
+.ob-input[aria-invalid="true"]:focus,
+.ob-textarea[aria-invalid="true"]:focus {
+  border-color: var(--crit);
+  box-shadow: 0 0 0 1px var(--crit) inset;
 }
 .ob-field-error {
   font-size: var(--step--1);

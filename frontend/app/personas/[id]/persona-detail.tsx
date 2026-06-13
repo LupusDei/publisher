@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 import {
   fetchPersona,
   updatePersona,
@@ -10,6 +11,7 @@ import {
   type DesignTokenKey,
   type Persona,
 } from "../persona-api";
+import "../personas.css";
 
 type LoadState =
   | { kind: "loading" }
@@ -118,8 +120,8 @@ export default function PersonaDetail({
 
   if (load.kind === "loading") {
     return (
-      <main style={styles.main}>
-        <p role="status" style={styles.muted}>
+      <main className="personas-shell personas-shell--reading">
+        <p role="status" className="personas-status">
           Loading persona…
         </p>
       </main>
@@ -128,13 +130,15 @@ export default function PersonaDetail({
 
   if (load.kind === "error") {
     return (
-      <main style={styles.main}>
-        <p role="alert" style={styles.error}>
+      <main className="personas-shell personas-shell--reading">
+        <p role="alert" className="personas-error">
           Couldn&apos;t load persona: {load.message}
         </p>
-        <Link href="/personas" style={styles.back}>
-          ← All personas
-        </Link>
+        <p>
+          <Link href="/personas" className="persona-back">
+            ← All personas
+          </Link>
+        </p>
       </main>
     );
   }
@@ -146,21 +150,23 @@ export default function PersonaDetail({
     save.kind === "saveError";
 
   return (
-    <main style={styles.main}>
-      <Link href="/personas" style={styles.back}>
+    <main className="personas-shell personas-shell--reading anim-rise">
+      <Link href="/personas" className="persona-back">
         ← All personas
       </Link>
 
-      <header style={styles.header}>
-        <h1 style={styles.h1}>{persona.name}</h1>
+      <header className="persona-detail-header">
+        <div>
+          <p className="personas-eyebrow">Persona</p>
+          <h1 className="persona-detail-title">{persona.name}</h1>
+        </div>
         {!editing && (
-          <button
-            type="button"
-            style={styles.secondary}
+          <Button
+            variant="ghost"
             onClick={() => setSave({ kind: "editing" })}
           >
             Edit
-          </button>
+          </Button>
         )}
       </header>
 
@@ -168,7 +174,7 @@ export default function PersonaDetail({
         <ReadView persona={persona} />
       ) : (
         <form
-          style={styles.form}
+          className="persona-form"
           onSubmit={(e) => {
             e.preventDefault();
             void onSave();
@@ -198,17 +204,18 @@ export default function PersonaDetail({
             value={keyLearnings}
             onChange={setKeyLearnings}
           />
-          <fieldset style={styles.fieldset}>
-            <legend style={styles.legend}>Design tokens</legend>
-            <div style={styles.tokenGrid}>
+          <fieldset className="persona-fieldset">
+            <legend className="persona-legend">Design tokens</legend>
+            <div className="persona-token-grid">
               {DESIGN_TOKEN_KEYS.map((key) => (
-                <div key={key} style={styles.field}>
-                  <label htmlFor={`token-${key}`} style={styles.label}>
+                <div key={key} className="persona-field">
+                  <label htmlFor={`token-${key}`} className="persona-label">
                     {DESIGN_TOKEN_META[key].label}
                   </label>
                   <input
                     id={`token-${key}`}
-                    style={styles.input}
+                    className="persona-input"
+                    placeholder={DESIGN_TOKEN_META[key].placeholder}
                     value={tokens[key]}
                     onChange={(e) =>
                       setTokens((prev) => ({ ...prev, [key]: e.target.value }))
@@ -219,43 +226,42 @@ export default function PersonaDetail({
             </div>
           </fieldset>
 
-          <div style={styles.actions}>
-            <button
+          <div className="persona-actions">
+            <Button
               type="submit"
-              style={styles.primary}
+              variant="primary"
               disabled={save.kind === "saving"}
             >
               {save.kind === "saving" ? "Saving…" : "Save changes"}
-            </button>
-            <button
-              type="button"
-              style={styles.secondary}
+            </Button>
+            <Button
+              variant="quiet"
               onClick={() => {
                 seedDraft(persona);
                 setSave({ kind: "viewing" });
               }}
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
 
       <div aria-live="polite">
         {save.kind === "saving" && (
-          <p role="status" style={styles.muted}>
+          <p role="status" className="personas-status">
             Saving changes…
           </p>
         )}
         {save.kind === "saved" && (
-          <p role="status" style={styles.success}>
+          <p role="status" className="persona-saved">
             Saved.
           </p>
         )}
       </div>
       <div aria-live="assertive">
         {save.kind === "saveError" && (
-          <p role="alert" style={styles.error}>
+          <p role="alert" className="personas-error">
             Couldn&apos;t save: {save.message}
           </p>
         )}
@@ -268,47 +274,49 @@ export default function PersonaDetail({
 function ReadView({ persona }: { persona: Persona }): React.ReactElement {
   const tokenEntries = Object.entries(persona.designElements);
   return (
-    <div style={styles.readView}>
+    <div className="persona-read">
       <Section title="Voice">
-        <p style={styles.body}>{persona.voice}</p>
+        <p className="persona-body">{persona.voice}</p>
       </Section>
       <Section title="Voice sample">
-        <blockquote style={styles.quote}>{persona.voiceSample}</blockquote>
+        <blockquote className="persona-voice-sample">
+          {persona.voiceSample}
+        </blockquote>
       </Section>
       <Section title="Style points">
         {persona.stylePoints.length > 0 ? (
-          <ul style={styles.list}>
+          <ul className="persona-list">
             {persona.stylePoints.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>
         ) : (
-          <p style={styles.muted}>None declared.</p>
+          <p className="persona-muted">None declared.</p>
         )}
       </Section>
       <Section title="Key learnings">
         {persona.keyLearnings.length > 0 ? (
-          <ul style={styles.list}>
+          <ul className="persona-list">
             {persona.keyLearnings.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>
         ) : (
-          <p style={styles.muted}>None declared.</p>
+          <p className="persona-muted">None declared.</p>
         )}
       </Section>
       <Section title="Design tokens">
         {tokenEntries.length > 0 ? (
-          <dl style={styles.tokenList}>
+          <dl className="persona-tokens">
             {tokenEntries.map(([k, v]) => (
-              <div key={k} style={styles.tokenRow}>
-                <dt style={styles.tokenKey}>{k}</dt>
-                <dd style={styles.tokenVal}>{v}</dd>
+              <div key={k} className="persona-token-row">
+                <dt className="persona-token-key">{k}</dt>
+                <dd className="persona-token-val">{v}</dd>
               </div>
             ))}
           </dl>
         ) : (
-          <p style={styles.muted}>None declared.</p>
+          <p className="persona-muted">None declared.</p>
         )}
       </Section>
     </div>
@@ -320,8 +328,8 @@ function Section(props: {
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <section style={styles.section}>
-      <h2 style={styles.h2}>{props.title}</h2>
+    <section>
+      <h2 className="persona-section-title">{props.title}</h2>
       {props.children}
     </section>
   );
@@ -334,129 +342,16 @@ function LabeledTextarea(props: {
   onChange: (v: string) => void;
 }): React.ReactElement {
   return (
-    <div style={styles.field}>
-      <label htmlFor={props.id} style={styles.label}>
+    <div className="persona-field">
+      <label htmlFor={props.id} className="persona-label">
         {props.label}
       </label>
       <textarea
         id={props.id}
-        style={styles.textarea}
+        className="persona-textarea"
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
       />
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  main: {
-    maxWidth: 720,
-    margin: "0 auto",
-    padding: "32px 24px 80px",
-    lineHeight: 1.55,
-  },
-  back: { fontSize: 14, color: "#2563eb", textDecoration: "none" },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    margin: "12px 0 20px",
-    gap: 16,
-  },
-  h1: { fontSize: 30, margin: 0 },
-  h2: {
-    fontSize: 15,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    color: "#6b7280",
-    margin: "0 0 6px",
-  },
-  readView: { display: "flex", flexDirection: "column", gap: 22 },
-  section: {},
-  body: { margin: 0, color: "#111827" },
-  quote: {
-    margin: 0,
-    padding: "10px 16px",
-    borderLeft: "3px solid #d1d5db",
-    color: "#374151",
-    fontStyle: "italic",
-    background: "#f9fafb",
-  },
-  list: { margin: 0, paddingLeft: 20, color: "#111827" },
-  tokenList: { margin: 0 },
-  tokenRow: {
-    display: "flex",
-    gap: 12,
-    padding: "4px 0",
-    borderBottom: "1px solid #f3f4f6",
-  },
-  tokenKey: {
-    margin: 0,
-    width: 120,
-    color: "#6b7280",
-    textTransform: "capitalize",
-  },
-  tokenVal: { margin: 0, color: "#111827" },
-  muted: { color: "#6b7280", margin: 0 },
-  form: { display: "flex", flexDirection: "column", gap: 16 },
-  field: { display: "flex", flexDirection: "column", gap: 4 },
-  label: { fontWeight: 600, fontSize: 14 },
-  input: {
-    padding: "8px 10px",
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    fontSize: 14,
-  },
-  textarea: {
-    padding: "8px 10px",
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    fontSize: 14,
-    minHeight: 64,
-    fontFamily: "inherit",
-  },
-  fieldset: {
-    border: "1px solid #e5e7eb",
-    borderRadius: 8,
-    padding: 16,
-    margin: 0,
-  },
-  legend: { fontWeight: 700, padding: "0 6px" },
-  tokenGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 14,
-    marginTop: 8,
-  },
-  actions: { display: "flex", gap: 12, alignItems: "center" },
-  primary: {
-    padding: "10px 18px",
-    background: "#111827",
-    color: "white",
-    border: "none",
-    borderRadius: 6,
-    fontSize: 15,
-    cursor: "pointer",
-  },
-  secondary: {
-    padding: "8px 14px",
-    background: "white",
-    color: "#111827",
-    border: "1px solid #d1d5db",
-    borderRadius: 6,
-    fontSize: 14,
-    cursor: "pointer",
-  },
-  success: {
-    color: "#065f46",
-    background: "#ecfdf5",
-    padding: "10px 12px",
-    borderRadius: 6,
-  },
-  error: {
-    color: "#991b1b",
-    background: "#fef2f2",
-    padding: "10px 12px",
-    borderRadius: 6,
-  },
-};

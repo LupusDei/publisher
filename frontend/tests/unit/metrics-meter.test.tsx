@@ -33,4 +33,10 @@ describe("MetricsMeter", () => {
     render(<MetricsMeter metrics={{ ...metrics, errorRate: 0.5 }} />);
     expect(screen.getByText("50%")).toBeInTheDocument();
   });
+
+  it("should carry the meter-live class on the headline so updates settle (motion)", () => {
+    render(<MetricsMeter metrics={metrics} />);
+    const headline = screen.getByRole("status");
+    expect(headline).toHaveClass("meter-live");
+  });
 });

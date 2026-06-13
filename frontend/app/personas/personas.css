@@ -1,0 +1,439 @@
+/*
+ * Personas surfaces — Atelier styling (publisher-3jm.7). Token-only: every
+ * value is a var(--…) from globals.css. Scoped under the personas route tree
+ * so it does not touch the shared globals.css. Motion is provided by the
+ * global utilities (.stagger / .anim-rise / .draw-rule) and all collapses
+ * gracefully under the global prefers-reduced-motion guard.
+ */
+
+/* ── Shared page frame ───────────────────────────────────────────────── */
+.personas-shell {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-5) var(--space-10);
+  line-height: 1.55;
+}
+.personas-shell--reading {
+  max-width: 48rem;
+}
+
+.personas-eyebrow {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.personas-display {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--step-4);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.personas-lede {
+  margin: var(--space-3) 0 0;
+  max-width: 40rem;
+  font-size: var(--step-1);
+  color: var(--muted);
+}
+
+/* The drawn accent rule — the fine-press signature beat under the masthead. */
+.personas-rule {
+  height: 2px;
+  width: var(--space-9);
+  margin: var(--space-4) 0 0;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+}
+
+/* ── List masthead ───────────────────────────────────────────────────── */
+.personas-masthead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-7);
+}
+.personas-masthead-copy {
+  min-width: 0;
+}
+
+/* ── Live-region status / error ──────────────────────────────────────── */
+.personas-status {
+  margin: 0;
+  color: var(--muted);
+  font-style: italic;
+}
+.personas-error {
+  margin: 0;
+  color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 7%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--crit) 30%, var(--line));
+  border-radius: var(--r-md);
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+}
+
+/* ── Skeleton (loading) cards ────────────────────────────────────────── */
+.personas-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--space-5);
+}
+.persona-skeleton {
+  height: 13rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg-sunk);
+}
+
+/* ── Editorial persona card ──────────────────────────────────────────── */
+.persona-card {
+  position: relative;
+  height: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out),
+    border-color var(--dur-2) var(--ease-out);
+}
+/* The accent affordance: a vermillion edge that wipes in on hover/focus. */
+.persona-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent);
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.persona-card:hover,
+.persona-card:focus-within {
+  transform: translateY(calc(-1 * var(--space-1)));
+  box-shadow: var(--shadow-2);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+.persona-card:hover::before,
+.persona-card:focus-within::before {
+  transform: scaleY(1);
+}
+
+.persona-card-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+  padding: var(--space-5);
+  color: inherit;
+  text-decoration: none;
+}
+/* Keep the focus ring on the card edge, not a clipped inner box. */
+.persona-card-link:focus-visible {
+  outline: none;
+}
+.persona-card:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.persona-card-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.persona-card-voice {
+  margin: 0;
+  font-size: var(--step--1);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent-strong);
+}
+.persona-card-sample {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--line);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--step-0);
+  color: var(--muted);
+  /* Clamp to keep cards even without truncating mid-word jarringly. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.persona-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+.persona-chip {
+  font-size: var(--step--1);
+  font-family: var(--font-body);
+  background: var(--bg-sunk);
+  color: var(--muted);
+  border-radius: var(--r-pill);
+  padding: var(--space-1) var(--space-3);
+}
+.persona-chip-key {
+  text-transform: capitalize;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ── Empty state — an invitation, set like a press colophon ──────────── */
+.personas-empty {
+  text-align: center;
+  padding: var(--space-9) var(--space-5);
+  border: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--accent) 3%, var(--panel));
+}
+.personas-empty-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 600;
+  color: var(--ink);
+}
+.personas-empty-body {
+  margin: var(--space-3) auto var(--space-5);
+  max-width: 30rem;
+  color: var(--muted);
+}
+
+/* ── Detail: back link ───────────────────────────────────────────────── */
+.persona-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--accent-strong);
+  text-decoration: none;
+  transition: gap var(--dur-1) var(--ease-out);
+}
+.persona-back:hover {
+  gap: var(--space-3);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* ── Detail: header / hero ───────────────────────────────────────────── */
+.persona-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-5) 0 var(--space-6);
+}
+.persona-detail-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--step-5);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+/* ── Detail: read view ───────────────────────────────────────────────── */
+.persona-read {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+.persona-section-title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.persona-body {
+  margin: 0;
+  font-size: var(--step-1);
+  color: var(--ink);
+}
+
+/* The voice sample, set as a true fine-press pull-quote. */
+.persona-voice-sample {
+  margin: 0;
+  padding: var(--space-4) var(--space-6);
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 4%, var(--panel));
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: var(--step-2);
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.persona-list {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+.persona-list li::marker {
+  color: var(--accent);
+}
+
+.persona-muted {
+  margin: 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Design tokens — a clean definition grid. */
+.persona-tokens {
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+.persona-token-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: var(--space-4);
+  align-items: baseline;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line);
+}
+.persona-token-row:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.persona-token-key {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: capitalize;
+  color: var(--muted);
+}
+.persona-token-val {
+  margin: 0;
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+
+/* ── Detail: edit form ───────────────────────────────────────────────── */
+.persona-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.persona-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.persona-label {
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.persona-input,
+.persona-textarea {
+  font: inherit;
+  font-size: var(--step-0);
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--space-3);
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+.persona-textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
+.persona-input:hover,
+.persona-textarea:hover {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+.persona-input:focus-visible,
+.persona-textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.persona-fieldset {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--space-5);
+  background: color-mix(in srgb, var(--accent) 2%, var(--panel));
+}
+.persona-legend {
+  padding: 0 var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.persona-token-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+@media (max-width: 33rem) {
+  .persona-token-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.persona-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* ── Save feedback ───────────────────────────────────────────────────── */
+.persona-saved {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--good);
+  font-weight: 600;
+}
+.persona-saved::before {
+  content: "✓";
+  font-weight: 800;
+}

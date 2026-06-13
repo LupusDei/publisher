@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { cloneElement, isValidElement, useState } from "react";
 import Link from "next/link";
 import { Button, buttonClass } from "@/components/ui/Button";
 import {
@@ -481,8 +481,38 @@ function Field(props: {
   children: React.ReactNode;
 }): React.ReactElement {
   const errorId = `${props.id}-error`;
+  const helpId = `${props.id}-help`;
+  const hasError = Boolean(props.error);
+
+  // Programmatically link the control to its help and error text. We merge any
+  // aria-describedby already present on the child (so callers can add their own
+  // descriptions without losing them) with the help id (when help is shown) and
+  // the error id (when in error). The control is props.children — a single
+  // input/textarea element — so we clone it to inject the a11y attributes.
+  let control = props.children;
+  if (isValidElement(control)) {
+    const childProps = control.props as {
+      "aria-describedby"?: string;
+    };
+    const describedBy = [
+      props.help ? helpId : null,
+      hasError ? errorId : null,
+      childProps["aria-describedby"] ?? null,
+    ]
+      .filter((token): token is string => Boolean(token))
+      .join(" ");
+
+    control = cloneElement(control, {
+      // Only assert invalidity when actually invalid; otherwise expose a
+      // neutral "false" so assistive tech reads a clear, non-error state.
+      "aria-invalid": hasError ? "true" : "false",
+      // Omit the attribute entirely when there is nothing to point at.
+      "aria-describedby": describedBy.length > 0 ? describedBy : undefined,
+    } as Record<string, unknown>);
+  }
+
   return (
-    <div className="ob-field" data-invalid={Boolean(props.error)}>
+    <div className="ob-field" data-invalid={hasError}>
       <div className="ob-label-row">
         <label htmlFor={props.id} className="ob-label">
           {props.label}
@@ -493,9 +523,13 @@ function Field(props: {
           </span>
         ) : null}
       </div>
-      {props.help ? <p className="ob-help">{props.help}</p> : null}
-      {props.children}
-      {props.error ? (
+      {props.help ? (
+        <p id={helpId} className="ob-help">
+          {props.help}
+        </p>
+      ) : null}
+      {control}
+      {hasError ? (
         <p id={errorId} className="ob-field-error" role="alert">
           {props.error}
         </p>

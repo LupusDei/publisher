@@ -21,7 +21,14 @@ export function MetricsMeter({
   return (
     <section className="metrics-meter" aria-labelledby="metrics-h">
       <h3 id="metrics-h">Live meter</h3>
-      <div className="meter-headline" role="status" aria-live="polite">
+      {/* Motion only: re-key on the latest totals so the headline replays its
+          settle each time a metric lands (reduced-motion safe via globals). */}
+      <div
+        key={`${tokens}-${latency}`}
+        className="meter-headline meter-live"
+        role="status"
+        aria-live="polite"
+      >
         <div className="meter-stat">
           <span className="meter-value">{tokens.toLocaleString()}</span>
           <span className="meter-label">tokens</span>

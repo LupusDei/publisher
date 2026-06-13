@@ -88,4 +88,45 @@ describe("PersonaDetail", () => {
     );
     expect(screen.getByText("Sharper, more direct.")).toBeInTheDocument();
   });
+
+  it("should discard edits and return to the read view on Cancel (edge case)", async () => {
+    const user = userEvent.setup();
+    mockFetch.mockResolvedValue(persona);
+
+    render(<PersonaDetail id="p_1" />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "The Essayist" }),
+      ).toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    const voiceField = screen.getByLabelText("Voice");
+    await user.clear(voiceField);
+    await user.type(voiceField, "Throwaway edit.");
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    // The form is gone (no editable Voice field) and the original voice shows.
+    expect(screen.queryByLabelText("Voice")).not.toBeInTheDocument();
+    expect(screen.getByText(persona.voice)).toBeInTheDocument();
+    expect(screen.queryByText("Throwaway edit.")).not.toBeInTheDocument();
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("should expose helper placeholders on the design-token inputs (a11y affordance)", async () => {
+    const user = userEvent.setup();
+    mockFetch.mockResolvedValue(persona);
+
+    render(<PersonaDetail id="p_1" />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "The Essayist" }),
+      ).toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    const paletteInput = screen.getByLabelText("Palette");
+    expect(paletteInput).toHaveAttribute("placeholder");
+    expect(paletteInput.getAttribute("placeholder")).toMatch(/warm neutrals/i);
+  });
 });

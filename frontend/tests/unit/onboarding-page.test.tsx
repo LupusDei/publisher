@@ -135,7 +135,7 @@ describe("OnboardingPage", () => {
       designElements: {},
     });
 
-    render(<OnboardingPage />);
+    render();
     await fillRequired(user);
     await user.click(screen.getByRole("button", { name: /create persona/i }));
 
@@ -153,7 +153,7 @@ describe("OnboardingPage", () => {
 
   it("should show inline validation on a required field after it is touched and left empty", async () => {
     const user = userEvent.setup();
-    render(<OnboardingPage />);
+    render();
 
     const name = screen.getByLabelText(/persona name/i);
     // No error before interaction.
@@ -176,7 +176,7 @@ describe("OnboardingPage", () => {
   });
 
   it("should surface all required-field errors and not submit when the button is forced", async () => {
-    render(<OnboardingPage />);
+    render();
 
     // Submit is gated: the button is disabled with nothing filled.
     expect(
@@ -198,9 +198,59 @@ describe("OnboardingPage", () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
+  it("should expose aria-invalid and link the control to its visible error node when a required field is errored", async () => {
+    const user = userEvent.setup();
+    render();
+
+    const name = screen.getByLabelText(/persona name/i);
+    // Before interaction the field is valid: aria-invalid is the neutral
+    // "false" and nothing in aria-describedby points at an (absent) error node.
+    expect(name).toHaveAttribute("aria-invalid", "false");
+    expect(name.getAttribute("aria-describedby") ?? "").not.toContain(
+      "name-error",
+    );
+
+    // Touch and leave empty -> the field becomes invalid.
+    await user.click(name);
+    await user.tab();
+
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    // The control's aria-describedby must point at the visible error node...
+    const describedBy = name.getAttribute("aria-describedby") ?? "";
+    const errorIds = describedBy.split(/\s+/);
+    expect(errorIds).toContain("name-error");
+    // ...and that node must be the rendered alert carrying the error text.
+    const errorNode = document.getElementById("name-error");
+    expect(errorNode).not.toBeNull();
+    expect(errorNode).toHaveTextContent(/give your persona a name/i);
+    expect(errorNode).toHaveAttribute("role", "alert");
+    // Help text remains linked for richer SR context, alongside the error.
+    const helpNode = document.getElementById("name-help");
+    expect(helpNode).not.toBeNull();
+    expect(errorIds).toContain("name-help");
+  });
+
+  it("should not mark a valid field invalid nor point its aria-describedby at an error node", async () => {
+    const user = userEvent.setup();
+    render();
+
+    const name = screen.getByLabelText(/persona name/i);
+    await user.type(name, "The Essayist");
+    await user.tab();
+
+    // A filled required field is valid: aria-invalid is "false" and there is no
+    // error node to describe (only the help text id, if any, may be present).
+    expect(name).toHaveAttribute("aria-invalid", "false");
+    expect(document.getElementById("name-error")).toBeNull();
+    const describedBy = name.getAttribute("aria-describedby") ?? "";
+    expect(describedBy.split(/\s+/)).not.toContain("name-error");
+    // Help context is still linked.
+    expect(describedBy.split(/\s+/)).toContain("name-help");
+  });
+
   it("should echo the voice sample in the live preview as it is typed", async () => {
     const user = userEvent.setup();
-    render(<OnboardingPage />);
+    render();
 
     // Empty-state copy before any sample is entered.
     expect(

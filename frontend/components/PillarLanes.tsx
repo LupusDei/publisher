@@ -81,8 +81,13 @@ function SealedAgentBox({
 }: {
   phase?: string | undefined;
 }): React.ReactElement {
+  // Motion only: while the worker is mid-run (a phase is set) the seal breathes.
+  const working = Boolean(phase);
   return (
-    <aside className="sealed-agent" aria-label="Agent (sealed worker)">
+    <aside
+      className={`sealed-agent${working ? " sealed-working" : ""}`}
+      aria-label="Agent (sealed worker)"
+    >
       <div className="sealed-head">
         <span className="sealed-lock" aria-hidden="true">
           ▣
