@@ -65,10 +65,14 @@ The agent receives a **compiled `system` string**, never a `Persona`. `compilePe
 **Call:** Build uses `generateObject` (whole-object). UI liveness comes from phase/checkpoint/draft/metric/alarm events — not token-level streaming.
 **Why:** Simpler, matches what the seam actually emits; avoids Track H building a token-stream UI with no backing event.
 
-### 🔴 D11 — Deploy topology: Vercel frontend + reachable backend that serves published pages
-**Call:** Frontend → Vercel. Backend → a Node host **or** a tunnel (cloudflared/ngrok) for the live demo; SQLite file persists. Published webpages are served by the backend at a stable `/published/:id` route; the frontend preview iframes it via `NEXT_PUBLIC_API_BASE`.
-**Why:** The "deployed harness URL" (D1) is meaningless if the local backend isn't reachable and can't serve the artifact.
-**⚠️ NEEDS YOUR INPUT (non-blocking):** Which backend host? I'm proceeding assuming **a tunnel for the demo + documented Node-host path**. If you have a host (Render/Railway/Fly) or want full serverless, tell me and I'll wire env + deploy accordingly.
+### 🔴 D11 — Deploy topology: Vercel frontend + LOCAL backend via ngrok tunnel ✅ CONFIRMED BY GENERAL (2026-06-13)
+**Call (locked):** Frontend → **Vercel**. Backend → runs **locally**, exposed to the internet via an **ngrok tunnel**; SQLite file persists locally. The Vercel frontend reaches the backend at the ngrok URL via `NEXT_PUBLIC_API_BASE`. Published webpages are served by the local backend at `/published/:id` and previewed in the frontend through the tunnel.
+**Why:** The General confirmed this is the demo setup — judges hit the Vercel URL; the harness runs on the local backend behind ngrok.
+**Build implications (handle at integration / Track I — dp0.10.2):**
+- `NEXT_PUBLIC_API_BASE` (frontend env on Vercel) = the ngrok https URL.
+- Backend `CORS_ORIGIN` must allow the Vercel origin (env-configurable; already in `config/env.ts`).
+- `Sink` Receipt URLs must be **absolute** using a configurable `PUBLIC_BASE_URL` (= ngrok URL) so the frontend can iframe published pages through the tunnel. (`createFileSink` already takes a `baseUrl` — set it from env at deploy; Track 0 defaulted it to `""` for local.)
+- Document the one-command demo bring-up: `npm run dev` (backend) + `ngrok http <port>` + set Vercel env → deploy.
 
 ### 🔴 D12 — The demo's money shots run on a SCRIPTED MockAgent (deterministic), not a live judge
 **Call:** `MockAgent` gets a scripted path where draft-1 deterministically triggers `VOICE_DRIFT` (off-voice text) and draft-2 (post-feedback) passes — guaranteeing R2 live. A deterministic `TOKEN_BUDGET_EXCEEDED` gives a reliable structured alarm on screen (R5). The real agent is shown for the bonus swap where feasible; the **guaranteed** demo path is Mock.
@@ -111,7 +115,7 @@ The agent receives a **compiled `system` string**, never a `Persona`. `compilePe
 ---
 
 ## Open questions I did NOT block on (answer when convenient)
-1. **D11** — backend host for the deployed URL (tunnel vs Render/Railway/Fly vs serverless)?
+1. ~~**D11** — backend host for the deployed URL?~~ ✅ **RESOLVED: local backend + ngrok tunnel → Vercel frontend** (General, 2026-06-13).
 2. **D13** — is real web research in-scope for the graded demo run, or is Mock research acceptable?
 3. **Persona depth (D3)** — happy with `voiceSample` + fixed design-token vocabulary, or do you want a richer capture model?
 4. **Demo concept (R6)** — do you have a specific real concept/idea you want published in the demo, or should I author one?
