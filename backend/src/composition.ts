@@ -5,6 +5,12 @@ import {
   type PersonaStore,
 } from "./stores/persona.store.js";
 import { createRunStore } from "./stores/run.store.js";
+import { createShareStore, type ShareStore } from "./stores/share.store.js";
+import {
+  createShareService,
+  type ShareService,
+} from "./services/share.service.js";
+import { createSlug } from "./util/slug.js";
 import { createRunEventStore } from "./stores/run-event.store.js";
 import { createWebpageStore } from "./stores/webpage.store.js";
 import { createCheckpointStore } from "./stores/checkpoint.store.js";
@@ -54,11 +60,22 @@ export interface RunCompositionInput {
    * behavior is unchanged: a faulting judge still fails the gate.
    */
   voiceJudge?: Judge;
+  /**
+   * Public origin for share links (`${shareBaseUrl}/p/${slug}`). Defaults to ""
+   * → a relative `/p/${slug}`, matching the existing `/published/:id`
+   * convention. server.ts passes `PUBLIC_BASE_URL` (share.2.4).
+   */
+  shareBaseUrl?: string;
 }
 
 export interface RunComposition {
   deps: RunServiceDeps;
   personaStore: PersonaStore;
+  /** The share data-access store (share.2.4) — server.ts mounts routes off it. */
+  shareStore: ShareStore;
+  /** The share business-logic service (mint + resolveBySlug), wired to the same
+   * run store + sink the run engine uses, and to PUBLIC_BASE_URL. */
+  shareService: ShareService;
 }
 
 export function composeRunDeps(input: RunCompositionInput): RunComposition {
@@ -70,6 +87,9 @@ export function composeRunDeps(input: RunCompositionInput): RunComposition {
   }
   const personaStore = input.personaStore ?? createPersonaStore(db);
   const guardrailEngine = createGuardrailEngine();
+  // One run store shared by the run engine AND the share service so the share
+  // service's published/ownership checks see exactly the runs the engine wrote.
+  const runStore = createRunStore(db);
 
   const deps: RunServiceDeps = {
     // Per-run worker selection (rrt.2.1) when a factory is supplied; otherwise
@@ -87,7 +107,7 @@ export function composeRunDeps(input: RunCompositionInput): RunComposition {
         ...(input.voiceJudge ? { voiceJudge: input.voiceJudge } : {}),
       }),
     personaStore,
-    runStore: createRunStore(db),
+    runStore,
     eventStore: createRunEventStore(db),
     webpageStore: createWebpageStore(db),
     checkpointStore: createCheckpointStore(db),
@@ -101,5 +121,16 @@ export function composeRunDeps(input: RunCompositionInput): RunComposition {
     ...(input.telemetry ? { telemetry: input.telemetry } : {}),
   };
 
-  return { deps, personaStore };
+  // Share graph (share.2.4): the slug-keyed store + the business-logic service.
+  // The service reuses the same run store as the engine and mints links against
+  // PUBLIC_BASE_URL (relative "/p/:slug" when unset).
+  const shareStore = createShareStore(db);
+  const shareService = createShareService({
+    shareStore,
+    runStore,
+    slug: createSlug,
+    baseUrl: input.shareBaseUrl ?? "",
+  });
+
+  return { deps, personaStore, shareStore, shareService };
 }
