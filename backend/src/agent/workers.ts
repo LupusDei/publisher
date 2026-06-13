@@ -7,6 +7,16 @@
  * Models are Anthropic ids reached through the Vercel AI SDK provider
  * (`@ai-sdk/anthropic`); swapping `model` is all it takes to change the worker.
  */
+/**
+ * Which concrete `Agent` implementation backs a worker.
+ *   - `vercel-ai-sdk` → `AnthropicAgent` (`ai` + `@ai-sdk/anthropic`); NO web
+ *     tools, so research sources are empty (the original real worker).
+ *   - `anthropic-research` → `AnthropicResearchAgent` (official
+ *     `@anthropic-ai/sdk` + server-side `web_search`); REAL sources (D13).
+ * Two genuinely-different implementations behind ONE seam = the R8/R11 swap.
+ */
+export type WorkerImpl = "vercel-ai-sdk" | "anthropic-research";
+
 export interface WorkerDescriptor {
   /** Stable, URL-safe id used by the API + UI picker. */
   id: string;
@@ -14,15 +24,35 @@ export interface WorkerDescriptor {
   label: string;
   /** The underlying model id passed to the provider. */
   model: string;
+  /** Which concrete Agent implementation builds this worker. */
+  impl: WorkerImpl;
 }
 
 /**
  * At least two real workers behind one interface (R11). Opus is the default
- * (most capable); Sonnet is the cheaper, faster second worker swapped mid-demo.
+ * (most capable); Sonnet is the cheaper, faster second worker swapped mid-demo;
+ * `anthropic-research` is the REAL-web-search worker (D13) — a third,
+ * genuinely-different implementation that returns real source URLs.
  */
 export const AVAILABLE_WORKERS: readonly WorkerDescriptor[] = [
-  { id: "opus", label: "Claude Opus 4.8", model: "claude-opus-4-8" },
-  { id: "sonnet", label: "Claude Sonnet 4.6", model: "claude-sonnet-4-6" },
+  {
+    id: "opus",
+    label: "Claude Opus 4.8",
+    model: "claude-opus-4-8",
+    impl: "vercel-ai-sdk",
+  },
+  {
+    id: "sonnet",
+    label: "Claude Sonnet 4.6",
+    model: "claude-sonnet-4-6",
+    impl: "vercel-ai-sdk",
+  },
+  {
+    id: "anthropic-research",
+    label: "Claude Opus 4.8 (real web research)",
+    model: "claude-opus-4-8",
+    impl: "anthropic-research",
+  },
 ] as const;
 
 /** The default real worker id when none is specified. */
